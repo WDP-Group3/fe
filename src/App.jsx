@@ -1,36 +1,51 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import Landing from './pages/Landing';
+import PortalLayout from './components/layout/PortalLayout';
+import Overview from './pages/Overview';
+import Courses from './pages/Courses';
+import Enrollment from './pages/Enrollment';
+import Payments from './pages/Payments';
+import Schedule from './pages/Schedule';
+import Exams from './pages/Exams';
+import Notifications from './pages/Notifications';
+import Admin from './pages/Admin';
+import Profile from './pages/Profile';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ProtectedRoute from './components/common/ProtectedRoute';
 
 function App() {
-  const [count, setCount] = useState(0)
   return (
-    <>
-      <div className="flex justify-center gap-8 p-8">
-        <a href="https://vite.dev" target="_blank" rel="noopener noreferrer">
-          <img src={viteLogo} className="h-24 transition-transform hover:scale-110" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noopener noreferrer">
-          <img src={reactLogo} className="h-24 animate-spin-slow" alt="React logo" />
-        </a>
-      </div>
-      <h1 className="text-4xl font-bold text-center mb-8">Vite + React</h1>
-      <div className="text-center">
-        <button
-          onClick={() => setCount((count) => count + 1)}
-          className="px-6 py-3 mb-4 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          count is {count}
-        </button>
-        <p className="mb-4">
-          Edit <code className="px-2 py-1 bg-gray-100 rounded">src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="text-center text-gray-500">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <AuthProvider>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/portal" element={<ProtectedRoute><PortalLayout /></ProtectedRoute>}>
+              <Route index element={<Navigate to="/portal/overview" replace />} />
+              <Route path="overview" element={<Overview />} />
+              <Route path="courses" element={<Courses />} />
+              <Route path="enrollment" element={<Enrollment />} />
+              <Route path="payments" element={<Payments />} />
+              <Route path="schedule" element={<Schedule />} />
+              <Route path="exams" element={<Exams />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><Admin /></ProtectedRoute>} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="profile/:id" element={<Profile />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
