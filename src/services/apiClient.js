@@ -3,7 +3,7 @@
 // API Client configuration using Fetch API
 import config from '../config';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = config.apiBaseUrl || 'http://localhost:3000/api';
 
 // Helper function to get headers with auth token
 const getHeaders = () => {

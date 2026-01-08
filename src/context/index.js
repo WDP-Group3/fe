@@ -1,4 +1,4 @@
 // Export all context providers here
-// Example: export { AuthProvider, useAuth } from './AuthContext';
-// export { ThemeProvider, useTheme } from './ThemeContext';
+export { AuthProvider, useAuthContext } from './AuthContext';
+export { ToastProvider, useToast } from './ToastContext';
 
