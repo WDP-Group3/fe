@@ -9,6 +9,8 @@ import Enrollment from './pages/Enrollment';
 import Payments from './pages/Payments';
 import Schedule from './pages/Schedule';
 import Exams from './pages/Exams';
+import ExamTaking from './pages/ExamTaking';
+import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
@@ -35,6 +37,8 @@ function App() {
               <Route path="payments" element={<Payments />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="exams" element={<Exams />} />
+              <Route path="exam-taking" element={<ExamTaking />} />
+              <Route path="exam-result/:id" element={<ExamResult />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><Admin /></ProtectedRoute>} />
               <Route path="profile" element={<Profile />} />

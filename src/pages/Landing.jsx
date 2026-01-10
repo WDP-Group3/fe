@@ -5,6 +5,7 @@ import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import { courses, sessions } from '../data/mockData';
 import { formatCurrency } from '../utils/formatters';
+import axios from '../services/axios';
 
 const Landing = () => {
   const banners = [

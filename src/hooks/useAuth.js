@@ -31,7 +31,7 @@ const useAuth = () => {
       const mockResponse = {
         token: 'mock-token',
         user: {
-          id: '1',
+          id: '5a9427648b0beebeb69579e7',
           email: credentials.email,
           name: 'User',
           role: 'STUDENT',
