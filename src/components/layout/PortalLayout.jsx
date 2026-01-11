@@ -1,27 +1,34 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import { Dropdown } from '../ui';
 import { Avatar } from '../common';
 import config from '../../config';
 
-const navItems = [
-  { label: 'Tổng quan', to: '/portal/overview' },
-  { label: 'Khóa học', to: '/portal/courses' },
-  { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment' },
-  { label: 'Học phí', to: '/portal/payments' },
-  { label: 'Lịch học', to: '/portal/schedule' },
-  { label: 'Thi thử', to: '/portal/exams' },
-  { label: 'Thông báo', to: '/portal/notifications' },
-  { label: 'Quản trị', to: '/portal/admin' },
-];
+// Navigation items based on role
+const getNavItems = (userRole) => {
+  const allItems = [
+    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
+    { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
+    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
+  ];
+  
+  if (!userRole) return allItems;
+  return allItems.filter(item => item.roles.includes(userRole));
+};
 
 const PortalLayout = () => {
   const { user, logout } = useAuthContext();
+  const navigate = useNavigate();
 
   const userMenuItems = [
     {
       label: 'Thông tin cá nhân',
-      onClick: () => window.location.href = '/portal/profile',
+      onClick: () => navigate('/portal/profile'),
     },
     { divider: true },
     {
@@ -33,8 +40,9 @@ const PortalLayout = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
+
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
           <Link to="/portal/overview" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
@@ -70,8 +78,8 @@ const PortalLayout = () => {
           </div>
         </div>
         <div className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2">
-            {navItems.map((item) => (
+          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+            {getNavItems(user?.role).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -90,7 +98,7 @@ const PortalLayout = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 xl:ml-64 xl:mr-64">
         <Outlet />
       </main>
     </div>

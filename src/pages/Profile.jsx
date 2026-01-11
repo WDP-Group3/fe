@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { canEditProfile, canViewProfile } from '../utils/permissions';
-import { useApi } from '../hooks';
 import apiClient from '../services/apiClient';
-import { API_ENDPOINTS } from '../constants';
 import {
   Card,
   PageHeader,
@@ -27,7 +25,6 @@ import { FormGroup, FormRow } from '../components/forms';
 
 const Profile = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { user: currentUser } = useAuthContext();
   const { showToast } = useToast();
   const [isEditMode, setIsEditMode] = useState(false);
@@ -45,49 +42,65 @@ const Profile = () => {
   // Fetch profile data
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!currentUser?.id) {
+        setLoading(false);
+        return;
+      }
+      
+      // Debug token
+      const tokenRaw = localStorage.getItem('token');
+      console.log('🔍 Profile: Token check:', tokenRaw ? 'Found' : 'Not found');
+      if (tokenRaw) {
+        console.log('🔍 Profile: Token length:', tokenRaw.length);
+        console.log('🔍 Profile: Token preview:', tokenRaw.substring(0, 20) + '...');
+      }
+      
       setLoading(true);
       setError(null);
       try {
-        // Cần call đến BE để lấy thông tin profile
-        // const response = await apiClient.get(`${API_ENDPOINTS.USERS.BASE}/${targetUserId}`);
-        // setProfileUser(response);
-        // setFormData(response);
-        
-        // Mock data for now
-        const mockProfile = {
-          id: targetUserId,
-          email: 'student@example.com',
-          name: 'Nguyễn Văn A',
-          phone: '0912345678',
-          role: 'STUDENT',
-          address: '123 Đường ABC, Quận 1, TP.HCM',
-          dateOfBirth: '1995-01-15',
-          gender: 'MALE',
-          avatar: null,
-          createdAt: '2024-01-01',
-          // Student specific
-          studentCode: 'ST001',
-          enrollmentStatus: 'APPROVED',
-          // Staff/Sale specific
-          assignedStudents: [],
-          // Instructor specific
-          licenseNumber: null,
-          // Admin specific
-          isActive: true,
+        const response = await apiClient.get(isOwnProfile ? '/auth/profile' : `/users/${targetUserId}`);
+        const userData = response.data || response;
+        const profile = {
+          id: userData._id || userData.id,
+          email: userData.email,
+          name: userData.fullName || userData.name,
+          phone: userData.phone,
+          role: userData.role,
+          address: userData.address || '',
+          dateOfBirth: userData.dateOfBirth || '',
+          gender: userData.gender || '',
+          avatar: userData.avatar || null,
+          createdAt: userData.createdAt || '',
+          studentCode: userData.studentCode || '',
+          enrollmentStatus: userData.enrollmentStatus || '',
+          assignedStudents: userData.assignedStudents || [],
+          licenseNumber: userData.licenseNumber || null,
+          isActive: userData.status === 'ACTIVE',
         };
-        setProfileUser(mockProfile);
-        setFormData(mockProfile);
+        setProfileUser(profile);
+        setFormData(profile);
       } catch (err) {
-        setError(err.message);
+        console.error('Profile fetch error:', err);
+        const errorMessage = err.message || 'Không thể tải thông tin profile';
+        setError(errorMessage);
+        
+        // Nếu là lỗi 401, hiển thị thông báo rõ ràng
+        if (errorMessage.includes('Token') || errorMessage.includes('hết hạn') || errorMessage.includes('Unauthorized')) {
+          // Error message đã được set, apiClient sẽ xử lý redirect sau 2 giây
+          // Không cần làm gì thêm ở đây
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (currentUser) {
+    if (currentUser?.id) {
       fetchProfile();
+    } else {
+      setLoading(false);
+      setError('Vui lòng đăng nhập để xem thông tin');
     }
-  }, [targetUserId, currentUser]);
+  }, [targetUserId, currentUser?.id]);
 
   // Check permissions
   const canEdit = profileUser ? canEditProfile(currentUser, profileUser) : false;
@@ -120,11 +133,23 @@ const Profile = () => {
 
     setSaving(true);
     try {
-      // Cần call đến BE để cập nhật profile
-      // await apiClient.put(`${API_ENDPOINTS.USERS.BASE}/${targetUserId}`, formData);
-      
-      // Mock success
-      setProfileUser(formData);
+      const updateData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+      };
+      const response = await apiClient.put('/auth/profile', updateData);
+      const userData = response.data || response;
+      const updatedProfile = {
+        ...formData,
+        id: userData._id || userData.id,
+        name: userData.fullName || userData.name,
+      };
+      setProfileUser(updatedProfile);
+      setFormData(updatedProfile);
       setIsEditMode(false);
       showToast('Cập nhật thông tin thành công', 'success');
     } catch (err) {

@@ -1,9 +1,38 @@
+import { useState, useEffect } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
-import { users } from '../data/mockData';
+import apiClient from '../services/apiClient';
 
 const Admin = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.get('/users');
+      if (response.status === 'success') {
+        // Map backend user format to frontend format
+        const mappedUsers = (response.data || []).map((user) => ({
+          name: user.fullName || user.name,
+          role: user.role,
+          assignedTo: '-', // Would need additional data for this
+          status: user.status === 'ACTIVE' ? 'active' : 'inactive',
+        }));
+        setUsers(mappedUsers);
+      }
+    } catch (err) {
+      console.error('Error loading users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     { key: 'name', title: 'Tên', dataIndex: 'name' },
     { key: 'role', title: 'Vai trò', dataIndex: 'role' },
@@ -19,7 +48,17 @@ const Admin = () => {
           description="Admin toàn quyền hệ thống, Staff chỉ xem phạm vi được phân"
           action={<button className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Tạo user</button>}
         />
-        <DataTable columns={columns} data={users} />
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-8 text-center text-slate-500">
+            <p>Chưa có user nào</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={users} />
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

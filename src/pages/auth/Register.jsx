@@ -112,6 +112,7 @@ const Register = () => {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 error={errors.password}
                 required
+                showPasswordToggle
               />
               <Input
                 label="Xác nhận mật khẩu"
@@ -121,6 +122,7 @@ const Register = () => {
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 error={errors.confirmPassword}
                 required
+                showPasswordToggle
               />
             </FormRow>
 

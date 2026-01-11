@@ -209,7 +209,7 @@ const ExamTaking = () => {
                   <p className="flex-1 text-lg text-slate-900">{currentQuestion.content}</p>
                 </div>
 
-                {currentQuestion.image? (
+                {currentQuestion.image && (
                   <div className="mb-6 flex justify-center">
                     <img
                       src={`https://taplai.com${currentQuestion.image}`}
@@ -220,7 +220,7 @@ const ExamTaking = () => {
                       }}
                     />
                   </div>
-                ) : (<div>anhduc</div>)}
+                )}
 
                 <div className="space-y-3">
                   {['A', 'B', 'C', 'D'].map(option => {
