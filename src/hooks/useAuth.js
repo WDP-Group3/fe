@@ -21,28 +21,25 @@ const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      // Cần call đến BE
-      // const response = await apiClient.post('/auth/login', credentials);
-      // setToken(response.token);
-      // setUser(response.user);
-      // return response;
-      
-      // Mock for now
-      const mockResponse = {
-        token: 'mock-token',
-        user: {
-          id: '5a9427648b0beebeb69579e7',
-          email: credentials.email,
-          name: 'User',
-          role: 'STUDENT',
-        },
-      };
-      setToken(mockResponse.token);
-      setUser(mockResponse.user);
-      return mockResponse;
+      const response = await apiClient.post('/auth/login', credentials);
+      if (response.status === 'success') {
+        setToken(response.token);
+        // Map backend user fields to frontend format
+        const user = {
+          id: response.user._id || response.user.id,
+          email: response.user.email,
+          name: response.user.fullName || response.user.name,
+          role: response.user.role,
+          phone: response.user.phone,
+        };
+        setUser(user);
+        return { token: response.token, user };
+      }
+      throw new Error(response.message || 'Đăng nhập thất bại');
     } catch (err) {
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Đăng nhập thất bại';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -52,8 +49,8 @@ const useAuth = () => {
   const logout = () => {
     setToken(null);
     setUser(null);
-    // Cần call đến BE
-    // apiClient.post('/auth/logout');
+    // Optional: call backend logout endpoint if available
+    // apiClient.post('/auth/logout').catch(() => {});
   };
 
   // Register function
@@ -61,15 +58,24 @@ const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      // Cần call đến BE
-      // const response = await apiClient.post('/auth/register', userData);
-      // return response;
-      
-      // Mock for now
-      return { success: true };
+      const response = await apiClient.post('/auth/register', {
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        password: userData.password,
+        role: userData.role || 'STUDENT',
+      });
+      if (response.status === 'success') {
+        // Optionally auto-login after registration
+        // setToken(response.token);
+        // setUser(response.user);
+        return { success: true, data: response };
+      }
+      throw new Error(response.message || 'Đăng ký thất bại');
     } catch (err) {
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Đăng ký thất bại';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -80,15 +86,24 @@ const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      // Cần call đến BE
-      // const response = await apiClient.get('/users/profile');
-      // setUser(response);
-      // return response;
-      
-      return user;
+      const response = await apiClient.get('/auth/profile');
+      if (response.status === 'success') {
+        const userData = response.data || response;
+        const user = {
+          id: userData._id || userData.id,
+          email: userData.email,
+          name: userData.fullName || userData.name,
+          role: userData.role,
+          phone: userData.phone,
+        };
+        setUser(user);
+        return user;
+      }
+      throw new Error(response.message || 'Lấy thông tin thất bại');
     } catch (err) {
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Lấy thông tin thất bại';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }

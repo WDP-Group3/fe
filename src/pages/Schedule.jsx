@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useModal } from '../hooks';
 import { useToast } from '../context/ToastContext';
 import { Button, Modal, Input, Select, DatePicker } from '../components/ui';
@@ -7,12 +7,15 @@ import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
 import { FormGroup, FormRow } from '../components/forms';
-import { sessions } from '../data/mockData';
-import mockApi from '../services/mockApi';
+import apiClient from '../services/apiClient';
+import { useAuthContext } from '../context/AuthContext';
 
 const Schedule = () => {
+  const { user } = useAuthContext();
   const { isOpen, open, close } = useModal();
   const { showToast } = useToast();
+  const [sessions, setSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [formData, setFormData] = useState({
     date: '',
     time: '',
@@ -21,6 +24,33 @@ const Schedule = () => {
     location: '',
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  const loadSessions = async () => {
+    try {
+      setLoadingSessions(true);
+      const response = await apiClient.get(`/bookings${user?.id ? `?studentId=${user.id}` : ''}`);
+      if (response.status === 'success') {
+        // Map backend booking format to frontend format
+        const mappedSessions = (response.data || []).map((booking) => ({
+          id: booking._id,
+          date: new Date(booking.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+          time: booking.timeSlot || '',
+          type: 'Thực hành',
+          instructor: booking.instructorId?.fullName || '',
+          location: booking.batchId?.location || '',
+        }));
+        setSessions(mappedSessions);
+      }
+    } catch (err) {
+      console.error('Error loading sessions:', err);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
 
   const columns = [
     { key: 'date', title: 'Ngày', dataIndex: 'date' },
@@ -44,13 +74,21 @@ const Schedule = () => {
   const handleBook = async () => {
     setLoading(true);
     try {
-      await mockApi.bookSchedule({
-        ...formData,
-        userId: '1', // Get from auth context
+      // Note: Backend booking API needs batchId and instructorId
+      // For now, this is a placeholder - you may need to update the backend
+      const response = await apiClient.post('/bookings', {
+        date: formData.date,
+        timeSlot: formData.time,
+        // These would need to be selected from available options
+        // batchId: selectedBatchId,
+        // instructorId: selectedInstructorId,
       });
-      showToast('Đặt lịch thành công', 'success');
-      close();
-      setFormData({ date: '', time: '', type: '', instructor: '', location: '' });
+      if (response.status === 'success') {
+        showToast('Đặt lịch thành công', 'success');
+        close();
+        setFormData({ date: '', time: '', type: '', instructor: '', location: '' });
+        loadSessions();
+      }
     } catch (error) {
       showToast(error.message || 'Đặt lịch thất bại', 'error');
     } finally {
@@ -60,8 +98,11 @@ const Schedule = () => {
 
   const handleCancel = async (id) => {
     try {
-      await mockApi.cancelSchedule(id);
-      showToast('Hủy lịch thành công', 'success');
+      const response = await apiClient.put(`/bookings/${id}`, { status: 'CANCELLED' });
+      if (response.status === 'success') {
+        showToast('Hủy lịch thành công', 'success');
+        loadSessions();
+      }
     } catch (error) {
       showToast(error.message || 'Hủy lịch thất bại', 'error');
     }
@@ -69,10 +110,10 @@ const Schedule = () => {
 
   // Mock consultant info
   const consultantInfo = {
-    name: 'Nguyễn Thị Tư Vấn',
-    zalo: 'https://zalo.me/0912345678',
-    facebook: 'https://facebook.com/consultant',
-    gmail: 'consultant@example.com',
+    name: 'Ngô Trần Minh Hòa',
+    zalo: 'https://zalo.me/0966881862',
+    facebook: 'https://www.facebook.com/minhhoa.ngotran/',
+    gmail: 'ntmh18062004@gmail.com',
   };
 
   return (
@@ -87,7 +128,17 @@ const Schedule = () => {
             </Button>
           }
         />
-        <DataTable columns={columns} data={sessions} />
+        {loadingSessions ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="py-8 text-center text-slate-500">
+            <p>Chưa có lịch học nào</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={sessions} />
+        )}
       </div>
 
       {/* Contact Consultant */}

@@ -1,10 +1,42 @@
+import { useState, useEffect } from 'react';
+import { useAuthContext } from '../context/AuthContext';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
-import { paymentSchedule } from '../data/mockData';
+import apiClient from '../services/apiClient';
 import { formatCurrency } from '../utils/formatters';
 
 const Payments = () => {
+  const { user } = useAuthContext();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const loadPayments = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.get('/payments');
+      if (response.status === 'success') {
+        // Map backend payment format to frontend format
+        const mappedPayments = (response.data || []).map((payment, index) => ({
+          id: payment._id || `PM-${index + 1}`,
+          title: `Đợt ${index + 1}`,
+          amount: payment.amount || 0,
+          due: payment.paidAt ? new Date(payment.paidAt).toLocaleDateString('vi-VN') : 'Chưa có',
+          status: payment.method ? 'paid' : 'pending',
+        }));
+        setPayments(mappedPayments);
+      }
+    } catch (err) {
+      console.error('Error loading payments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     { key: 'title', title: 'Đợt thu', dataIndex: 'title' },
     { key: 'amount', title: 'Số tiền', dataIndex: 'amount', render: (val) => formatCurrency(val) },
@@ -20,7 +52,17 @@ const Payments = () => {
           description="Chia đợt, kiểm soát công nợ, nhắc phí tự động"
           action={<button className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Tạo phiếu thu</button>}
         />
-        <DataTable columns={columns} data={paymentSchedule} />
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+          </div>
+        ) : payments.length === 0 ? (
+          <div className="py-8 text-center text-slate-500">
+            <p>Chưa có giao dịch nào</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={payments} />
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

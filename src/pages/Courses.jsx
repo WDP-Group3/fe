@@ -1,9 +1,79 @@
+import { useState, useEffect } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
-import { courses } from '../data/mockData';
+import apiClient from '../services/apiClient';
 import { formatCurrency } from '../utils/formatters';
 
 const Courses = () => {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.get('/courses');
+      if (response.status === 'success') {
+        // Map backend course format to frontend format
+        const mappedCourses = (response.data || []).map((course) => ({
+          id: course.code || course._id,
+          name: course.name,
+          price: course.estimatedCost || 0,
+          duration: course.estimatedDuration ? `${course.estimatedDuration} tháng` : 'Chưa cập nhật',
+          description: course.description || '',
+          location: course.location || [],
+          installments: course.estimatedCost ? [
+            `Đợt 1: ${formatCurrency(Math.floor(course.estimatedCost * 0.5))}`,
+            `Đợt 2: ${formatCurrency(Math.floor(course.estimatedCost * 0.5))}`,
+          ] : [],
+          startDates: [], // Will need batch data for this
+          perks: course.note ? [course.note] : ['Hỗ trợ học online', 'Thi thử không giới hạn'],
+        }));
+        setCourses(mappedCourses);
+      }
+    } catch (err) {
+      console.error('Error loading courses:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+          <div className="text-center py-8 text-red-600">
+            <p>Lỗi tải dữ liệu: {error}</p>
+            <button
+              onClick={loadCourses}
+              className="mt-4 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
@@ -12,8 +82,13 @@ const Courses = () => {
           description="Công khai học phí, phụ phí và lịch khai giảng"
           action={<button className="text-sm font-semibold text-indigo-700">Xuất PDF</button>}
         />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {courses.map((course) => (
+        {courses.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            <p>Chưa có khóa học nào</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {courses.map((course) => (
             <div key={course.id} className="rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <StatusBadge status="done" label="Mở đăng ký" />
@@ -49,8 +124,9 @@ const Courses = () => {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

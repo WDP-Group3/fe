@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { Button, Input } from '../../components/ui';
 import { Container, Card } from '../../components/common';
+import apiClient from '../../services/apiClient';
 import config from '../../config';
 
 const ForgotPassword = () => {
@@ -28,13 +29,11 @@ const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      // Cần call đến BE để gửi email reset password
-      // await apiClient.post('/auth/forgot-password', { email });
-      
-      // Mock
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSent(true);
-      showToast('Email đặt lại mật khẩu đã được gửi', 'success');
+      const response = await apiClient.post('/auth/forgot-password', { email });
+      if (response.status === 'success') {
+        setSent(true);
+        showToast(response.message || 'Chúng tôi đã gửi link đặt lại mật khẩu đến email của bạn. Vui lòng kiểm tra hộp thư.', 'success');
+      }
     } catch (err) {
       setError(err.message || 'Có lỗi xảy ra');
       showToast('Gửi email thất bại', 'error');
