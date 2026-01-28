@@ -46,7 +46,7 @@ const Profile = () => {
         setLoading(false);
         return;
       }
-      
+
       // Debug token
       const tokenRaw = localStorage.getItem('token');
       console.log('🔍 Profile: Token check:', tokenRaw ? 'Found' : 'Not found');
@@ -54,7 +54,7 @@ const Profile = () => {
         console.log('🔍 Profile: Token length:', tokenRaw.length);
         console.log('🔍 Profile: Token preview:', tokenRaw.substring(0, 20) + '...');
       }
-      
+
       setLoading(true);
       setError(null);
       try {
@@ -83,7 +83,7 @@ const Profile = () => {
         console.error('Profile fetch error:', err);
         const errorMessage = err.message || 'Không thể tải thông tin profile';
         setError(errorMessage);
-        
+
         // Nếu là lỗi 401, hiển thị thông báo rõ ràng
         if (errorMessage.includes('Token') || errorMessage.includes('hết hạn') || errorMessage.includes('Unauthorized')) {
           // Error message đã được set, apiClient sẽ xử lý redirect sau 2 giây
@@ -166,6 +166,23 @@ const Profile = () => {
     setIsEditMode(false);
   };
 
+  const handleLogout = async () => {
+    try {
+      if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+        await apiClient.post('/auth/logout');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Force logout anyway
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -191,9 +208,14 @@ const Profile = () => {
         title={isOwnProfile ? 'Thông tin cá nhân' : `Thông tin ${profileUser?.name}`}
         description={isOwnProfile ? 'Quản lý thông tin cá nhân của bạn' : 'Xem và quản lý thông tin người dùng'}
         action={
-          canEdit && !isEditMode ? (
-            <Button onClick={() => setIsEditMode(true)}>Chỉnh sửa</Button>
-          ) : null
+          <div className="flex gap-2">
+            {isOwnProfile && (
+              <Button variant="danger" onClick={handleLogout}>Đăng xuất</Button>
+            )}
+            {canEdit && !isEditMode ? (
+              <Button onClick={() => setIsEditMode(true)}>Chỉnh sửa</Button>
+            ) : null}
+          </div>
         }
       />
 
