@@ -13,7 +13,17 @@ const Courses = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [formData, setFormData] = useState({ code: '', name: '', price: '0', description: '', image: '' });
+
+  // 1. CẬP NHẬT STATE: Đổi price -> estimatedCost, thêm status và duration
+  const [formData, setFormData] = useState({
+    code: '',
+    name: '',
+    estimatedCost: '0', // Map với backend
+    description: '',
+    image: '',
+    status: 'Active', // Mặc định là Active
+    estimatedDuration: '3 tháng'
+  });
 
   useEffect(() => {
     loadCourses();
@@ -24,18 +34,23 @@ const Courses = () => {
       setLoading(true);
       setError(null);
       const response = await apiClient.get('/courses');
+
       if (response.status === 'success') {
         const mappedCourses = (response.data || []).map((course) => ({
-          id: course.code || course._id,
-          _id: course._id, // Keep real ID for API calls
+          id: course.code || course._id, // Mã hiển thị
+          _id: course._id, // ID thật để gọi API
           name: course.name,
-          price: course.price || course.estimatedCost || 0,
-          duration: course.estimatedDuration ? `${course.estimatedDuration} tháng` : '3 tháng',
+          // 2. MAPPING: Lấy đúng trường estimatedCost từ backend
+          estimatedCost: course.estimatedCost || 0,
+          status: course.status || 'Active',
+          // Lấy duration từ DB hoặc fallback
+          duration: course.estimatedDuration || '3 tháng',
           description: course.description || '',
           location: course.location || [],
-          installments: course.price ? [
-            `Đợt 1: ${formatCurrency(Math.floor(course.price * 0.5))}`,
-            `Đợt 2: ${formatCurrency(Math.floor(course.price * 0.5))}`,
+          // Tính toán hiển thị đợt đóng tiền
+          installments: course.estimatedCost ? [
+            `Đợt 1: ${formatCurrency(Math.floor(course.estimatedCost * 0.5))}`,
+            `Đợt 2: ${formatCurrency(Math.floor(course.estimatedCost * 0.5))}`,
           ] : [],
           startDates: ['Hàng tuần'],
           perks: course.note ? [course.note] : ['Hỗ trợ học online', 'Thi thử không giới hạn'],
@@ -53,28 +68,43 @@ const Courses = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Chuẩn hoá dữ liệu trước khi gửi (đảm bảo số là số)
+      const payload = {
+        ...formData,
+        estimatedCost: Number(formData.estimatedCost)
+      };
+
       if (editingCourse) {
-        await apiClient.put(`/courses/${editingCourse._id}`, formData);
+        await apiClient.put(`/courses/${editingCourse._id}`, payload);
       } else {
-        await apiClient.post('/courses', formData);
+        await apiClient.post('/courses', payload);
       }
       setShowModal(false);
       setEditingCourse(null);
-      setFormData({ code: '', name: '', price: '0', description: '', image: '' });
+      resetForm();
       loadCourses();
     } catch (error) {
-      alert('Failed to save course');
+      console.error(error);
+      alert('Failed to save course: ' + (error.response?.data?.message || error.message));
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      code: '', name: '', estimatedCost: '0', description: '', image: '', status: 'Active', estimatedDuration: '3 tháng'
+    });
   };
 
   const handleEdit = (course) => {
     setEditingCourse(course);
     setFormData({
-      code: course.id,
+      code: course.id, // Lưu ý: course.id ở đây là code (do map ở trên)
       name: course.name,
-      price: course.price,
+      estimatedCost: course.estimatedCost,
       description: course.description,
-      image: ''
+      image: '',
+      status: course.status,
+      estimatedDuration: course.duration
     });
     setShowModal(true);
   };
@@ -132,7 +162,7 @@ const Courses = () => {
                 <button
                   onClick={() => {
                     setEditingCourse(null);
-                    setFormData({ code: '', name: '', price: '0', description: '', image: '' });
+                    resetForm();
                     setShowModal(true);
                   }}
                   className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
@@ -144,10 +174,10 @@ const Courses = () => {
           }
         />
 
-        {/* Modal */}
+        {/* Modal Form */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
               <h3 className="mb-4 text-lg font-bold text-slate-900">{editingCourse ? 'Sửa khoá học' : 'Thêm khoá học mới'}</h3>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -170,16 +200,42 @@ const Courses = () => {
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Học phí (VND)</label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.estimatedCost}
+                      onChange={e => setFormData({ ...formData, estimatedCost: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    {/* 3. Thêm Select cho Status */}
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Trạng thái</label>
+                    <select
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                    >
+                      <option value="Active">Đang hoạt động</option>
+                      <option value="Inactive">Tạm ẩn</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Học phí (VND)</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Thời lượng</label>
                   <input
-                    type="number"
-                    required
-                    value={formData.price}
-                    onChange={e => setFormData({ ...formData, price: e.target.value })}
+                    value={formData.estimatedDuration}
+                    onChange={e => setFormData({ ...formData, estimatedDuration: e.target.value })}
+                    placeholder="VD: 3 tháng"
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
+
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Mô tả</label>
                   <textarea
@@ -209,6 +265,7 @@ const Courses = () => {
           </div>
         )}
 
+        {/* Danh sách khoá học */}
         {courses.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             <p>Chưa có khóa học nào</p>
@@ -216,13 +273,19 @@ const Courses = () => {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {courses.map((course) => (
-              <div key={course.id} className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
+              <div key={course._id} className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <StatusBadge status="done" label="Mở đăng ký" />
+                  {/* 4. Hiển thị Status Badge động */}
+                  <StatusBadge
+                    status={course.status === 'Active' ? 'done' : 'default'}
+                    label={course.status === 'Active' ? 'Mở đăng ký' : 'Tạm ẩn'}
+                  />
                   <p className="text-xs font-semibold text-indigo-600">{course.id}</p>
                 </div>
                 <p className="mt-2 text-lg font-semibold text-slate-900">{course.name}</p>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(course.price)}</p>
+                {/* Hiển thị giá từ estimatedCost */}
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(course.estimatedCost)}</p>
+
                 <p className="text-xs text-slate-500">Chia đợt, nhắc phí tự động</p>
                 <div className="mt-2 space-y-1 text-sm text-slate-700">
                   {course.installments.map((item) => (
@@ -235,8 +298,8 @@ const Courses = () => {
                   <p className="text-xs text-slate-500">Thời lượng: {course.duration}</p>
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-slate-600">
-                  {course.perks?.map((perk) => (
-                    <div key={perk} className="flex items-center gap-2">
+                  {course.perks?.map((perk, index) => (
+                    <div key={index} className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                       {perk}
                     </div>
@@ -266,4 +329,3 @@ const Courses = () => {
 };
 
 export default Courses;
-
