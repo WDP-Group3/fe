@@ -25,6 +25,7 @@ const Courses = () => {
     location: "",
     note: "",
     feePayments: [],
+    status: 'Active',
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -203,7 +204,7 @@ const Courses = () => {
           }
         />
 
-        {/* Modal */}
+        {/* Modal Form */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
             <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -416,6 +417,7 @@ const Courses = () => {
           </div>
         )}
 
+        {/* Danh sách khoá học */}
         {courses.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             <p>Chưa có khóa học nào</p>

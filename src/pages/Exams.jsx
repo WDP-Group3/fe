@@ -52,7 +52,7 @@ const Exams = () => {
         { name: 'Khái niệm', slug: 'khai-niem', totalQuestions: 180 },
         { name: 'Văn hóa', slug: 'van-hoa', totalQuestions: 25 },
         { name: 'Kỹ thuật', slug: 'ky-thuat', totalQuestions: 58 },
-        { name: 'Cấu tạo', slug: 'cau-tao', totalQuestions: 37 },
+        { name: 'Cấu tạo sửa chữa', slug: 'cau-tao', totalQuestions: 37 },
         { name: 'Biển báo', slug: 'bien-bao', totalQuestions: 185 },
         { name: 'Tình huống', slug: 'tinh-huong', totalQuestions: 115 },
       ]);
@@ -140,7 +140,7 @@ const Exams = () => {
               >
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Đề ngẫu nhiên #{examResults.length - idx}
+                    {result.category || 'Đề ngẫu nhiên'} #{examResults.length - idx}
                   </p>
                   <p className="text-xs text-slate-500">
                     {formatDate(result.createdAt)}
@@ -148,20 +148,18 @@ const Exams = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <p
-                    className={`text-2xl font-bold ${
-                      result.score >= 80
-                        ? 'text-emerald-700'
-                        : 'text-rose-700'
-                    }`}
+                    className={`text-2xl font-bold ${result.score >= 80
+                      ? 'text-emerald-700'
+                      : 'text-rose-700'
+                      }`}
                   >
                     {result.correctAnswers}/{result.totalQuestions}
                   </p>
                   <p
-                    className={`text-lg font-semibold ${
-                      result.score >= 80
-                        ? 'text-emerald-600'
-                        : 'text-rose-600'
-                    }`}
+                    className={`text-lg font-semibold ${result.score >= 80
+                      ? 'text-emerald-600'
+                      : 'text-rose-600'
+                      }`}
                   >
                     ({result.score}%)
                   </p>
