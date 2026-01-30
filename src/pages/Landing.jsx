@@ -1,33 +1,91 @@
 import { Link } from 'react-router-dom';
-import { Carousel, Button } from '../components/ui';
+import { useState, useEffect } from 'react';
+
+import { Carousel } from '../components/ui';
 import StatCard from '../components/ui/StatCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import { courses, sessions } from '../data/mockData';
 import { formatCurrency } from '../utils/formatters';
-import axios from '../services/axios';
+import axiosInstance from '../services/axios';
 
 const Landing = () => {
-  const banners = [
-    {
-      image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200',
-      title: 'Khóa học lái xe B2 - Ưu đãi đặc biệt',
-      description: 'Giảm 500.000đ cho 50 học viên đầu tiên đăng ký trong tháng này',
-      button: { label: 'Đăng ký ngay', onClick: () => window.location.href = '/register' },
-    },
-    {
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
-      title: 'Thi thử 600 câu miễn phí',
-      description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
-      button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
-    },
-    {
-      image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
-      title: 'Hỗ trợ học phí linh hoạt',
-      description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
-      button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
-    },
-  ];
+  const [banners, setBanners] = useState([]);
+
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const response = await axiosInstance.get('/banners');
+        console.log(response);
+        if (response.status === 'success' && response.data.length > 0) {
+          const formattedBanners = response.data.map(banner => ({
+            id: banner._id,
+            image: banner.image,
+            title: banner.title,
+            description: banner.description,
+            button: banner.link ? {
+              label: 'Xem ngay',
+              onClick: () => window.location.href = banner.link
+            } : null,
+          }));
+          setBanners(formattedBanners);
+        } else {
+          // Fallback to default banners if no data in DB
+          setBanners([
+            {
+              id: 'default-1',
+              image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200',
+              title: 'Khóa học lái xe B2 - Ưu đãi đặc biệt',
+              description: 'Giảm 500.000đ cho 50 học viên đầu tiên đăng ký trong tháng này',
+              button: { label: 'Đăng ký ngay', onClick: () => window.location.href = '/register' },
+            },
+            {
+              id: 'default-2',
+              image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
+              title: 'Thi thử 600 câu miễn phí',
+              description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
+              button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
+            },
+            {
+              id: 'default-3',
+              image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
+              title: 'Hỗ trợ học phí linh hoạt',
+              description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
+              button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch banners:', error);
+        // Fallback on error
+        setBanners([
+          {
+            id: 'default-1',
+            image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200',
+            title: 'Khóa học lái xe B2 - Ưu đãi đặc biệt',
+            description: 'Giảm 500.000đ cho 50 học viên đầu tiên đăng ký trong tháng này',
+            button: { label: 'Đăng ký ngay', onClick: () => window.location.href = '/register' },
+          },
+          {
+            id: 'default-2',
+            image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
+            title: 'Thi thử 600 câu miễn phí',
+            description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
+            button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
+          },
+          {
+            id: 'default-3',
+            image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
+            title: 'Hỗ trợ học phí linh hoạt',
+            description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
+            button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
+          },
+        ]);
+      }
+    };
+
+    fetchBanners();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50">

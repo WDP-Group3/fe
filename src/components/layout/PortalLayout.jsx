@@ -14,9 +14,10 @@ const getNavItems = (userRole) => {
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Ứng viên', to: '/portal/leads', roles: ['ADMIN', 'INSTRUCTOR', 'CONSULTANT'] },
     { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
   ];
-  
+
   if (!userRole) return allItems;
   return allItems.filter(item => item.roles.includes(userRole));
 };
@@ -42,7 +43,7 @@ const PortalLayout = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
 
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Link to="/portal/overview" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
@@ -78,16 +79,15 @@ const PortalLayout = () => {
           </div>
         </div>
         <div className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2">
             {getNavItems(user?.role).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:bg-slate-100'
+                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-600 hover:bg-slate-100'
                   }`
                 }
               >
@@ -98,7 +98,7 @@ const PortalLayout = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 xl:ml-64 xl:mr-64">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />
       </main>
     </div>

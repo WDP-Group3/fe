@@ -28,7 +28,6 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.response.use(
   (response) => {
     // Trả về data trực tiếp từ response
-    console.log(123)
     return response.data;
   },
   (error) => {

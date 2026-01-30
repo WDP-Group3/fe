@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocalStorage } from './index';
 import apiClient from '../services/apiClient';
 import { STORAGE_KEYS } from '../constants';
+import axiosInstance from '../services/axios';
 
 /**
  * Custom hook for authentication
@@ -21,7 +22,7 @@ const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.post('/auth/login', credentials);
+      const response = await axiosInstance.post('/auth/login', credentials);
       if (response.status === 'success') {
         setToken(response.token);
         // Map backend user fields to frontend format
@@ -58,7 +59,7 @@ const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.post('/auth/register', {
+      const response = await axiosInstance.post('/auth/register', {
         name: userData.name,
         email: userData.email,
         phone: userData.phone,
@@ -86,7 +87,7 @@ const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get('/auth/profile');
+      const response = await axiosInstance.get('/auth/profile');
       if (response.status === 'success') {
         const userData = response.data || response;
         const user = {

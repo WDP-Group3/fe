@@ -13,6 +13,7 @@ import ExamTaking from './pages/ExamTaking';
 import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
 import Admin from './pages/Admin';
+import Leads from './pages/Lead';
 import Profile from './pages/Profile';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -30,6 +31,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/portal" element={<ProtectedRoute><PortalLayout /></ProtectedRoute>}>
+              <Route path="leads" element={<Leads />} />
               <Route index element={<Navigate to="/portal/overview" replace />} />
               <Route path="overview" element={<Overview />} />
               <Route path="courses" element={<Courses />} />
