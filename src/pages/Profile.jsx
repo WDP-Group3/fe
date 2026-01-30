@@ -4,6 +4,7 @@ import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { canEditProfile, canViewProfile } from '../utils/permissions';
 import apiClient from '../services/apiClient';
+import config from '../config';
 import {
   Card,
   PageHeader,
@@ -20,12 +21,13 @@ import {
   Loading,
   ErrorMessage,
   SectionHeader,
+  FileUpload,
 } from '../components/ui';
 import { FormGroup, FormRow } from '../components/forms';
 
 const Profile = () => {
   const { id } = useParams();
-  const { user: currentUser } = useAuthContext();
+  const { user: currentUser, getProfile } = useAuthContext();
   const { showToast } = useToast();
   const [isEditMode, setIsEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,7 @@ const Profile = () => {
   const [formData, setFormData] = useState({});
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !id || id === currentUser?.id;
@@ -46,7 +49,7 @@ const Profile = () => {
         setLoading(false);
         return;
       }
-      
+
       // Debug token
       const tokenRaw = localStorage.getItem('token');
       console.log('🔍 Profile: Token check:', tokenRaw ? 'Found' : 'Not found');
@@ -54,7 +57,7 @@ const Profile = () => {
         console.log('🔍 Profile: Token length:', tokenRaw.length);
         console.log('🔍 Profile: Token preview:', tokenRaw.substring(0, 20) + '...');
       }
-      
+
       setLoading(true);
       setError(null);
       try {
@@ -83,7 +86,7 @@ const Profile = () => {
         console.error('Profile fetch error:', err);
         const errorMessage = err.message || 'Không thể tải thông tin profile';
         setError(errorMessage);
-        
+
         // Nếu là lỗi 401, hiển thị thông báo rõ ràng
         if (errorMessage.includes('Token') || errorMessage.includes('hết hạn') || errorMessage.includes('Unauthorized')) {
           // Error message đã được set, apiClient sẽ xử lý redirect sau 2 giây
@@ -114,6 +117,62 @@ const Profile = () => {
     }
   };
 
+  // Handle avatar upload to Cloudinary
+  const handleAvatarUpload = async (file) => {
+    if (!file) return;
+
+    if (!config.cloudinary.cloudName || !config.cloudinary.uploadPreset) {
+      showToast('Cloudinary chưa được cấu hình. Vui lòng thêm VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET.', 'error');
+      return;
+    }
+
+    try {
+      setAvatarUploading(true);
+
+      const form = new FormData();
+      form.append('file', file);
+      form.append('upload_preset', config.cloudinary.uploadPreset);
+
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/image/upload`;
+
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        body: form,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.secure_url) {
+        throw new Error(data.error?.message || 'Upload ảnh thất bại');
+      }
+
+      const avatarUrl = data.secure_url;
+
+      // Cập nhật local state để hiển thị ngay
+      setFormData((prev) => ({ ...prev, avatar: avatarUrl }));
+      setProfileUser((prev) => (prev ? { ...prev, avatar: avatarUrl } : prev));
+
+      // Gửi lên backend để lưu avatar (không thay đổi các field khác)
+      try {
+        await apiClient.put('/auth/profile', { avatar: avatarUrl });
+        // Đồng bộ lại AuthContext để header avatar cập nhật
+        if (isOwnProfile && typeof getProfile === 'function') {
+          await getProfile();
+        }
+      } catch (e) {
+        console.error('Save avatar error:', e);
+        // Không chặn UI, chỉ thông báo nhẹ nếu cần
+      }
+
+      showToast('Upload ảnh thành công', 'success');
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      showToast(err.message || 'Upload ảnh thất bại', 'error');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   // Validate form
   const validateForm = () => {
     const errors = {};
@@ -140,6 +199,7 @@ const Profile = () => {
         address: formData.address,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
+        avatar: formData.avatar,
       };
       const response = await apiClient.put('/auth/profile', updateData);
       const userData = response.data || response;
@@ -150,6 +210,15 @@ const Profile = () => {
       };
       setProfileUser(updatedProfile);
       setFormData(updatedProfile);
+
+      // Đồng bộ lại AuthContext để header avatar / tên cập nhật
+      if (isOwnProfile && typeof getProfile === 'function') {
+        try {
+          await getProfile();
+        } catch {
+          // ignore
+        }
+      }
       setIsEditMode(false);
       showToast('Cập nhật thông tin thành công', 'success');
     } catch (err) {
@@ -164,6 +233,23 @@ const Profile = () => {
     setFormData(profileUser);
     setFormErrors({});
     setIsEditMode(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+        await apiClient.post('/auth/logout');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Force logout anyway
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
   };
 
   if (loading) {
@@ -191,9 +277,14 @@ const Profile = () => {
         title={isOwnProfile ? 'Thông tin cá nhân' : `Thông tin ${profileUser?.name}`}
         description={isOwnProfile ? 'Quản lý thông tin cá nhân của bạn' : 'Xem và quản lý thông tin người dùng'}
         action={
-          canEdit && !isEditMode ? (
-            <Button onClick={() => setIsEditMode(true)}>Chỉnh sửa</Button>
-          ) : null
+          <div className="flex gap-2">
+            {isOwnProfile && (
+              <Button variant="danger" onClick={handleLogout}>Đăng xuất</Button>
+            )}
+            {canEdit && !isEditMode ? (
+              <Button onClick={() => setIsEditMode(true)}>Chỉnh sửa</Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -201,15 +292,39 @@ const Profile = () => {
         {/* Avatar Section */}
         <Card>
           <Stack direction="row" spacing={6} align="center">
-            <Avatar name={profileUser?.name} size="xl" src={profileUser?.avatar} />
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold text-slate-900">{profileUser?.name}</h3>
-              <p className="text-sm text-slate-600">{profileUser?.email}</p>
-              {profileUser?.role && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700">
-                    {profileUser.role}
-                  </span>
+            <Avatar name={profileUser?.name} size="xl" src={formData.avatar || profileUser?.avatar} />
+            <div className="flex-1 space-y-3">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">{profileUser?.name}</h3>
+                <p className="text-sm text-slate-600">{profileUser?.email}</p>
+                {profileUser?.role && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700">
+                      {profileUser.role}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {isEditMode && (
+                <div className="max-w-xs">
+                  <FormGroup
+                    label="Ảnh đại diện"
+                    helperText="Hỗ trợ .jpg, .png, tối đa 5MB. Ảnh sẽ được lưu trên Cloudinary."
+                  >
+                    <FileUpload
+                      accept=".jpg,.jpeg,.png"
+                      multiple={false}
+                      maxSize={5 * 1024 * 1024}
+                      onChange={handleAvatarUpload}
+                      disabled={avatarUploading}
+                    />
+                    {avatarUploading && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        Đang upload ảnh...
+                      </p>
+                    )}
+                  </FormGroup>
                 </div>
               )}
             </div>

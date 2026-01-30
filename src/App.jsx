@@ -12,6 +12,8 @@ import Exams from './pages/Exams';
 import ExamTaking from './pages/ExamTaking';
 import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
+import Reports from './pages/Reports';
+import Feedback from './pages/Feedback';
 import Admin from './pages/Admin';
 import Leads from './pages/Lead';
 import Profile from './pages/Profile';
@@ -35,13 +37,15 @@ function App() {
               <Route index element={<Navigate to="/portal/overview" replace />} />
               <Route path="overview" element={<Overview />} />
               <Route path="courses" element={<Courses />} />
-              <Route path="enrollment" element={<Enrollment />} />
+              <Route path="enrollment" element={<Enrollment />} />x
               <Route path="payments" element={<Payments />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="exams" element={<Exams />} />
               <Route path="exam-taking" element={<ExamTaking />} />
               <Route path="exam-result/:id" element={<ExamResult />} />
               <Route path="notifications" element={<Notifications />} />
+              <Route path="reports" element={<ProtectedRoute requiredRole="ADMIN"><Reports /></ProtectedRoute>} />
+              <Route path="feedback" element={<Feedback />} />
               <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><Admin /></ProtectedRoute>} />
               <Route path="profile" element={<Profile />} />
               <Route path="profile/:id" element={<Profile />} />

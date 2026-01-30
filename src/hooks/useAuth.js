@@ -32,6 +32,7 @@ const useAuth = () => {
           name: response.user.fullName || response.user.name,
           role: response.user.role,
           phone: response.user.phone,
+          avatar: response.user.avatar || null,
         };
         setUser(user);
         return { token: response.token, user };
@@ -96,6 +97,7 @@ const useAuth = () => {
           name: userData.fullName || userData.name,
           role: userData.role,
           phone: userData.phone,
+          avatar: userData.avatar || null,
         };
         setUser(user);
         return user;
