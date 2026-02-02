@@ -100,6 +100,8 @@ const Register = () => {
               options={[
                 { value: 'STUDENT', label: 'Học viên' },
                 { value: 'INSTRUCTOR', label: 'Giáo viên' },
+                { value: 'CONSULTANT', label: 'Nhân viên tư vấn' },
+                { value: 'STAFF', label: 'Nhân viên' }
               ]}
             />
 

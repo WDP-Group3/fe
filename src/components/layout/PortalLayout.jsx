@@ -7,16 +7,16 @@ import config from '../../config';
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
-    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
-    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
   ];
-  
+
   if (!userRole) return allItems;
   return allItems.filter(item => item.roles.includes(userRole));
 };
@@ -40,6 +40,13 @@ const PortalLayout = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
+
+      {/* Pending Approval Banner */}
+      {user?.approvalStatus === 'PENDING' && (
+        <div className="bg-orange-100 px-4 py-2 text-center text-sm font-semibold text-orange-800 border-b border-orange-200">
+          ⚠️ Tài khoản của bạn đang chờ duyệt quyền <span className="uppercase">{user.requestedRole}</span>. Hiện tại bạn đang sử dụng quyền Guest (Khách).
+        </div>
+      )}
 
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
@@ -84,10 +91,9 @@ const PortalLayout = () => {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:bg-slate-100'
+                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-600 hover:bg-slate-100'
                   }`
                 }
               >
