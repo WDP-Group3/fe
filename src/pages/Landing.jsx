@@ -1,16 +1,28 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
-import { Carousel } from '../components/ui';
+import { Carousel, DatePicker } from '../components/ui';
 import StatCard from '../components/ui/StatCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
-import { courses, sessions } from '../data/mockData';
+import { courses as mockCourses, sessions } from '../data/mockData';
 import { formatCurrency } from '../utils/formatters';
 import axiosInstance from '../services/axios';
+import { useToast } from '../context/ToastContext';
 
 const Landing = () => {
   const [banners, setBanners] = useState([]);
+  const [courses, setCourses] = useState(mockCourses);
+  const [coursesList, setCoursesList] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    course: '',
+    timeToCall: '',
+    note: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchBanners = async () => {
@@ -84,8 +96,51 @@ const Landing = () => {
       }
     };
 
+    const fetchCourses = async () => {
+      try {
+        const response = await axiosInstance.get('/courses');
+        if (response.status === 'success' && response.data.length > 0) {
+          setCoursesList(response.data);
+          setFormData(prev => ({ ...prev, course: response.data[0]._id }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch courses:', error);
+      }
+    };
+
     fetchBanners();
+    fetchCourses();
   }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.phone || !formData.course) {
+      showToast('Vui lòng điền các trường bắt buộc (*)', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await axiosInstance.post('/leads', formData);
+      showToast('Gửi yêu cầu tư vấn thành công!', 'success');
+      setFormData({
+        name: '',
+        phone: '',
+        course: coursesList[0]?._id || '',
+        timeToCall: '',
+        note: ''
+      });
+    } catch (error) {
+      showToast(error.message || 'Có lỗi xảy ra, vui lòng thử lại.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50">
@@ -207,56 +262,83 @@ const Landing = () => {
           </div>
         </div>
 
-        <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-            <SectionHeader
-              title="Đặt lịch tư vấn nhanh"
-              description="Hẹn giờ gọi điện, tự động gửi SMS nhắc"
-            />
-            <form className="space-y-4">
+        <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr] ">
+          <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-100  bg-white p-6 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Đặt lịch tư vấn nhanh</h3>
+              <p className="text-sm text-slate-600">Hẹn giờ gọi điện, tự động gửi SMS nhắc</p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700">Họ tên *</label>
+              <input
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                placeholder="Nhập họ tên"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-700">Họ tên *</label>
+                <label className="text-sm font-medium text-slate-700">Số điện thoại *</label>
                 <input
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  placeholder="Nhập họ tên"
+                  placeholder="0912 xxx xxx"
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Số điện thoại *</label>
-                  <input
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                    placeholder="0912 xxx xxx"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Chọn khóa</label>
-                  <select className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
-                    {courses.map((c) => (
-                      <option key={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">Thời gian gọi</label>
-                <input
+                <label className="text-sm font-medium text-slate-700">Chọn khóa *</label>
+                <select
+                  name="course"
+                  value={formData.course}
+                  onChange={handleInputChange}
+                  required
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  placeholder="Ví dụ: Sau 18h, ưu tiên thứ 3"
-                />
+                >
+                  <option value="" disabled>Chọn khóa học</option>
+                  {coursesList.map((c) => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                  {coursesList.length === 0 && (
+                    <option value="" disabled>Không có khóa học nào</option>
+                  )}
+                </select>
               </div>
-              <button
-                type="button"
-                className="w-full rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                onClick={() => {
-                  // Cần call đến BE để tạo yêu cầu tư vấn
-                }}
-              >
-                Gửi yêu cầu tư vấn
-              </button>
-              <p className="text-xs text-slate-500">Chúng tôi sẽ gọi trong vòng 30 phút giờ hành chính.</p>
-            </form>
-          </div>
+            </div>
+            <div>
+              <DatePicker
+                label="Ngày hẹn gọi tư vấn"
+                name="timeToCall"
+                value={formData.timeToCall}
+                onChange={(e) => setFormData(prev => ({ ...prev, timeToCall: e.target.value }))}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Lưu ý</label>
+              <input
+                name="note"
+                value={formData.note}
+                onChange={handleInputChange}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                placeholder="Nhập lưu ý"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {isSubmitting ? 'Đạng gửi...' : 'Gửi yêu cầu tư vấn'}
+            </button>
+            <p className="text-xs text-slate-500">Chúng tôi sẽ gọi trong vòng 30 phút giờ hành chính.</p>
+          </form>
           <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Luật & blog" description="Thông tin chính thống, cập nhật liên tục" />
             <div className="space-y-3">

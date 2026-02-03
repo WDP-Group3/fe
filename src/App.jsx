@@ -12,7 +12,8 @@ import Exams from './pages/Exams';
 import ExamTaking from './pages/ExamTaking';
 import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
-import Reports from './pages/Reports';
+import Reports from './pages/admin/Reports';
+import UserManagement from './pages/admin/UserManagement';
 import Feedback from './pages/Feedback';
 import Admin from './pages/Admin';
 import Leads from './pages/Lead';
@@ -46,7 +47,7 @@ function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="reports" element={<ProtectedRoute requiredRole="ADMIN"><Reports /></ProtectedRoute>} />
               <Route path="feedback" element={<Feedback />} />
-              <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><Admin /></ProtectedRoute>} />
+              <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
               <Route path="profile" element={<Profile />} />
               <Route path="profile/:id" element={<Profile />} />
             </Route>

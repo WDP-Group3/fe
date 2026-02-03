@@ -84,6 +84,22 @@ const Leads = () => {
         }
     };
 
+    const handleUpdateStatus = async (leadId, newStatus) => {
+        try {
+            await apiClient.patch(`/leads/${leadId}/status`, { status: newStatus });
+
+            // Update local state
+            setLeads(prevLeads => prevLeads.map(lead =>
+                lead._id === leadId ? { ...lead, status: newStatus } : lead
+            ));
+
+            alert('Cập nhật trạng thái thành công!');
+        } catch (err) {
+            console.error('Error updating status:', err);
+            alert('Lỗi: ' + err.message);
+        }
+    };
+
     const baseColumns = [
         {
             key: 'name',
@@ -116,10 +132,50 @@ const Leads = () => {
         },
     ];
 
-    // Chỉ hiển thị cột "Người phụ trách" cho ADMIN
-    const columns = currentUser?.role === 'ADMIN' ? [
-        ...baseColumns,
+    const columns = (currentUser?.role === 'ADMIN' || currentUser?.role === 'CONSULTANT') ? [
         {
+            key: 'name',
+            title: 'Họ tên',
+            dataIndex: 'name',
+            render: (val) => <span className="font-medium text-slate-900">{val}</span>
+        },
+        {
+            key: 'phone',
+            title: 'Số điện thoại',
+            dataIndex: 'phone'
+        },
+        {
+            key: 'course',
+            title: 'Khóa học quan tâm',
+            dataIndex: 'course',
+            render: (course) => course?.name || 'N/A'
+        },
+        {
+            key: 'createdAt',
+            title: 'Ngày đăng ký',
+            dataIndex: 'createdAt',
+            render: (date) => new Date(date).toLocaleDateString('vi-VN')
+        },
+        {
+            key: 'status',
+            title: 'Trạng thái',
+            dataIndex: 'status',
+            render: (status, record) => (
+                <select
+                    className={`rounded-full px-3 py-1 text-xs font-semibold focus:outline-none border-0 shadow-sm ${status === 'pending' ? 'bg-amber-50 text-amber-700' :
+                            status === 'contacted' ? 'bg-emerald-50 text-emerald-700' :
+                                'bg-slate-100 text-slate-600'
+                        }`}
+                    value={status}
+                    onChange={(e) => handleUpdateStatus(record._id, e.target.value)}
+                >
+                    <option value="pending">Chờ tư vấn (Pending)</option>
+                    <option value="contacted">Đã liên hệ (Contacted)</option>
+                    <option value="cancelled">Hủy (Cancelled)</option>
+                </select>
+            )
+        },
+        ...(currentUser?.role === 'ADMIN' ? [{
             key: 'assignTo',
             title: 'Người phụ trách',
             dataIndex: 'assignTo',
@@ -139,7 +195,7 @@ const Leads = () => {
                     </select>
                 </div>
             )
-        }
+        }] : [])
     ] : baseColumns;
 
     return (

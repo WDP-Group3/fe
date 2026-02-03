@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import SectionHeader from '../components/ui/SectionHeader';
-import apiClient from '../services/apiClient';
+import SectionHeader from '../../components/ui/SectionHeader';
+import apiClient from '../../services/apiClient';
 
 const Reports = () => {
     const [stats, setStats] = useState(null);
