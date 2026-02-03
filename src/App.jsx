@@ -20,6 +20,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import InstructorSchedule from './pages/instructor/InstructorSchedule';
 
 function App() {
   return (
@@ -35,9 +36,27 @@ function App() {
               <Route index element={<Navigate to="/portal/overview" replace />} />
               <Route path="overview" element={<Overview />} />
               <Route path="courses" element={<Courses />} />
-              <Route path="enrollment" element={<Enrollment />} />x
+              <Route path="enrollment" element={<Enrollment />} />
               <Route path="payments" element={<Payments />} />
               <Route path="schedule" element={<Schedule />} />
+              {/* 2. THÊM ROUTE MỚI CHO LUỒNG 4 */}
+              {/* <Route 
+                path="book-lesson" 
+                element={
+                  <ProtectedRoute requiredRole="STUDENT">
+                    <BookingPage /> 
+                  </ProtectedRoute>
+                } 
+              /> */}
+              
+              <Route 
+                path="instructor-schedule" 
+                element={
+                  <ProtectedRoute requiredRole="INSTRUCTOR">
+                    <InstructorSchedule />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="exams" element={<Exams />} />
               <Route path="exam-taking" element={<ExamTaking />} />
               <Route path="exam-result/:id" element={<ExamResult />} />
