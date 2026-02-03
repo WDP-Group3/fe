@@ -3,22 +3,32 @@ import { Link } from 'react-router-dom';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StatusBadge from '../../components/ui/StatusBadge';
 import DataTable from '../../components/ui/DataTable';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
 
 const UserManagement = () => {
+    const { showToast } = useToast();
     const [users, setUsers] = useState([]);
-    const [stats, setStats] = useState({ totalUsers: 0, pendingUsers: 0 });
+    const [stats, setStats] = useState({ totalUsers: 0 });
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('active'); // 'active' | 'pending'
     const [filters, setFilters] = useState({ search: '', role: '', status: '' });
-    const [showModal, setShowModal] = useState(false);
-    const [editingUser, setEditingUser] = useState(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
+
+    // Confirmation dialog states
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        type: 'default'
+    });
 
     useEffect(() => {
         loadUsers();
         loadStats();
-    }, [activeTab, filters]); // Reload when filters change
+    }, [filters]);
 
     const loadStats = async () => {
         try {
@@ -39,12 +49,6 @@ const UserManagement = () => {
             if (filters.role) queryParams.append('role', filters.role);
             if (filters.status) queryParams.append('status', filters.status);
 
-            if (activeTab === 'pending') {
-                queryParams.append('approvalStatus', 'PENDING');
-            } else {
-                queryParams.append('approvalStatus', 'APPROVED');
-            }
-
             const response = await apiClient.get(`/users?${queryParams.toString()}`);
 
             if (response.status === 'success') {
@@ -53,10 +57,8 @@ const UserManagement = () => {
                     name: user.fullName || user.name,
                     email: user.email,
                     role: user.role,
-                    requestedRole: user.requestedRole,
                     phone: user.phone || '-',
                     status: user.status === 'ACTIVE' ? 'active' : 'inactive',
-                    approvalStatus: user.approvalStatus,
                 }));
                 setUsers(mappedUsers);
             }
@@ -70,69 +72,75 @@ const UserManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            if (editingUser) {
-                await apiClient.put(`/users/${editingUser.id}`, formData);
-            } else {
-                await apiClient.post('/users', formData);
-            }
-            setShowModal(false);
-            setEditingUser(null);
+            await apiClient.post('/users', formData);
+            setShowCreateModal(false);
             setFormData({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
             loadUsers();
             loadStats();
+            showToast('Tạo người dùng thành công', 'success');
         } catch (error) {
-            alert('Failed to save user');
+            showToast(error.message || 'Tạo người dùng thất bại', 'error');
         }
     };
 
-    const handleEdit = (user) => {
-        setEditingUser(user);
-        setFormData({
-            fullName: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            password: '' // Don't show password
+    const handleChangeRole = (user, newRole) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xác nhận thay đổi quyền',
+            message: `Bạn có chắc chắn muốn thay đổi quyền của "${user.name}" từ ${user.role} sang ${newRole}?`,
+            type: 'warning',
+            onConfirm: async () => {
+                try {
+                    await apiClient.patch(`/users/${user.id}/change-role`, { role: newRole });
+                    showToast(`Đã thay đổi quyền của ${user.name} thành ${newRole}`, 'success');
+                    loadUsers();
+                    loadStats();
+                } catch (error) {
+                    showToast(error.message || 'Thay đổi quyền thất bại', 'error');
+                    throw error; // Rethrow for ConfirmDialog loading state
+                }
+            }
         });
-        setShowModal(true);
     };
 
-    const handleDeactivate = async (id) => {
-        if (window.confirm('Bạn có chắc chắn muốn khoá tài khoản này?')) {
-            try {
-                await apiClient.patch(`/users/${id}/deactivate`);
-                loadUsers();
-                loadStats();
-            } catch (error) {
-                alert('Failed to deactivate user');
+    const handleLock = (user) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xác nhận khóa tài khoản',
+            message: `Bạn có chắc chắn muốn khóa tài khoản "${user.name}"? Người dùng sẽ không thể đăng nhập sau khi bị khóa.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await apiClient.patch(`/users/${user.id}/deactivate`);
+                    showToast(`Đã khóa tài khoản ${user.name}`, 'success');
+                    loadUsers();
+                    loadStats();
+                } catch (error) {
+                    showToast(error.message || 'Khóa tài khoản thất bại', 'error');
+                    throw error; // Rethrow for ConfirmDialog loading state
+                }
             }
-        }
+        });
     };
 
-    const handleApprove = async (id) => {
-        if (window.confirm('Xác nhận duyệt quyền cho user này?')) {
-            try {
-                await apiClient.patch(`/users/${id}/approve`);
-                alert('Đã duyệt thành công!');
-                loadUsers();
-                loadStats();
-            } catch (error) {
-                alert('Duyệt thất bại');
+    const handleRestore = (user) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xác nhận khôi phục tài khoản',
+            message: `Bạn có chắc chắn muốn khôi phục tài khoản "${user.name}"? Người dùng sẽ có thể đăng nhập trở lại.`,
+            type: 'default',
+            onConfirm: async () => {
+                try {
+                    await apiClient.patch(`/users/${user.id}/restore`);
+                    showToast(`Đã khôi phục tài khoản ${user.name}`, 'success');
+                    loadUsers();
+                    loadStats();
+                } catch (error) {
+                    showToast(error.message || 'Khôi phục tài khoản thất bại', 'error');
+                    throw error; // Rethrow for ConfirmDialog loading state
+                }
             }
-        }
-    };
-
-    const handleReject = async (id) => {
-        if (window.confirm('Xác nhận từ chối yêu cầu user này?')) {
-            try {
-                await apiClient.patch(`/users/${id}/reject`);
-                alert('Đã từ chối!');
-                loadUsers();
-                loadStats();
-            } catch (error) {
-                alert('Thất bại');
-            }
-        }
+        });
     };
 
     const columns = [
@@ -142,33 +150,48 @@ const UserManagement = () => {
             key: 'role',
             title: 'Vai trò',
             render: (_, record) => (
-                <div>
-                    <div className="font-medium">{record.role}</div>
-                    {record.requestedRole && record.approvalStatus === 'PENDING' && (
-                        <div className="mt-1 text-xs text-orange-600 font-semibold flex items-center gap-1">
-                            <span>🕒 Xin lên:</span>
-                            <span className="uppercase">{record.requestedRole}</span>
-                        </div>
-                    )}
-                </div>
+                <select
+                    value={record.role}
+                    onChange={(e) => handleChangeRole(record, e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                    <option value="GUEST">Khách (Guest)</option>
+                    <option value="STUDENT">Học viên</option>
+                    <option value="INSTRUCTOR">Giáo viên</option>
+                    <option value="CONSULTANT">Tư vấn viên</option>
+                    <option value="ADMIN">Admin</option>
+                </select>
             )
         },
-        { key: 'status', title: 'Trạng thái', dataIndex: 'status', render: (val) => <StatusBadge status={val === 'active' ? 'done' : 'error'} label={val} /> },
+        {
+            key: 'status',
+            title: 'Trạng thái',
+            render: (_, record) => (
+                <StatusBadge
+                    status={record.status === 'active' ? 'done' : 'error'}
+                    label={record.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                />
+            )
+        },
         {
             key: 'actions',
             title: 'Hành động',
             render: (_, record) => (
                 <div className="flex gap-2">
-                    {activeTab === 'pending' ? (
-                        <>
-                            <button onClick={() => handleApprove(record.id)} className="rounded-md bg-green-50 px-3 py-1 text-sm font-semibold text-green-600 hover:bg-green-100 transition-colors">Duyệt</button>
-                            <button onClick={() => handleReject(record.id)} className="rounded-md bg-red-50 px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors">Từ chối</button>
-                        </>
+                    {record.status === 'active' ? (
+                        <button
+                            onClick={() => handleLock(record)}
+                            className="rounded-md bg-red-50 px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors"
+                        >
+                            Khóa
+                        </button>
                     ) : (
-                        <>
-                            <button onClick={() => handleEdit(record)} className="text-indigo-600 hover:underline">Sửa</button>
-                            <button onClick={() => handleDeactivate(record.id)} className="text-red-600 hover:underline">Khoá</button>
-                        </>
+                        <button
+                            onClick={() => handleRestore(record)}
+                            className="rounded-md bg-green-50 px-3 py-1 text-sm font-semibold text-green-600 hover:bg-green-100 transition-colors"
+                        >
+                            Khôi phục
+                        </button>
                     )}
                 </div>
             )
@@ -200,9 +223,8 @@ const UserManagement = () => {
                     action={
                         <button
                             onClick={() => {
-                                setEditingUser(null);
                                 setFormData({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
-                                setShowModal(true);
+                                setShowCreateModal(true);
                             }}
                             className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
                         >
@@ -247,41 +269,19 @@ const UserManagement = () => {
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="mb-6 flex space-x-6 border-b border-slate-200">
-                    <button
-                        onClick={() => setActiveTab('active')}
-                        className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors ${activeTab === 'active'
-                                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                                : 'text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 border-transparent'
-                            }`}
-                    >
-                        Danh sách User
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${activeTab === 'active' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}>
-                            {stats.totalUsers}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('pending')}
-                        className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors ${activeTab === 'pending'
-                                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                                : 'text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 border-transparent'
-                            }`}
-                    >
-                        Chờ duyệt
-                        {stats.pendingUsers > 0 && (
-                            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-600 pulse-animation">
-                                {stats.pendingUsers}
-                            </span>
-                        )}
-                    </button>
+                {/* User Count */}
+                <div className="mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-900">Danh sách User</h3>
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600">
+                        {stats.totalUsers}
+                    </span>
                 </div>
 
-                {/* Modal */}
-                {showModal && (
+                {/* Create User Modal */}
+                {showCreateModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-                            <h3 className="mb-4 text-xl font-bold text-slate-900">{editingUser ? 'Sửa User' : 'Tạo User Mới'}</h3>
+                            <h3 className="mb-4 text-xl font-bold text-slate-900">Tạo User Mới</h3>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Họ tên</label>
@@ -317,27 +317,26 @@ const UserManagement = () => {
                                         onChange={e => setFormData({ ...formData, role: e.target.value })}
                                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                     >
+                                        <option value="GUEST">Khách (Guest)</option>
                                         <option value="STUDENT">Học viên</option>
                                         <option value="INSTRUCTOR">Giáo viên</option>
                                         <option value="CONSULTANT">Tư vấn viên</option>
                                         <option value="ADMIN">Admin</option>
                                     </select>
                                 </div>
-                                {!editingUser && (
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-700">Mật khẩu (Mặc định 123456)</label>
-                                        <input
-                                            type="password"
-                                            value={formData.password}
-                                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                        />
-                                    </div>
-                                )}
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-slate-700">Mật khẩu (Mặc định 123456)</label>
+                                    <input
+                                        type="password"
+                                        value={formData.password}
+                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                </div>
                                 <div className="flex gap-3 pt-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowModal(false)}
+                                        onClick={() => setShowCreateModal(false)}
                                         className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
                                     >
                                         Huỷ
@@ -353,6 +352,16 @@ const UserManagement = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Confirmation Dialog */}
+                <ConfirmDialog
+                    isOpen={confirmDialog.isOpen}
+                    onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                    onConfirm={confirmDialog.onConfirm}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    type={confirmDialog.type}
+                />
 
                 {loading ? (
                     <div className="flex justify-center py-12">
