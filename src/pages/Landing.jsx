@@ -175,7 +175,7 @@ const Landing = () => {
               </div>
             ) : (
               courses.map((course) => (
-                <div key={course._id} className="rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
+                <div key={course.id} className="rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase text-indigo-600">{course.code}</p>
                     <StatusBadge status="done" label="Nhận hồ sơ" />
