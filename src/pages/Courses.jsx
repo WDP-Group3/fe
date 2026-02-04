@@ -43,9 +43,7 @@ const Courses = () => {
         const mappedCourses = (response.data || []).map((course) => ({
           ...course,
           id: course.code || course._id,
-          // Ensure feePayments exists
           feePayments: course.feePayments || [],
-          // Map for UI display if needed, but we use raw data for editing
           displayLocation: Array.isArray(course.location)
             ? course.location.join(", ")
             : course.location,
@@ -110,10 +108,10 @@ const Courses = () => {
       note: course.note || "",
       feePayments: course.feePayments
         ? course.feePayments.map((p) => ({
-            name: p.name || "",
-            amount: p.amount || 0,
-            note: p.note || "",
-          }))
+          name: p.name || "",
+          amount: p.amount || 0,
+          note: p.note || "",
+        }))
         : [],
     });
     setShowModal(true);
@@ -450,7 +448,7 @@ const Courses = () => {
                 </div>
 
                 {/* Display Fee Payments Preview */}
-                <div className="mt-2 space-y-1 text-sm text-slate-700">
+                <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto custom-scrollbar pr-1">
                   {course.feePayments && course.feePayments.length > 0 ? (
                     course.feePayments.map((p, idx) => (
                       <p key={idx}>

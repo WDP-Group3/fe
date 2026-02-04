@@ -180,3 +180,11 @@ export const NOTIFICATION_TYPES = {
   ALL: 'ALL',
 };
 
+export const TYPE_TITLES_Notification = [
+  { value: 'THEORY', label: 'Học lý thuyết' },
+  { value: 'HEALTH_CHECK', label: 'Khám sức khỏe' },
+  { value: 'PHOTO', label: 'Bổ sung ảnh' },
+  { value: 'CABIN', label: 'Học Ca Bin' },
+  { value: 'HOLIDAY', label: 'Lịch nghỉ Lễ/ Tết' },
+  { value: 'OTHER', label: 'Khác' },
+];

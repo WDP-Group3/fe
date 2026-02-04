@@ -12,13 +12,14 @@ import Exams from './pages/Exams';
 import ExamTaking from './pages/ExamTaking';
 import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
-import Reports from './pages/Reports';
+import Reports from './pages/admin/Reports';
+import UserManagement from './pages/admin/UserManagement';
 import Feedback from './pages/Feedback';
-import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import CourseDetail from './pages/CourseDetail';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
 
@@ -29,6 +30,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -63,7 +65,7 @@ function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="reports" element={<ProtectedRoute requiredRole="ADMIN"><Reports /></ProtectedRoute>} />
               <Route path="feedback" element={<Feedback />} />
-              <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><Admin /></ProtectedRoute>} />
+              <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
               <Route path="profile" element={<Profile />} />
               <Route path="profile/:id" element={<Profile />} />
             </Route>

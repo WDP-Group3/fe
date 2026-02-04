@@ -7,9 +7,7 @@ import config from '../../config';
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
-    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
-    
-    // --- KHÓA HỌC & HỒ SƠ ---
+    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
@@ -20,17 +18,25 @@ const getNavItems = (userRole) => {
 
     // --- CÁC MỤC KHÁC ---
     { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
-    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
   ];
-  
-  if (!userRole) return allItems;
+
+  if (!userRole) return [];
   return allItems.filter(item => item.roles.includes(userRole));
 };
 
-const PortalLayout = () => {
+const PortalLayout = ({ children }) => {
   const { user, logout } = useAuthContext();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    navigate('/');
+    // Defer logout to ensure navigation to public route occurs before ProtectedRoute checks auth
+    setTimeout(() => {
+      logout();
+    }, 100);
+  };
 
   const userMenuItems = [
     {
@@ -40,17 +46,26 @@ const PortalLayout = () => {
     { divider: true },
     {
       label: 'Đăng xuất',
-      onClick: logout,
+      onClick: handleLogout,
       danger: true,
     },
   ];
 
+  const navItems = getNavItems(user?.role);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
 
+      {/* Pending Approval Banner */}
+      {user?.approvalStatus === 'PENDING' && (
+        <div className="bg-orange-100 px-4 py-2 text-center text-sm font-semibold text-orange-800 border-b border-orange-200">
+          ⚠️ Tài khoản của bạn đang chờ duyệt quyền <span className="uppercase">{user.requestedRole}</span>. Hiện tại bạn đang sử dụng quyền Guest (Khách).
+        </div>
+      )}
+
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
-          <Link to="/portal/overview" className="flex items-center gap-3">
+          <Link to={user ? "/portal/overview" : "/"} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
             </div>
@@ -84,31 +99,30 @@ const PortalLayout = () => {
             )}
           </div>
         </div>
-        
-        {/* THANH MENU NGANG */}
-        <div className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64 no-scrollbar">
-            {getNavItems(user?.role).map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
+        {navItems.length > 0 && (
+          <div className="border-t border-slate-100 bg-white">
+            <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
                       ? 'bg-indigo-50 text-indigo-700'
                       : 'text-slate-600 hover:bg-slate-100'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 xl:ml-64 xl:mr-64">
-        <Outlet />
+        {children || <Outlet />}
       </main>
     </div>
   );
