@@ -151,10 +151,33 @@ const apiClient = {
     const responseData = await response.json();
 
     if (response.status === 401) {
-      console.error('❌ 401 Unauthorized - Token invalid or expired');
-      console.error('Response data:', responseData);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        setTimeout(() => { window.location.href = '/login'; }, 2000);
+      }
+      throw new Error(responseData.message || 'Token hết hạn.');
+    }
+    
+    if (!response.ok) {
+      throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return responseData;
+  },
 
-      // Clear auth data
+  // --- BỔ SUNG PHƯƠNG THỨC PATCH ĐỂ FIX LỖI "PATCH IS NOT A FUNCTION" ---
+  patch: async (url, data, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+      ...options,
+    });
+    
+    const responseData = await response.json();
+    
+    if (response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
@@ -211,4 +234,3 @@ const apiClient = {
 };
 
 export default apiClient;
-

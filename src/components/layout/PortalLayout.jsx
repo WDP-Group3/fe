@@ -11,7 +11,12 @@ const getNavItems = (userRole) => {
     { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
-    { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
+    
+    // { label: 'Đặt lịch xe', to: '/portal/book-lesson', roles: ['STUDENT'] },
+    { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
+    { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
+
+    // --- CÁC MỤC KHÁC ---
     { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
@@ -124,4 +129,3 @@ const PortalLayout = ({ children }) => {
 };
 
 export default PortalLayout;
-
