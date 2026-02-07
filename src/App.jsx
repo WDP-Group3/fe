@@ -23,7 +23,9 @@ import Profile from './pages/Profile';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import CourseDetail from './pages/CourseDetail';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import InstructorSchedule from './pages/instructor/InstructorSchedule';
 
 function App() {
   return (
@@ -32,6 +34,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -43,6 +46,24 @@ function App() {
               <Route path="enrollment" element={<Enrollment />} />
               <Route path="payments" element={<Payments />} />
               <Route path="schedule" element={<Schedule />} />
+              {/* 2. THÊM ROUTE MỚI CHO LUỒNG 4 */}
+              {/* <Route 
+                path="book-lesson" 
+                element={
+                  <ProtectedRoute requiredRole="STUDENT">
+                    <BookingPage /> 
+                  </ProtectedRoute>
+                } 
+              /> */}
+              
+              <Route 
+                path="instructor-schedule" 
+                element={
+                  <ProtectedRoute requiredRole="INSTRUCTOR">
+                    <InstructorSchedule />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="exams" element={<Exams />} />
               <Route path="exam-taking" element={<ExamTaking />} />
               <Route path="exam-result/:id" element={<ExamResult />} />
