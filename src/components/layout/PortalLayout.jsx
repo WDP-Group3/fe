@@ -14,7 +14,6 @@ const getNavItems = (userRole) => {
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
-    { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
   ];
 
   if (!userRole) return allItems;

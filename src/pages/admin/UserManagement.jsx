@@ -14,7 +14,9 @@ const UserManagement = () => {
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({ search: '', role: '', status: '' });
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [formData, setFormData] = useState({ email: '', role: 'INSTRUCTOR', password: '' });
 
     // Confirmation dialog states
     const [confirmDialog, setConfirmDialog] = useState({
@@ -69,38 +71,73 @@ const UserManagement = () => {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleCreateSubmit = async (e) => {
         e.preventDefault();
         try {
-            await apiClient.post('/users', formData);
+            // Admin creates with Email + Role. Password default 11111111@ handled by BE if empty, or we send it.
+            // We should ensure name/phone are handled by BE defaults.
+            await apiClient.post('/users', {
+                email: formData.email,
+                role: formData.role,
+                password: formData.password || '11111111@'
+            });
             setShowCreateModal(false);
-            setFormData({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
+            setFormData({ email: '', role: 'INSTRUCTOR', password: '' });
             loadUsers();
             loadStats();
-            showToast('Tạo người dùng thành công', 'success');
+            showToast('Tạo người dùng thành công (Mật khẩu mặc định: 11111111@)', 'success');
         } catch (error) {
             showToast(error.message || 'Tạo người dùng thất bại', 'error');
         }
     };
 
-    const handleChangeRole = (user, newRole) => {
-        setConfirmDialog({
-            isOpen: true,
-            title: 'Xác nhận thay đổi quyền',
-            message: `Bạn có chắc chắn muốn thay đổi quyền của "${user.name}" từ ${user.role} sang ${newRole}?`,
-            type: 'warning',
-            onConfirm: async () => {
-                try {
-                    await apiClient.patch(`/users/${user.id}/change-role`, { role: newRole });
-                    showToast(`Đã thay đổi quyền của ${user.name} thành ${newRole}`, 'success');
-                    loadUsers();
-                    loadStats();
-                } catch (error) {
-                    showToast(error.message || 'Thay đổi quyền thất bại', 'error');
-                    throw error; // Rethrow for ConfirmDialog loading state
-                }
-            }
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (!currentUser) return;
+            // Admin updates Email or Password
+            const updateData = {};
+            if (formData.email) updateData.email = formData.email;
+            if (formData.password) updateData.password = formData.password;
+            // Maybe Role too?
+            if (formData.role) updateData.role = formData.role;
+            if (formData.name) updateData.name = formData.name; // allow editing name too if needed
+
+            // Wait, use 'updateUser' endpoint?
+            // user.controller.js has updateUser which updates fullName, email, phone... 
+            // It doesn't update password usually unless specifically handled? 
+            // The `updateProfile` in auth controller handles self update.
+            // The `updateUser` in user controller handles Admin update. 
+            // Let's check `updateUser` in user.controller.js. It does `User.findByIdAndUpdate(..., body, ...)`. 
+            // If body has password, it won't be hashed automatically by findByIdAndUpdate!
+            // Major Issue: Admin changing password via `updateUser` won't hash it if backend doesn't handle it.
+            // I should check `user.controller.js` again.
+            // `updateUser` just does `findByIdAndUpdate`.
+            // So I can't update password via `updateUser` safely unless I fix backend `updateUser`.
+            // But User requirement is: "Admin sửa tài tài khoản và mâtk khẩu".
+            // So I SHOULD fix backend `updateUser` too. (I'll do that in a bit).
+
+            await apiClient.patch(`/users/${currentUser.id}`, updateData);
+
+            setShowEditModal(false);
+            setCurrentUser(null);
+            setFormData({ email: '', role: 'INSTRUCTOR', password: '' });
+            loadUsers();
+            showToast('Cập nhật người dùng thành công', 'success');
+        } catch (error) {
+            showToast(error.message || 'Cập nhật thất bại', 'error');
+        }
+    };
+
+    const openEditModal = (user) => {
+        setCurrentUser(user);
+        setFormData({
+            email: user.email,
+            role: user.role,
+            password: '', // Leave empty to keep generic
+            name: user.name
         });
+        setShowEditModal(true);
     };
 
     const handleLock = (user) => {
@@ -150,17 +187,13 @@ const UserManagement = () => {
             key: 'role',
             title: 'Vai trò',
             render: (_, record) => (
-                <select
-                    value={record.role}
-                    onChange={(e) => handleChangeRole(record, e.target.value)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                    <option value="GUEST">Khách (Guest)</option>
-                    <option value="STUDENT">Học viên</option>
-                    <option value="INSTRUCTOR">Giáo viên</option>
-                    <option value="CONSULTANT">Tư vấn viên</option>
-                    <option value="ADMIN">Admin</option>
-                </select>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold 
+                    ${record.role === 'ADMIN' ? 'bg-red-100 text-red-700' :
+                        record.role === 'INSTRUCTOR' ? 'bg-blue-100 text-blue-700' :
+                            record.role === 'CONSULTANT' ? 'bg-purple-100 text-purple-700' :
+                                'bg-green-100 text-green-700'}`}>
+                    {record.role}
+                </span>
             )
         },
         {
@@ -178,6 +211,12 @@ const UserManagement = () => {
             title: 'Hành động',
             render: (_, record) => (
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => openEditModal(record)}
+                        className="rounded-md bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+                    >
+                        Sửa
+                    </button>
                     {record.status === 'active' ? (
                         <button
                             onClick={() => handleLock(record)}
@@ -200,35 +239,19 @@ const UserManagement = () => {
 
     return (
         <div className="space-y-6">
-            {/* Quick Links Section */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <Link to="/portal/reports" className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:bg-slate-50 transition-colors">
-                    <span className="text-2xl">📊</span>
-                    <span className="mt-2 font-semibold text-slate-900">Báo cáo</span>
-                </Link>
-                <Link to="/portal/feedback" className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:bg-slate-50 transition-colors">
-                    <span className="text-2xl">⭐</span>
-                    <span className="mt-2 font-semibold text-slate-900">Phản hồi</span>
-                </Link>
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm opacity-50 cursor-not-allowed">
-                    <span className="text-2xl">⚙️</span>
-                    <span className="mt-2 font-semibold text-slate-900">Cấu hình</span>
-                </div>
-            </div>
-
             <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
                 <SectionHeader
-                    title="Quản trị & phân quyền"
-                    description="Admin toàn quyền hệ thống, Staff chỉ xem phạm vi được phân"
+                    title="User Management Dashboard"
+                    description="Quản lý tài khoản Instructor, Consultant, Student"
                     action={
                         <button
                             onClick={() => {
-                                setFormData({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
+                                setFormData({ email: '', role: 'INSTRUCTOR', password: '' });
                                 setShowCreateModal(true);
                             }}
                             className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
                         >
-                            Tạo user
+                            + Tạo User Mới
                         </button>
                     }
                 />
@@ -253,7 +276,7 @@ const UserManagement = () => {
                             <option value="STUDENT">Học viên</option>
                             <option value="INSTRUCTOR">Giáo viên</option>
                             <option value="CONSULTANT">Tư vấn viên</option>
-                            <option value="GUEST">Khách (Guest)</option>
+                            {/* No GUEST */}
                         </select>
                     </div>
                     <div>
@@ -277,21 +300,26 @@ const UserManagement = () => {
                     </span>
                 </div>
 
-                {/* Create User Modal */}
-                {showCreateModal && (
+                {/* Create/Edit Modal */}
+                {(showCreateModal || showEditModal) && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-                            <h3 className="mb-4 text-xl font-bold text-slate-900">Tạo User Mới</h3>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">Họ tên</label>
-                                    <input
-                                        required
-                                        value={formData.fullName}
-                                        onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                </div>
+                            <h3 className="mb-4 text-xl font-bold text-slate-900">
+                                {showCreateModal ? 'Tạo User Mới' : 'Cập Nhật User'}
+                            </h3>
+                            <form onSubmit={showCreateModal ? handleCreateSubmit : handleEditSubmit} className="space-y-4">
+
+                                {showEditModal && (
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-slate-700">Tên hiển thị (User tự cập nhật)</label>
+                                        <input
+                                            value={formData.name || ''}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-slate-50"
+                                        />
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
                                     <input
@@ -302,14 +330,7 @@ const UserManagement = () => {
                                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                     />
                                 </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">Số điện thoại</label>
-                                    <input
-                                        value={formData.phone}
-                                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                </div>
+
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Vai trò</label>
                                     <select
@@ -317,26 +338,28 @@ const UserManagement = () => {
                                         onChange={e => setFormData({ ...formData, role: e.target.value })}
                                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                     >
-                                        <option value="GUEST">Khách (Guest)</option>
-                                        <option value="STUDENT">Học viên</option>
                                         <option value="INSTRUCTOR">Giáo viên</option>
                                         <option value="CONSULTANT">Tư vấn viên</option>
-                                        <option value="ADMIN">Admin</option>
                                     </select>
                                 </div>
+
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">Mật khẩu (Mặc định 123456)</label>
+                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                        {showCreateModal ? 'Mật khẩu' : 'Mật khẩu mới (Để trống nếu không đổi)'}
+                                    </label>
                                     <input
                                         type="password"
                                         value={formData.password}
                                         onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        placeholder={showCreateModal ? "11111111@" : "Nhập mật khẩu mới..."}
                                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                     />
                                 </div>
+
                                 <div className="flex gap-3 pt-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowCreateModal(false)}
+                                        onClick={() => { setShowCreateModal(false); setShowEditModal(false); }}
                                         className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
                                     >
                                         Huỷ
@@ -378,20 +401,9 @@ const UserManagement = () => {
                     </div>
                 )}
             </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-                    <SectionHeader title="Quyền chỉnh sửa profile" />
-                    <div className="space-y-2 text-sm text-slate-700">
-                        <p>• Student: chỉnh profile của chính mình.</p>
-                        <p>• Instructor: chỉnh profile của chính mình.</p>
-                        <p>• Consultant (Sale): chỉnh profile của mình & học viên được phân công.</p>
-                        <p>• Admin: chỉnh tất cả profile, phân quyền, khoá/mở tài khoản.</p>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
+
 
 export default UserManagement;

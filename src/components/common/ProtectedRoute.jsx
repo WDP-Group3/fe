@@ -23,7 +23,7 @@ const ProtectedRoute = ({ children, requiredRole, allowedRoles }) => {
   if (requiredRole && user?.role !== requiredRole) {
     // Redirect based on user role
     if (user?.role === USER_ROLES.ADMIN) {
-      return <Navigate to="/portal/admin" replace />;
+      return <Navigate to="/admin" replace />;
     }
     return <Navigate to="/portal/overview" replace />;
   }

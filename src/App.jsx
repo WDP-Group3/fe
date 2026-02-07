@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Landing from './pages/Landing';
 import PortalLayout from './components/layout/PortalLayout';
+import AdminLayout from './components/layout/AdminLayout';
 import Overview from './pages/Overview';
 import Courses from './pages/Courses';
 import Enrollment from './pages/Enrollment';
@@ -14,6 +15,9 @@ import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
 import Reports from './pages/admin/Reports';
 import UserManagement from './pages/admin/UserManagement';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminCourses from './pages/admin/AdminCourses';
+import AdminNotifications from './pages/admin/AdminNotifications';
 import Feedback from './pages/Feedback';
 import Profile from './pages/Profile';
 import Login from './pages/auth/Login';
@@ -31,23 +35,32 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            {/* Student/Instructor/Consultant Portal */}
             <Route path="/portal" element={<ProtectedRoute><PortalLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/portal/overview" replace />} />
               <Route path="overview" element={<Overview />} />
               <Route path="courses" element={<Courses />} />
-              <Route path="enrollment" element={<Enrollment />} />x
+              <Route path="enrollment" element={<Enrollment />} />
               <Route path="payments" element={<Payments />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="exams" element={<Exams />} />
               <Route path="exam-taking" element={<ExamTaking />} />
               <Route path="exam-result/:id" element={<ExamResult />} />
               <Route path="notifications" element={<Notifications />} />
-              <Route path="reports" element={<ProtectedRoute requiredRole="ADMIN"><Reports /></ProtectedRoute>} />
               <Route path="feedback" element={<Feedback />} />
-              <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
               <Route path="profile" element={<Profile />} />
               <Route path="profile/:id" element={<Profile />} />
             </Route>
+
+            {/* Admin Portal - Strict Separation */}
+            <Route path="/admin" element={<ProtectedRoute requiredRole="ADMIN"><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="courses" element={<AdminCourses />} />
+              <Route path="notifications" element={<AdminNotifications />} />
+              <Route path="reports" element={<Reports />} />
+            </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

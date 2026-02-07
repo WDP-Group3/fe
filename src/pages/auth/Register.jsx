@@ -93,17 +93,7 @@ const Register = () => {
               />
             </FormRow>
 
-            <Select
-              label="Vai trò"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              options={[
-                { value: 'STUDENT', label: 'Học viên' },
-                { value: 'INSTRUCTOR', label: 'Giáo viên' },
-                { value: 'CONSULTANT', label: 'Nhân viên tư vấn' },
-                { value: 'STAFF', label: 'Nhân viên' }
-              ]}
-            />
+
 
             <FormRow cols={2}>
               <Input
