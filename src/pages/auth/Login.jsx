@@ -32,9 +32,14 @@ const Login = () => {
     if (!validate()) return;
 
     try {
-      const response = await login(formData);
+      const { user } = await login(formData);
       showToast("Đăng nhập thành công", "success");
-      navigate("/portal/overview");
+
+      if (user?.role === 'ADMIN') {
+        navigate("/admin");
+      } else {
+        navigate("/portal");
+      }
     } catch (error) {
       // Hiển thị lỗi chi tiết
       const errorMessage = error.message || "Đăng nhập thất bại";
