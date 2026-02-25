@@ -178,6 +178,13 @@ const Landing = () => {
                       {course.code}
                     </p>
                   </div>
+                  <div className="mt-3 overflow-hidden rounded-xl bg-slate-100">
+                    <img
+                      src={course.image}
+                      alt={course.name}
+                      className="w-full h-64 object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                  </div>
                   <p className="mt-2 text-lg font-semibold text-slate-900">
                     {course.name}
                   </p>
