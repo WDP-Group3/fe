@@ -38,7 +38,7 @@ const Login = () => {
       if (user?.role === 'ADMIN') {
         navigate("/admin");
       } else {
-        navigate("/portal/overview");
+        navigate("/portal");
       }
     } catch (error) {
       // Hiển thị lỗi chi tiết

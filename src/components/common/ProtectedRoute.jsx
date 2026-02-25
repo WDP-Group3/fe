@@ -1,9 +1,8 @@
-import { Navigate } from 'react-router-dom';
-import { useAuthContext } from '../../context/AuthContext';
-import { USER_ROLES } from '../../constants';
-import { Loading } from '../ui';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuthContext } from "../../context/AuthContext";
+import { Loading } from "../ui";
 
-const ProtectedRoute = ({ children, requiredRole, allowedRoles }) => {
+const ProtectedRoute = ({ requiredRole, allowedRoles, redirectTo }) => {
   const { user, isAuthenticated, loading } = useAuthContext();
 
   if (loading) {
@@ -14,25 +13,29 @@ const ProtectedRoute = ({ children, requiredRole, allowedRoles }) => {
     );
   }
 
-  // Check authentication
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Check role-based access
-  if (requiredRole && user?.role !== requiredRole) {
-    // Redirect based on user role
-    if (user?.role === USER_ROLES.ADMIN) {
-      return <Navigate to="/admin" replace />;
-    }
-    return <Navigate to="/portal/overview" replace />;
+  const role = user?.role || "GUEST";
+
+  // Hàm lấy đường dẫn mặc định theo role
+  const getDefaultPath = (userRole) => {
+    if (userRole === "ADMIN") return "/admin";
+    return "/portal";
+  };
+
+  // Kiểm tra quyền truy cập (requiredRole hoặc allowedRoles)
+  const isAuthorized = requiredRole
+    ? role === requiredRole
+    : (allowedRoles ? allowedRoles.includes(role) : true);
+
+  if (!isAuthorized) {
+    // Nếu sai role, chuyển về dashboard của chính họ
+    return <Navigate to={redirectTo || getDefaultPath(role)} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/portal/overview" replace />;
-  }
-
-  return children;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

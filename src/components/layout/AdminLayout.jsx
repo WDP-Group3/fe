@@ -6,7 +6,7 @@ import { Avatar } from '../common';
 
 // Admin specific navigation
 const navItems = [
-    { label: 'Tổng quan', to: '/admin', icon: '📊' }, // Dashboard home
+    { label: 'Tổng quan', to: '/admin', icon: '📊' },
     { label: 'Người dùng', to: '/admin/users', icon: '👥' },
     { label: 'Khóa học', to: '/admin/courses', icon: '📚' },
     { label: 'Thông báo', to: '/admin/notifications', icon: '📢' },
