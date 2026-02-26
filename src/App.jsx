@@ -1,3 +1,29 @@
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import Landing from './pages/Landing';
+import PortalLayout from './components/layout/PortalLayout';
+import Overview from './pages/Overview';
+import Courses from './pages/Courses';
+import Enrollment from './pages/Enrollment';
+import Payments from './pages/Payments';
+import Schedule from './pages/Schedule';
+import Exams from './pages/Exams';
+import ExamTaking from './pages/ExamTaking';
+import ExamResult from './pages/ExamResult';
+import Notifications from './pages/Notifications';
+import Reports from './pages/admin/Reports';
+import UserManagement from './pages/admin/UserManagement';
+import Feedback from './pages/Feedback';
+import Profile from './pages/Profile';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import CourseDetail from './pages/CourseDetail';
+import CourseGuest from './pages/CourseGuest';
+import Blogs from './pages/Blogs';
+import BlogDetails from './pages/BlogDetails';
+import ProtectedRoute from './components/common/ProtectedRoute';
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthProvider"; // Keep this imports clean, wait. context/index.js exports AuthProvider.
 import { ToastProvider } from "./context/ToastContext";
@@ -53,6 +79,12 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
+            <Route path="/courses" element={<CourseGuest />} />
+            <Route path="/exams" element={<PortalLayout><Exams /></PortalLayout>} />
+            <Route path="/exam-taking" element={<ExamTaking />} />
+            <Route path="/exam-result/:id" element={<ExamResult />} />
+            <Route path="/blogs" element={<Blogs />} />
+            <Route path="/blogs/:id" element={<BlogDetails />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
