@@ -4,6 +4,14 @@ import { Dropdown } from '../ui';
 import { Avatar } from '../common';
 import config from '../../config';
 
+// Navigation items shown when not logged in
+const PUBLIC_NAV_ITEMS = [
+  { label: 'Tổng quan', to: '/' },
+  { label: 'Khóa học', to: '/courses' },
+  { label: 'Thi thử', to: '/exams' },
+  { label: 'Bài viết', to: '/blogs' },
+];
+
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
@@ -12,7 +20,8 @@ const getNavItems = (userRole) => {
     { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
-    { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
+    { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT', 'GUEST'] },
+    { label: 'Bài viết', to: '/portal/blogs', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
   ];
@@ -46,7 +55,7 @@ const PortalLayout = ({ children }) => {
     },
   ];
 
-  const navItems = getNavItems(user?.role);
+  const navItems = user ? getNavItems(user?.role) : PUBLIC_NAV_ITEMS;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
@@ -94,7 +103,7 @@ const PortalLayout = ({ children }) => {
             )}
           </div>
         </div>
-        {navItems.length > 0 && (
+        {(
           <div className="border-t border-slate-100 bg-white">
             <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
               {navItems.map((item) => (

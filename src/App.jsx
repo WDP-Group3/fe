@@ -20,6 +20,9 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import CourseDetail from './pages/CourseDetail';
+import CourseGuest from './pages/CourseGuest';
+import Blogs from './pages/Blogs';
+import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 function App() {
@@ -30,6 +33,12 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
+            <Route path="/courses" element={<CourseGuest />} />
+            <Route path="/exams" element={<PortalLayout><Exams /></PortalLayout>} />
+            <Route path="/exam-taking" element={<ExamTaking />} />
+            <Route path="/exam-result/:id" element={<ExamResult />} />
+            <Route path="/blogs" element={<Blogs />} />
+            <Route path="/blogs/:id" element={<BlogDetails />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

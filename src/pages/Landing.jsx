@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Carousel, Button } from '../components/ui';
 import StatCard from '../components/ui/StatCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import { sessions } from '../data/mockData';
-import { formatCurrency } from '../utils/formatters';
 import apiClient from '../services/apiClient';
 import PortalLayout from '../components/layout/PortalLayout';
 
 const Landing = () => {
-  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -154,111 +152,23 @@ const Landing = () => {
           </div>
         </div>
 
-        <div className="mt-14 rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader
-            title="Khóa học & học phí"
-            description="Công khai học phí, lịch khai giảng, phụ phí"
-          // action={<Link to="/portal/courses" className="text-sm font-semibold text-indigo-700">Xem chi tiết →</Link>}
-          />
-          {/* Danh sách khoá học */}
-          {courses.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <p>Chưa có khóa học nào</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-              {courses.map((course) => (
-                <div
-                  key={course.id}
-                  className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <StatusBadge status="done" label="Mở đăng ký" />
-                    <p className="text-xs font-semibold text-indigo-600">
-                      {course.code}
-                    </p>
-                  </div>
-                  <div className="mt-3 overflow-hidden rounded-xl bg-slate-100">
-                    <img
-                      src={course.image}
-                      alt={course.name}
-                      className="w-full h-64 object-cover transition-transform duration-300 hover:scale-105"
-                    />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">
-                    {course.name}
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-slate-900">
-                      {formatCurrency(course.estimatedCost)}
-                    </p>
-                    {course.feePayments && course.feePayments.length > 0 && (
-                      <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-                        {course.feePayments.length} đợt đóng
-                      </span>
-                    )}
-                  </div>
 
-                  {/* Display Fee Payments Preview */}
-                  <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto custom-scrollbar pr-1">
-                    {course.feePayments && course.feePayments.length > 0 ? (
-                      course.feePayments.map((p, idx) => (
-                        <p key={idx}>
-                          • {p.name}: {formatCurrency(p.amount)}{" "}
-                          <span className="text-slate-500 text-xs">
-                            {p.note ? `(${p.note})` : ""}
-                          </span>
-                        </p>
-                      ))
-                    ) : (
-                      <p className="text-slate-500 italic text-xs">
-                        Phí nộp 1 lần
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
-                    <p className="font-semibold text-indigo-700">
-                      Thời lượng:{" "}
-                      {course.estimatedDuration
-                        ? `${course.estimatedDuration} tháng`
-                        : "Chưa cập nhật"}
-                    </p>
-                  </div>
-
-                  {/* Locations */}
-                  {course.location && course.location.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {course.location.map((loc, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs"
-                        >
-                          {loc}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => navigate(`/courses/${course.id}`)}
-                      className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Xem chi tiết
-                    </button>
-                    <button
-                      onClick={scrollToConsultForm}
-                      className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
-                    >
-                      Đăng ký tư vấn
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="mt-14 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-8 shadow-sm text-center">
+          <p className="text-xs font-semibold uppercase text-indigo-500 tracking-wider mb-2">Khóa học & Học phí</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            Công khai học phí, lịch khai giảng, phụ phí
+          </h2>
+          <p className="text-slate-500 mb-6 text-sm max-w-md mx-auto">
+            Xem đầy đủ các khóa học, chi tiết học phí từng đợt và lịch khai giảng mới nhất của trung tâm.
+          </p>
+          <Link
+            to="/portal/courses"
+            className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+          >
+            Xem tất cả khóa học →
+          </Link>
         </div>
+
 
         <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr]">
           <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
