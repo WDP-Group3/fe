@@ -1,8 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthProvider';
 import { ToastProvider } from './context/ToastContext';
+import { useAuthContext } from './context/AuthContext';
 import Landing from './pages/Landing';
 import PortalLayout from './components/layout/PortalLayout';
+import AdminLayout from './components/layout/AdminLayout';
 import Overview from './pages/Overview';
 import Courses from './pages/Courses';
 import Enrollment from './pages/Enrollment';
@@ -14,6 +16,9 @@ import ExamResult from './pages/ExamResult';
 import Notifications from './pages/Notifications';
 import Reports from './pages/admin/Reports';
 import UserManagement from './pages/admin/UserManagement';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminCourses from './pages/admin/AdminCourses';
+import AdminNotifications from './pages/admin/AdminNotifications';
 import Feedback from './pages/Feedback';
 import Profile from './pages/Profile';
 import Login from './pages/auth/Login';
@@ -24,35 +29,7 @@ import CourseGuest from './pages/CourseGuest';
 import Blogs from './pages/Blogs';
 import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./context/AuthProvider"; // Keep this imports clean, wait. context/index.js exports AuthProvider.
-import { ToastProvider } from "./context/ToastContext";
-import { useAuthContext } from "./context/AuthContext";
-import Landing from "./pages/Landing";
-import PortalLayout from "./components/layout/PortalLayout";
-import AdminLayout from "./components/layout/AdminLayout";
-import Overview from "./pages/Overview";
-import Courses from "./pages/Courses";
-import Enrollment from "./pages/Enrollment";
-import Payments from "./pages/Payments";
-import Schedule from "./pages/Schedule";
-import Exams from "./pages/Exams";
-import ExamTaking from "./pages/ExamTaking";
-import ExamResult from "./pages/ExamResult";
-import Notifications from "./pages/Notifications";
-import Reports from "./pages/admin/Reports";
-import UserManagement from "./pages/admin/UserManagement";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminCourses from "./pages/admin/AdminCourses";
-import AdminNotifications from "./pages/admin/AdminNotifications";
-import Feedback from "./pages/Feedback";
-import Profile from "./pages/Profile";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import CourseDetail from "./pages/CourseDetail";
-import ProtectedRoute from "./components/common/ProtectedRoute";
-import InstructorSchedule from "./pages/instructor/InstructorSchedule";
+import InstructorSchedule from './pages/instructor/InstructorSchedule';
 
 // Component xử lý điều hướng khi người dùng gõ linh tinh (404)
 const NotFoundRedirect = () => {
@@ -88,11 +65,12 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+
             {/* Student/Instructor/Consultant/Admin Portal */}
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["ADMIN", "STUDENT", "INSTRUCTOR", "CONSULTANT", "GUEST"]}
+                  allowedRoles={['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST']}
                 />
               }
             >
