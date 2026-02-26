@@ -1,114 +1,39 @@
-import { useState, useEffect } from 'react';
-import { useModal } from '../hooks';
-import { useToast } from '../context/ToastContext';
-import { Button, Modal, Input, Select, DatePicker } from '../components/ui';
+import React, { useState, useEffect } from 'react';
+import { SectionHeader, Select, Button, Loading, Modal } from '../components/ui';
 import { SocialIcons } from '../components/common';
-import SectionHeader from '../components/ui/SectionHeader';
-import StatusBadge from '../components/ui/StatusBadge';
-import DataTable from '../components/ui/DataTable';
-import { FormGroup, FormRow } from '../components/forms';
+import WeekScheduler from '../components/scheduler/WeekScheduler';
 import apiClient from '../services/apiClient';
+import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
+
+const getMonday = (d) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1); 
+  return new Date(date.setDate(diff));
+};
 
 const Schedule = () => {
   const { user } = useAuthContext();
-  const { isOpen, open, close } = useModal();
   const { showToast } = useToast();
-  const [sessions, setSessions] = useState([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
-  const [formData, setFormData] = useState({
-    date: '',
-    time: '',
-    type: '',
-    instructor: '',
-    location: '',
-  });
+  
+  const [locations, setLocations] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('');
+  
+  const [instructors, setInstructors] = useState([]);
+  const [selectedInstructor, setSelectedInstructor] = useState('');
+  
+  const [instructorSchedules, setInstructorSchedules] = useState([]);
+  const [currentMonday, setCurrentMonday] = useState(getMonday(new Date()));
   const [loading, setLoading] = useState(false);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [mySessions, setMySessions] = useState([]);
 
-  useEffect(() => {
-    loadSessions();
-  }, []);
+  // Modals
+  const [confirmBookingModal, setConfirmBookingModal] = useState({ isOpen: false, data: null, type: 'PRACTICE' });
+  const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, bookingId: null, rating: 5, comment: '' });
+  const [detailModal, setDetailModal] = useState({ isOpen: false, data: null });
 
-  const loadSessions = async () => {
-    try {
-      setLoadingSessions(true);
-      const response = await apiClient.get(`/bookings${user?.id ? `?studentId=${user.id}` : ''}`);
-      if (response.status === 'success') {
-        // Map backend booking format to frontend format
-        const mappedSessions = (response.data || []).map((booking) => ({
-          id: booking._id,
-          date: new Date(booking.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-          time: booking.timeSlot || '',
-          type: 'Thực hành',
-          instructor: booking.instructorId?.fullName || '',
-          location: booking.batchId?.location || '',
-        }));
-        setSessions(mappedSessions);
-      }
-    } catch (err) {
-      console.error('Error loading sessions:', err);
-    } finally {
-      setLoadingSessions(false);
-    }
-  };
-
-  const columns = [
-    { key: 'date', title: 'Ngày', dataIndex: 'date' },
-    { key: 'time', title: 'Giờ', dataIndex: 'time' },
-    { key: 'type', title: 'Loại', dataIndex: 'type' },
-    { key: 'instructor', title: 'Giáo viên', dataIndex: 'instructor' },
-    { key: 'location', title: 'Địa điểm', dataIndex: 'location' },
-    {
-      key: 'actions',
-      title: 'Thao tác',
-      render: (_, record) => (
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => handleCancel(record.id)}>
-            Hủy
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  const handleBook = async () => {
-    setLoading(true);
-    try {
-      // Note: Backend booking API needs batchId and instructorId
-      // For now, this is a placeholder - you may need to update the backend
-      const response = await apiClient.post('/bookings', {
-        date: formData.date,
-        timeSlot: formData.time,
-        // These would need to be selected from available options
-        // batchId: selectedBatchId,
-        // instructorId: selectedInstructorId,
-      });
-      if (response.status === 'success') {
-        showToast('Đặt lịch thành công', 'success');
-        close();
-        setFormData({ date: '', time: '', type: '', instructor: '', location: '' });
-        loadSessions();
-      }
-    } catch (error) {
-      showToast(error.message || 'Đặt lịch thất bại', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = async (id) => {
-    try {
-      const response = await apiClient.put(`/bookings/${id}`, { status: 'CANCELLED' });
-      if (response.status === 'success') {
-        showToast('Hủy lịch thành công', 'success');
-        loadSessions();
-      }
-    } catch (error) {
-      showToast(error.message || 'Hủy lịch thất bại', 'error');
-    }
-  };
-
-  // Mock consultant info
   const consultantInfo = {
     name: 'Ngô Trần Minh Hòa',
     zalo: 'https://zalo.me/0966881862',
@@ -116,166 +41,292 @@ const Schedule = () => {
     gmail: 'ntmh18062004@gmail.com',
   };
 
+  useEffect(() => { fetchLocations(); loadMySessions(); }, []);
+
+  useEffect(() => {
+    if (selectedLocation) {
+      fetchInstructorsByLocation(selectedLocation);
+      setSelectedInstructor('');
+      setInstructorSchedules([]);
+    }
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    if (selectedInstructor) fetchInstructorSchedule();
+  }, [selectedInstructor, currentMonday]);
+
+  // API Calls
+  const fetchLocations = async () => {
+    try {
+      const res = await apiClient.get('/users/locations'); 
+      if (res.status === 'success') setLocations(res.data.map(loc => ({ value: loc, label: loc })));
+    } catch (error) { console.error(error); }
+  };
+
+  const fetchInstructorsByLocation = async (loc) => {
+    try {
+      const res = await apiClient.get(`/users/instructors?location=${loc}`);
+      if (res.status === 'success') setInstructors(res.data.map(u => ({ value: u._id, label: u.fullName })));
+    } catch (error) { console.error(error); }
+  };
+
+  const fetchInstructorSchedule = async () => {
+    setLoading(true);
+    try {
+      const sunday = new Date(currentMonday);
+      sunday.setDate(currentMonday.getDate() + 6);
+      const startDateISO = new Date(currentMonday.setHours(0,0,0,0)).toISOString();
+      const endDateISO = new Date(sunday.setHours(23,59,59,999)).toISOString();
+      const res = await apiClient.get(`/schedule?instructorId=${selectedInstructor}&startDate=${startDateISO}&endDate=${endDateISO}`);
+      if (res.status === 'success') {
+        setInstructorSchedules((res.data || []).map(i => ({ ...i, timeSlot: Number(i.timeSlot) })));
+      }
+    } finally { setLoading(false); }
+  };
+
+  const loadMySessions = async () => {
+    setLoadingSessions(true);
+    try {
+      // Lấy toàn bộ lịch, sau đó sẽ filter ở Frontend
+      const res = await apiClient.get(`/bookings${user?.id ? `?studentId=${user.id}` : ''}`);
+      if (res.status === 'success') setMySessions(res.data);
+    } finally { setLoadingSessions(false); }
+  };
+
+  // Handlers
+  const handleSlotClick = (date, slotId, data) => {
+    if (data) {
+      setDetailModal({ isOpen: true, data: data });
+    } else {
+      setConfirmBookingModal({ 
+        isOpen: true, 
+        data: { date, slotId, instructorId: selectedInstructor },
+        type: 'PRACTICE'
+      });
+    }
+  };
+
+  const handleBooking = async () => {
+    try {
+      const { date, slotId, instructorId } = confirmBookingModal.data;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
+      await apiClient.post('/bookings', { 
+        instructorId, date: dateString, timeSlot: slotId, type: confirmBookingModal.type 
+      });
+      showToast('Đặt lịch thành công!', 'success');
+      setConfirmBookingModal({ isOpen: false, data: null, type: 'PRACTICE' });
+      fetchInstructorSchedule();
+      loadMySessions();
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+
+  const handleCancel = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn hủy lịch này?")) return;
+    try {
+      const response = await apiClient.put(`/bookings/${id}`, { status: 'CANCELLED' });
+      if (response.status === 'success') {
+        showToast('Hủy lịch thành công', 'success');
+        loadMySessions();
+        if (selectedInstructor) fetchInstructorSchedule();
+        setDetailModal({ isOpen: false, data: null });
+      }
+    } catch (error) { showToast(error.message, 'error'); }
+  };
+
+  const handleFeedback = async () => {
+    try {
+      await apiClient.patch(`/bookings/${feedbackModal.bookingId}/feedback`, {
+        rating: feedbackModal.rating, studentFeedback: feedbackModal.comment
+      });
+      showToast('Cảm ơn bạn đã đánh giá!', 'success');
+      setFeedbackModal({ ...feedbackModal, isOpen: false });
+      loadMySessions();
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+
+  // --- LOGIC MỚI: CHỈ HIỂN THỊ LỊCH CỦA TUẦN ĐANG CHỌN ---
+  
+  // 1. Tính toán ngày bắt đầu và kết thúc của tuần hiện tại (dựa trên currentMonday)
+  const startOfWeek = new Date(currentMonday);
+  startOfWeek.setHours(0,0,0,0);
+  
+  const endOfWeek = new Date(currentMonday);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  endOfWeek.setHours(23,59,59,999);
+
+  // 2. Lọc danh sách My Sessions
+  const filteredSessions = mySessions.filter(session => {
+    const sessionDate = new Date(session.date);
+    return sessionDate >= startOfWeek && sessionDate <= endOfWeek;
+  });
+
+  // 3. Gom nhóm kết quả đã lọc
+  const groupedSessions = filteredSessions
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .reduce((acc, curr) => {
+      const dateKey = new Date(curr.date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(curr);
+      return acc;
+    }, {});
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-        <SectionHeader
-          title="Đặt / huỷ lịch học"
-          description="Kiểm tra giáo viên & xe trống, chống trùng lịch"
-          action={
-            <Button variant="primary" onClick={open}>
-              Đặt lịch mới
-            </Button>
-          }
-        />
-        {loadingSessions ? (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+    <div className="space-y-10">
+      <div className="bg-white p-6 rounded-3xl border shadow-sm">
+        <SectionHeader title="Đặt lịch học mới" description="Chọn khu vực và giáo viên phù hợp" />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4 max-w-3xl">
+          <Select label="1. Chọn Khu Vực" options={locations} value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)} placeholder="-- Chọn khu vực --" />
+          <Select label="2. Chọn Giáo Viên" options={instructors} value={selectedInstructor} onChange={(e) => setSelectedInstructor(e.target.value)} disabled={!selectedLocation} placeholder={!selectedLocation ? "Vui lòng chọn khu vực trước" : "-- Chọn giáo viên --"} />
+        </div>
+
+        {selectedInstructor && (
+          <div className="mt-6 space-y-4">
+            <div className="flex justify-between items-center text-xs">
+              <div className="flex gap-4 font-medium">
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-white border"></div> Trống</span>
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-slate-200 border"></div> Đã có lịch</span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() - 7))))}>Tuần trước</Button>
+                <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date()))}>Hiện tại</Button>
+                <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() + 7))))}>Tuần sau</Button>
+              </div>
+            </div>
+            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="STUDENT" onSlotClick={handleSlotClick} />}
           </div>
-        ) : sessions.length === 0 ? (
-          <div className="py-8 text-center text-slate-500">
-            <p>Chưa có lịch học nào</p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={sessions} />
         )}
       </div>
 
-      {/* Contact Consultant */}
-      <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
-        <SectionHeader
-          title="Liên hệ tư vấn viên"
-          description="Nhận hỗ trợ nhanh qua Zalo, Facebook hoặc Email"
-        />
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-lg font-semibold text-slate-900">{consultantInfo.name}</p>
-            <p className="text-sm text-slate-600">Tư vấn viên hỗ trợ 24/7</p>
+      <div className="space-y-6">
+        <div className="flex justify-between items-end border-l-4 border-indigo-500 pl-3">
+            <h3 className="text-xl font-bold text-slate-800">Lịch Học Của Tôi</h3>
+            {/* Hiển thị tuần đang xem để user dễ nhận biết */}
+            <span className="text-sm text-slate-500 font-medium">
+                Tuần: {startOfWeek.toLocaleDateString('vi-VN')} - {endOfWeek.toLocaleDateString('vi-VN')}
+            </span>
+        </div>
+
+        {loadingSessions ? <Loading /> : Object.keys(groupedSessions).length === 0 ? (
+          <div className="text-center text-slate-400 py-10 bg-white rounded-xl border border-dashed">
+            Không có lịch học nào trong tuần này.
+            {!selectedInstructor && <div className="mt-2 text-xs">Lưu ý: Bạn có thể đổi tuần ở nút "Tuần trước/Tuần sau" phía trên để xem lịch sử hoặc tương lai.</div>}
           </div>
-          <SocialIcons
-            zalo={consultantInfo.zalo}
-            facebook={consultantInfo.facebook}
-            gmail={consultantInfo.gmail}
-            size="lg"
-          />
+        ) : (
+          Object.entries(groupedSessions).map(([dateLabel, items]) => (
+            <div key={dateLabel} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
+                <span className="font-bold text-slate-700 uppercase text-sm">{dateLabel}</span>
+                <span className="text-xs font-medium bg-white px-2 py-1 rounded border text-slate-500">{items.length} buổi</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {items.map((item) => (
+                  <div key={item._id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg">{item.timeSlot}</div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Ca {item.timeSlot}</p>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${item.type === 'THEORY' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{item.type === 'THEORY' ? 'Lý thuyết' : 'Thực hành'}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-slate-400 uppercase font-bold">Giáo viên</p>
+                      <p className="font-semibold text-slate-800">{item.instructorId?.fullName}</p>
+                      <p className="text-xs text-slate-500">{item.instructorId?.phone}</p>
+                    </div>
+                    <div className="flex items-center gap-3 justify-end">
+                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'ABSENT' ? 'bg-red-100 text-red-700' : item.status === 'CANCELLED' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                        {item.status === 'COMPLETED' ? 'Hoàn thành' : (item.status === 'ABSENT' ? 'Vắng' : (item.status === 'CANCELLED' ? 'Đã hủy' : 'Chờ học'))}
+                      </div>
+                      {item.status === 'BOOKED' && <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => handleCancel(item._id)}>Hủy</Button>}
+                      {item.status === 'COMPLETED' && !item.rating && <Button size="sm" className="bg-yellow-500 text-white border-none" onClick={() => setFeedbackModal({ isOpen: true, bookingId: item._id, rating: 5, comment: '' })}>Đánh giá</Button>}
+                      {item.rating && <span className="text-yellow-500 font-bold">⭐ {item.rating}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
+          <SectionHeader title="Liên hệ tư vấn viên" />
+          <div className="flex items-center justify-between">
+            <div><p className="text-lg font-semibold text-slate-900">{consultantInfo.name}</p><p className="text-sm text-slate-600">Tư vấn viên hỗ trợ 24/7</p></div>
+            <SocialIcons zalo={consultantInfo.zalo} facebook={consultantInfo.facebook} gmail={consultantInfo.gmail} size="lg" />
+          </div>
+        </div>
+        <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+          <SectionHeader title="Quy định lịch học" />
+          <div className="space-y-3 text-sm text-slate-700 font-medium">
+            <p>• Đặt lịch/Hủy lịch phải trước ít nhất 12 giờ.</p>
+            <p>• Vắng mặt không lý do sẽ mất buổi học.</p>
+          </div>
         </div>
       </div>
 
-      {/* Book Schedule Modal */}
-      <Modal
-        isOpen={isOpen}
-        onClose={close}
-        title="Đặt lịch học mới"
-        size="lg"
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={close}>
-              Hủy
-            </Button>
-            <Button variant="primary" onClick={handleBook} loading={loading}>
-              Đặt lịch
-            </Button>
-          </div>
-        }
-      >
+      <Modal isOpen={confirmBookingModal.isOpen} onClose={() => setConfirmBookingModal({ ...confirmBookingModal, isOpen: false })} title="Xác nhận đặt lịch">
         <div className="space-y-4">
-          <FormRow cols={2}>
-            <FormGroup label="Ngày học" required>
-              <DatePicker
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </FormGroup>
-            <FormGroup label="Giờ học" required>
-              <Select
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                options={[
-                  { value: '07:00-09:00', label: '07:00 - 09:00' },
-                  { value: '09:00-11:00', label: '09:00 - 11:00' },
-                  { value: '14:00-16:00', label: '14:00 - 16:00' },
-                  { value: '16:00-18:00', label: '16:00 - 18:00' },
-                ]}
-                placeholder="Chọn giờ"
-              />
-            </FormGroup>
-          </FormRow>
-          <FormRow cols={2}>
-            <FormGroup label="Loại học" required>
-              <Select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                options={[
-                  { value: 'Lý thuyết', label: 'Lý thuyết' },
-                  { value: 'Thực hành', label: 'Thực hành' },
-                  { value: 'Thi thử', label: 'Thi thử' },
-                ]}
-                placeholder="Chọn loại"
-              />
-            </FormGroup>
-            <FormGroup label="Giáo viên" required>
-              <Select
-                value={formData.instructor}
-                onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
-                options={[
-                  { value: 'Nguyễn Minh Trí', label: 'Nguyễn Minh Trí' },
-                  { value: 'Lê Quang Huy', label: 'Lê Quang Huy' },
-                ]}
-                placeholder="Chọn giáo viên"
-              />
-            </FormGroup>
-          </FormRow>
-          <FormGroup label="Địa điểm">
-            <Input
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Nhập địa điểm"
-            />
-          </FormGroup>
+          <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+             <p className="text-sm font-bold text-indigo-800 mb-3 text-center uppercase">Chọn nội dung buổi học</p>
+             <div className="grid grid-cols-2 gap-3">
+               {[{ id: 'PRACTICE', label: '🚗 Thực hành' }, { id: 'THEORY', label: '📖 Lý thuyết' }, { id: 'MOCK_TEST', label: '📝 Thi thử' }, { id: 'NIGHT_DRIVING', label: '🌙 Lái đêm' }].map((item) => (
+                 <button key={item.id} onClick={() => setConfirmBookingModal({ ...confirmBookingModal, type: item.id })} className={`p-3 rounded-lg text-xs font-bold border transition-all ${confirmBookingModal.type === item.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}>{item.label}</button>
+               ))}
+             </div>
+             <div className="flex justify-end gap-2 mt-4">
+                <Button variant="secondary" onClick={() => setConfirmBookingModal({ ...confirmBookingModal, isOpen: false })}>Hủy</Button>
+                <Button onClick={handleBooking}>Xác nhận</Button>
+             </div>
+          </div>
         </div>
       </Modal>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader title="Quy định lịch học" />
-          <div className="space-y-3 text-sm text-slate-700">
-            <p>• Không huỷ/hoãn trước 24h → mất quyền lợi buổi học.</p>
-            <p>• Ứng dụng nhắc trước 24h, 3h và 1h.</p>
-            <p>• Ghi log huỷ lịch, log đổi xe / giáo viên.</p>
+      <Modal isOpen={feedbackModal.isOpen} onClose={() => setFeedbackModal({ ...feedbackModal, isOpen: false })} title="Đánh giá chất lượng dạy">
+        <div className="space-y-4 p-4">
+          <div className="flex gap-2 text-3xl justify-center">
+            {[1,2,3,4,5].map(s => <button key={s} onClick={() => setFeedbackModal({...feedbackModal, rating: s})} className={feedbackModal.rating >= s ? 'text-yellow-400' : 'text-slate-200'}>★</button>)}
           </div>
+          <textarea className="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" rows="3" placeholder="Nhận xét của bạn..." value={feedbackModal.comment} onChange={e => setFeedbackModal({...feedbackModal, comment: e.target.value})} />
+          <Button className="w-full" onClick={handleFeedback}>Gửi đánh giá</Button>
         </div>
-        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader title="Ghi chú buổi học" description="Instructor ghi chú, Student xem trực tiếp" />
-          <div className="space-y-3">
-            {sessions.slice(0, 2).map((item) => (
-              <div key={item.id} className="rounded-2xl border border-slate-100 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">{item.type} · {item.date}</p>
-                  <StatusBadge status="done" label="Điểm danh" />
+      </Modal>
+
+      <Modal isOpen={detailModal.isOpen} onClose={() => setDetailModal({ ...detailModal, isOpen: false })} title="Thông tin buổi học">
+        {detailModal.data && (
+          <div className="p-4 space-y-4">
+             <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl">👨‍🏫</div>
+                <div>
+                   <p className="text-sm text-slate-500 font-bold uppercase">Giảng viên</p>
+                   <p className="text-lg font-bold text-slate-800">Tên :{detailModal.data.instructorId?.fullName}</p>
+                   <p className="text-sm text-indigo-600 font-medium">SĐT :{detailModal.data.instructorId?.phone}</p>
                 </div>
-                <p className="text-xs text-slate-500">{item.instructor} · {item.location}</p>
-                <textarea
-                  className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  placeholder="Instructor ghi chú buổi học..."
-                />
-                <button
-                  type="button"
-                  className="mt-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
-                  onClick={() => {
-                    // Cần call đến BE để lưu ghi chú buổi học
-                  }}
-                >
-                  Lưu ghi chú
-                </button>
-              </div>
-            ))}
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-white border rounded-lg text-center">
+                   <p className="text-xs text-slate-400 font-bold">Ca Học</p>
+                   <p className="text-xl font-bold text-slate-800">{detailModal.data.timeSlot}</p>
+                </div>
+                <div className="p-3 bg-white border rounded-lg text-center">
+                   <p className="text-xs text-slate-400 font-bold">Loại</p>
+                   <p className="text-sm font-bold text-slate-800 uppercase">{detailModal.data.type || 'Thực hành'}</p>
+                </div>
+             </div>
+             {detailModal.data.status === 'BOOKED' && (
+                <Button className="w-full bg-red-50 text-red-600 hover:bg-red-100 border-red-200" variant="outline" onClick={() => { handleCancel(detailModal.data._id); setDetailModal({isOpen: false, data: null}); }}>Hủy lịch học này</Button>
+             )}
           </div>
-        </div>
-      </div>
+        )}
+      </Modal>
     </div>
   );
 };
 
 export default Schedule;
-
