@@ -7,7 +7,8 @@ import { TYPE_TITLES_Notification } from '../constants';
 
 const Notifications = () => {
   const { user } = useAuthContext();
-  const isAdmin = user?.role === 'ADMIN';
+
+
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,57 +47,7 @@ const Notifications = () => {
     }
   };
 
-  const handleCreateClick = () => {
-    setFormData({
-      id: null,
-      type: 'THEORY', // Default
-      title: '',
-      message: '',
-      expirationDays: 30
-    });
-    setShowCreateModal(true);
-  };
 
-  const handleEditClick = (e, notif) => {
-    e.stopPropagation(); // Prevent opening detail modal
-    setFormData({
-      id: notif._id,
-      type: notif.type,
-      title: notif.title,
-      message: notif.message,
-      expirationDays: 30 // Note: We can't easily get remaining days without calculation, but roughly defaulting to 30 or we could calc diff between now and expireAt.
-    });
-    setShowCreateModal(true);
-  };
-
-  const handleDeleteClick = async (e, id) => {
-    e.stopPropagation();
-    if (window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {
-      try {
-        await apiClient.delete(`/notifications/${id}`);
-        loadNotifications();
-      } catch (error) {
-        console.error(error);
-        alert('Xóa thất bại');
-      }
-    }
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    try {
-      if (formData.id) {
-        await apiClient.put(`/notifications/${formData.id}`, formData);
-      } else {
-        await apiClient.post('/notifications', formData);
-      }
-      setShowCreateModal(false);
-      loadNotifications();
-    } catch (error) {
-      console.error(error);
-      alert('Lưu thất bại: ' + (error.response?.data?.message || 'Lỗi hệ thống'));
-    }
-  };
 
   const openDetail = (notif) => {
     setSelectedNotification(notif);
@@ -108,17 +59,7 @@ const Notifications = () => {
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
         <SectionHeader
           title="Thông báo hệ thống"
-          description="Xem và quản lý các thông báo"
-          action={
-            isAdmin && (
-              <button
-                onClick={handleCreateClick}
-                className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-              >
-                + Tạo thông báo
-              </button>
-            )
-          }
+          description="Xem các thông báo mới nhất"
         />
 
         {/* Filter */}
@@ -168,22 +109,7 @@ const Notifications = () => {
                   <h3 className="mt-1 text-sm font-bold text-slate-900">{item.title}</h3>
                 </div>
 
-                {isAdmin && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => handleEditClick(e, item)}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteClick(e, item._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-full"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    </button>
-                  </div>
-                )}
+
               </div>
             ))}
           </div>
