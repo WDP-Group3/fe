@@ -10,19 +10,31 @@ const axiosInstance = axios.create({
   },
 });
 
-// // Request interceptor - Thêm token vào header trước khi gửi request
-// axiosInstance.interceptors.request.use(
-//   (config) => {
-//     const token = localStorage.getItem('token');
-//     if (token) {
-//       config.headers.Authorization = `Bearer ${token}`;
-//     }
-//     return config;
-//   },
-//   (error) => {
-//     return Promise.reject(error);
-//   }
-// );
+// Request interceptor - Thêm token vào header trước khi gửi request
+axiosInstance.interceptors.request.use(
+  (configReq) => {
+    let token = localStorage.getItem('token');
+
+    // Nếu token được lưu dạng JSON string (do useLocalStorage), parse ra
+    if (token) {
+      try {
+        const parsed = JSON.parse(token);
+        if (typeof parsed === 'string') {
+          token = parsed;
+        }
+      } catch {
+        // token đã là string, bỏ qua
+      }
+    }
+
+    if (token) {
+      configReq.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return configReq;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Response interceptor - Xử lý response và error
 axiosInstance.interceptors.response.use(

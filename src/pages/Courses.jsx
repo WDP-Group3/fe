@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import SectionHeader from "../components/ui/SectionHeader";
 import StatusBadge from "../components/ui/StatusBadge";
 import apiClient from "../services/apiClient";
 import { formatCurrency } from "../utils/formatters";
 
 const Courses = () => {
+  const navigate = useNavigate();
 
   // isAdmin logic removed
   const [courses, setCourses] = useState([]);
@@ -153,10 +155,16 @@ const Courses = () => {
                 )}
 
                 <div className="mt-4 flex gap-2">
-                  <button className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">
+                <button
+                  className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                >
                     Chọn khóa
                   </button>
-                  <button className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800">
+                <button
+                  className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
+                  onClick={() => navigate("/#consult-form")}
+                >
                     Tư vấn
                   </button>
                 </div>
