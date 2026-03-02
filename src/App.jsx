@@ -33,6 +33,7 @@ import Blogs from './pages/Blogs';
 import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
+import DocumentApproval from './pages/DocumentApproval';
 
 // Component xử lý điều hướng khi người dùng gõ linh tinh (404)
 const NotFoundRedirect = () => {
@@ -87,6 +88,14 @@ function App() {
                 <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
                 <Route path="letter" element={<LetterRequest />} />
                 <Route path="leads" element={<Leads />} />
+
+                <Route
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'CONSULTANT']} />
+                  }
+                >
+                  <Route path="document-approval" element={<DocumentApproval />} />
+                </Route>
                 <Route
                   element={
                     <ProtectedRoute
@@ -116,6 +125,7 @@ function App() {
             >
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
+                <Route path="documents" element={<DocumentApproval />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />
                 <Route path="courses" element={<AdminCourses />} />
