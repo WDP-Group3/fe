@@ -35,7 +35,6 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
 import DocumentApproval from './pages/DocumentApproval';
 
-// Component xử lý điều hướng khi người dùng gõ linh tinh (404)
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
 
@@ -70,7 +69,6 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Student/Instructor/Consultant/Admin Portal */}
             <Route
               element={
                 <ProtectedRoute
@@ -129,13 +127,13 @@ function App() {
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />
                 <Route path="courses" element={<AdminCourses />} />
+                <Route path="payments" element={<Payments />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leads" element={<Leads />} />
               </Route>
             </Route>
 
-            {/* Global catch-all - Điều hướng thông minh theo role */}
             <Route path="*" element={<NotFoundRedirect />} />
           </Routes>
         </BrowserRouter>
