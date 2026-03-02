@@ -11,6 +11,8 @@ const navItems = [
     { label: 'Khóa học', to: '/admin/courses', icon: '📚' },
     { label: 'Thông báo', to: '/admin/notifications', icon: '📢' },
     { label: 'Báo cáo', to: '/admin/reports', icon: '📈' },
+    { label: 'Ứng viên', to: '/admin/leads', icon: '👤' },
+    { label: 'Duyệt đơn', to: '/admin/letter', icon: '📝' },
 ];
 
 const AdminLayout = () => {

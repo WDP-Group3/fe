@@ -20,7 +20,10 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import Feedback from './pages/Feedback';
+import Leads from './pages/Lead';
 import Profile from './pages/Profile';
+import LetterRequest from './pages/LetterRequest';
+import LetterRequestManagement from './pages/admin/LetterRequestManagement';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -81,7 +84,9 @@ function App() {
                 <Route path="enrollment" element={<Enrollment />} />
                 <Route path="payments" element={<Payments />} />
                 <Route path="schedule" element={<Schedule />} />
-
+                <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
+                <Route path="letter" element={<LetterRequest />} />
+                <Route path="leads" element={<Leads />} />
                 <Route
                   element={
                     <ProtectedRoute
@@ -112,9 +117,11 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<UserManagement />} />
+                <Route path="letter" element={<LetterRequestManagement />} />
                 <Route path="courses" element={<AdminCourses />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="leads" element={<Leads />} />
               </Route>
             </Route>
 

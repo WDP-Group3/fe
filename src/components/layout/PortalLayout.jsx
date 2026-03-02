@@ -17,11 +17,14 @@ const getNavItems = (userRole) => {
   const allItems = [
     { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
-    { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['STUDENT', 'CONSULTANT'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
-    { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT', 'GUEST'] },
+    { label: 'Thi thử', to: '/portal/exams', roles: ['STUDENT', 'GUEST'] },
     { label: 'Bài viết', to: '/blogs', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
-
+    { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
+    { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
+    { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
+    { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     // { label: 'Đặt lịch xe', to: '/portal/book-lesson', roles: ['STUDENT'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
     { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },

@@ -30,6 +30,7 @@ const ProtectedRoute = ({ requiredRole, allowedRoles, redirectTo }) => {
     ? role === requiredRole
     : (allowedRoles ? allowedRoles.includes(role) : true);
 
+  console.log("role", role);
   if (!isAuthorized) {
     // Nếu sai role, chuyển về dashboard của chính họ
     return <Navigate to={redirectTo || getDefaultPath(role)} replace />;
