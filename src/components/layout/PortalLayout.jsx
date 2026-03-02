@@ -4,29 +4,48 @@ import { Dropdown } from '../ui';
 import { Avatar } from '../common';
 import config from '../../config';
 
+// Navigation items shown when not logged in
+const PUBLIC_NAV_ITEMS = [
+  { label: 'Tổng quan', to: '/' },
+  { label: 'Khóa học', to: '/courses' },
+  { label: 'Thi thử', to: '/exams' },
+  { label: 'Bài viết', to: '/blogs' },
+];
+
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
     { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
-    { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Hồ sơ & đăng ký', to: '/portal/enrollment', roles: ['STUDENT', 'CONSULTANT'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Thi thử', to: '/portal/exams', roles: ['STUDENT', 'GUEST'] },
+    { label: 'Bài viết', to: '/blogs', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
-    { label: 'Thi thử', to: '/portal/exams', roles: ['ADMIN', 'STUDENT'] },
-    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT'] },
-    { label: 'Ứng viên', to: '/portal/leads', roles: ['ADMIN', 'INSTRUCTOR', 'CONSULTANT'] },
+    { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
     { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
-    { label: 'Duyệt đơn', to: '/portal/admin/letter', roles: ['ADMIN'] },
+    // { label: 'Đặt lịch xe', to: '/portal/book-lesson', roles: ['STUDENT'] },
+    { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
+    { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
+    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
   ];
 
-  if (!userRole) return allItems;
+  if (!userRole) return [];
   return allItems.filter(item => item.roles.includes(userRole));
 };
 
-const PortalLayout = () => {
+const PortalLayout = ({ children }) => {
   const { user, logout } = useAuthContext();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    navigate('/');
+    // Defer logout to ensure navigation to public route occurs before ProtectedRoute checks auth
+    setTimeout(() => {
+      logout();
+    }, 100);
+  };
 
   const userMenuItems = [
     {
@@ -36,10 +55,12 @@ const PortalLayout = () => {
     { divider: true },
     {
       label: 'Đăng xuất',
-      onClick: logout,
+      onClick: handleLogout,
       danger: true,
     },
   ];
+
+  const navItems = user ? getNavItems(user?.role) : PUBLIC_NAV_ITEMS;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
@@ -52,8 +73,8 @@ const PortalLayout = () => {
       )}
 
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link to="/portal/overview" className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
+          <Link to={user ? "/portal/overview" : "/"} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
             </div>
@@ -87,32 +108,33 @@ const PortalLayout = () => {
             )}
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2">
-            {getNavItems(user?.role).map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+        {(
+          <div className="border-t border-slate-100 bg-white">
+            <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-slate-600 hover:bg-slate-100'
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
+      <main className="mx-auto max-w-6xl px-4 py-8 xl:ml-64 xl:mr-64">
+        {children || <Outlet />}
       </main>
     </div>
   );
 };
 
 export default PortalLayout;
-

@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from '../services/axios';
 import Button from '../components/ui/Button';
+import { useAuthContext } from '../context/AuthContext';
 
 const ExamResult = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const { user } = useAuthContext();
+  const isGuest = id === 'guest';
+  const examsRoute = user ? '/portal/exams' : '/exams';
+  const examTakingRoute = user ? '/portal/exam-taking' : '/exam-taking';
+  const [result, setResult] = useState(isGuest ? location.state : null);
+  const [loading, setLoading] = useState(!isGuest);
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   useEffect(() => {
-    loadResult();
+    if (!isGuest) loadResult();
   }, [id]);
 
   const loadResult = async () => {
@@ -20,13 +26,12 @@ const ExamResult = () => {
       setLoading(true);
       const response = await axios.get(`/exam-results/${id}`);
       if (response.status === 'success') {
-        console.log(response)
         setResult(response.data);
       }
     } catch (error) {
       console.error('Error loading result:', error);
       alert('Không thể tải kết quả thi!');
-      navigate('/portal/exams');
+      navigate(examsRoute);
     } finally {
       setLoading(false);
     }
@@ -65,7 +70,7 @@ const ExamResult = () => {
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <p className="text-slate-600">Không tìm thấy kết quả thi!</p>
-          <Button onClick={() => navigate('/portal/exams')} className="mt-4">
+          <Button onClick={() => navigate(examsRoute)} className="mt-4">
             Quay lại
           </Button>
         </div>
@@ -84,11 +89,10 @@ const ExamResult = () => {
         <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-center">
             <div
-              className={`mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full text-4xl font-bold ${
-                isPassed
-                  ? 'bg-emerald-100 text-emerald-600'
-                  : 'bg-rose-100 text-rose-600'
-              }`}
+              className={`mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full text-4xl font-bold ${isPassed
+                ? 'bg-emerald-100 text-emerald-600'
+                : 'bg-rose-100 text-rose-600'
+                }`}
             >
               {result.score}
             </div>
@@ -123,15 +127,22 @@ const ExamResult = () => {
               </div>
             )}
 
-            <p className="mt-4 text-sm text-slate-500">
-              Hoàn thành lúc: {formatDate(result.createdAt)}
-            </p>
+            {result.createdAt && (
+              <p className="mt-4 text-sm text-slate-500">
+                Hoàn thành lúc: {formatDate(result.createdAt)}
+              </p>
+            )}
+            {isGuest && (
+              <p className="mt-4 text-sm text-indigo-600 font-medium">
+                💡 Đăng nhập để lưu lịch sử thi và ôn luyện câu sai!
+              </p>
+            )}
 
             <div className="mt-6 flex justify-center gap-4">
-              <Button variant="outline" onClick={() => navigate('/portal/exams')}>
+              <Button variant="outline" onClick={() => navigate(examsRoute)}>
                 Quay lại danh sách
               </Button>
-              <Button variant="primary" onClick={() => navigate('/portal/exam-taking')}>
+              <Button variant="primary" onClick={() => navigate(examTakingRoute)}>
                 Thi lại
               </Button>
             </div>
@@ -171,17 +182,15 @@ const ExamResult = () => {
                 return (
                   <div
                     key={item.questionNumber || index}
-                    className={`rounded-xl border-2 p-4 ${
-                      item.isCorrect
-                        ? 'border-emerald-200 bg-emerald-50'
-                        : 'border-rose-200 bg-rose-50'
-                    }`}
+                    className={`rounded-xl border-2 p-4 ${item.isCorrect
+                      ? 'border-emerald-200 bg-emerald-50'
+                      : 'border-rose-200 bg-rose-50'
+                      }`}
                   >
                     <div className="mb-3 flex items-start gap-3">
                       <span
-                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white ${
-                          item.isCorrect ? 'bg-emerald-600' : 'bg-rose-600'
-                        }`}
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white ${item.isCorrect ? 'bg-emerald-600' : 'bg-rose-600'
+                          }`}
                       >
                         {index + 1}
                       </span>
@@ -220,30 +229,27 @@ const ExamResult = () => {
                         return (
                           <div
                             key={option}
-                            className={`rounded-lg border-2 p-3 ${
-                              isCorrect
-                                ? 'border-emerald-500 bg-emerald-100'
-                                : isSelected
+                            className={`rounded-lg border-2 p-3 ${isCorrect
+                              ? 'border-emerald-500 bg-emerald-100'
+                              : isSelected
                                 ? 'border-rose-500 bg-rose-100'
                                 : 'border-slate-200 bg-white'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2">
                               <span
-                                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                                  isCorrect
-                                    ? 'bg-emerald-600 text-white'
-                                    : isSelected
+                                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${isCorrect
+                                  ? 'bg-emerald-600 text-white'
+                                  : isSelected
                                     ? 'bg-rose-600 text-white'
                                     : 'bg-slate-200 text-slate-600'
-                                }`}
+                                  }`}
                               >
                                 {option}
                               </span>
                               <span
-                                className={`text-sm ${
-                                  isCorrect ? 'font-bold text-emerald-900' : 'text-slate-700'
-                                }`}
+                                className={`text-sm ${isCorrect ? 'font-bold text-emerald-900' : 'text-slate-700'
+                                  }`}
                               >
                                 {item.options[option]}
                               </span>
@@ -277,96 +283,93 @@ const ExamResult = () => {
 
           {/* Hiển thị chỉ câu sai */}
           {!showAllQuestions && wrongQuestions.length > 0 && showWrongAnswers && (
-              <div className="space-y-6">
-                {wrongQuestions.map((item, index) => {
-                  return (
-                    <div
-                      key={item.questionNumber || index}
-                      className="rounded-xl border border-rose-200 bg-rose-50 p-4"
-                    >
-                      <div className="mb-3 flex items-start gap-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
-                          {index + 1}
-                        </span>
-                        <p className="flex-1 font-semibold text-slate-900">
-                          Câu {item.questionNumber}: {item.questionContent}
-                        </p>
-                      </div>
-
-                      {item.questionImage && (
-                        <div className="mb-3 flex justify-center">
-                          <img
-                            src={`https://taplai.com${item.questionImage}`}
-                            alt="Câu hỏi"
-                            className="max-h-48 rounded-lg border border-slate-200"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        {['A', 'B', 'C', 'D'].map(option => {
-                          if (!item.options?.[option]) return null;
-                          const isSelected = item.selectedAnswer === option;
-                          const isCorrect = item.correctAnswer === option;
-                          return (
-                            <div
-                              key={option}
-                              className={`rounded-lg border-2 p-3 ${
-                                isCorrect
-                                  ? 'border-emerald-500 bg-emerald-100'
-                                  : isSelected
-                                  ? 'border-rose-500 bg-rose-100'
-                                  : 'border-slate-200 bg-white'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                                    isCorrect
-                                      ? 'bg-emerald-600 text-white'
-                                      : isSelected
-                                      ? 'bg-rose-600 text-white'
-                                      : 'bg-slate-200 text-slate-600'
-                                  }`}
-                                >
-                                  {option}
-                                </span>
-                                <span
-                                  className={`text-sm ${
-                                    isCorrect ? 'font-bold text-emerald-900' : 'text-slate-700'
-                                  }`}
-                                >
-                                  {item.options[option]}
-                                </span>
-                                {isCorrect && (
-                                  <span className="ml-auto rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
-                                    Đáp án đúng
-                                  </span>
-                                )}
-                                {isSelected && !isCorrect && (
-                                  <span className="ml-auto rounded-full bg-rose-600 px-2 py-1 text-xs font-bold text-white">
-                                    Bạn chọn
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {item.explanation && (
-                        <div className="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3">
-                          <p className="text-xs font-semibold text-blue-900 mb-1">Giải thích:</p>
-                          <p className="text-sm text-blue-800">{item.explanation}</p>
-                        </div>
-                      )}
+            <div className="space-y-6">
+              {wrongQuestions.map((item, index) => {
+                return (
+                  <div
+                    key={item.questionNumber || index}
+                    className="rounded-xl border border-rose-200 bg-rose-50 p-4"
+                  >
+                    <div className="mb-3 flex items-start gap-3">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
+                        {index + 1}
+                      </span>
+                      <p className="flex-1 font-semibold text-slate-900">
+                        Câu {item.questionNumber}: {item.questionContent}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {item.questionImage && (
+                      <div className="mb-3 flex justify-center">
+                        <img
+                          src={`https://taplai.com${item.questionImage}`}
+                          alt="Câu hỏi"
+                          className="max-h-48 rounded-lg border border-slate-200"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      {['A', 'B', 'C', 'D'].map(option => {
+                        if (!item.options?.[option]) return null;
+                        const isSelected = item.selectedAnswer === option;
+                        const isCorrect = item.correctAnswer === option;
+                        return (
+                          <div
+                            key={option}
+                            className={`rounded-lg border-2 p-3 ${isCorrect
+                              ? 'border-emerald-500 bg-emerald-100'
+                              : isSelected
+                                ? 'border-rose-500 bg-rose-100'
+                                : 'border-slate-200 bg-white'
+                              }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${isCorrect
+                                  ? 'bg-emerald-600 text-white'
+                                  : isSelected
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-slate-200 text-slate-600'
+                                  }`}
+                              >
+                                {option}
+                              </span>
+                              <span
+                                className={`text-sm ${isCorrect ? 'font-bold text-emerald-900' : 'text-slate-700'
+                                  }`}
+                              >
+                                {item.options[option]}
+                              </span>
+                              {isCorrect && (
+                                <span className="ml-auto rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
+                                  Đáp án đúng
+                                </span>
+                              )}
+                              {isSelected && !isCorrect && (
+                                <span className="ml-auto rounded-full bg-rose-600 px-2 py-1 text-xs font-bold text-white">
+                                  Bạn chọn
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {item.explanation && (
+                      <div className="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                        <p className="text-xs font-semibold text-blue-900 mb-1">Giải thích:</p>
+                        <p className="text-sm text-blue-800">{item.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

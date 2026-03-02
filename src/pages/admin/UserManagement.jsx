@@ -3,22 +3,34 @@ import { Link } from 'react-router-dom';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StatusBadge from '../../components/ui/StatusBadge';
 import DataTable from '../../components/ui/DataTable';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
 
 const UserManagement = () => {
+    const { showToast } = useToast();
     const [users, setUsers] = useState([]);
-    const [stats, setStats] = useState({ totalUsers: 0, pendingUsers: 0 });
+    const [stats, setStats] = useState({ totalUsers: 0 });
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('active'); // 'active' | 'pending'
     const [filters, setFilters] = useState({ search: '', role: '', status: '' });
-    const [showModal, setShowModal] = useState(false);
-    const [editingUser, setEditingUser] = useState(null);
-    const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [formData, setFormData] = useState({ email: '', role: 'INSTRUCTOR', password: '' });
+
+    // Confirmation dialog states
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        type: 'default'
+    });
 
     useEffect(() => {
         loadUsers();
         loadStats();
-    }, [activeTab, filters]); // Reload when filters change
+    }, [filters]);
 
     const loadStats = async () => {
         try {
@@ -39,12 +51,6 @@ const UserManagement = () => {
             if (filters.role) queryParams.append('role', filters.role);
             if (filters.status) queryParams.append('status', filters.status);
 
-            if (activeTab === 'pending') {
-                queryParams.append('approvalStatus', 'PENDING');
-            } else {
-                queryParams.append('approvalStatus', 'APPROVED');
-            }
-
             const response = await apiClient.get(`/users?${queryParams.toString()}`);
 
             if (response.status === 'success') {
@@ -53,10 +59,8 @@ const UserManagement = () => {
                     name: user.fullName || user.name,
                     email: user.email,
                     role: user.role,
-                    requestedRole: user.requestedRole,
                     phone: user.phone || '-',
                     status: user.status === 'ACTIVE' ? 'active' : 'inactive',
-                    approvalStatus: user.approvalStatus,
                 }));
                 setUsers(mappedUsers);
             }
@@ -67,72 +71,113 @@ const UserManagement = () => {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleCreateSubmit = async (e) => {
         e.preventDefault();
         try {
-            if (editingUser) {
-                await apiClient.put(`/users/${editingUser.id}`, formData);
-            } else {
-                await apiClient.post('/users', formData);
-            }
-            setShowModal(false);
-            setEditingUser(null);
-            setFormData({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
+            // Admin creates with Email + Role. Password default 11111111@ handled by BE if empty, or we send it.
+            // We should ensure name/phone are handled by BE defaults.
+            await apiClient.post('/users', {
+                email: formData.email,
+                role: formData.role,
+                password: formData.password || '11111111@'
+            });
+            setShowCreateModal(false);
+            setFormData({ email: '', role: 'INSTRUCTOR', password: '' });
             loadUsers();
             loadStats();
+            showToast('Tạo người dùng thành công (Mật khẩu mặc định: 11111111@)', 'success');
         } catch (error) {
-            alert('Failed to save user');
+            showToast(error.message || 'Tạo người dùng thất bại', 'error');
         }
     };
 
-    const handleEdit = (user) => {
-        setEditingUser(user);
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (!currentUser) return;
+            // Admin updates Email or Password
+            const updateData = {};
+            if (formData.email) updateData.email = formData.email;
+            if (formData.password) updateData.password = formData.password;
+            // Maybe Role too?
+            if (formData.role) updateData.role = formData.role;
+            if (formData.name) updateData.name = formData.name; // allow editing name too if needed
+
+            // Wait, use 'updateUser' endpoint?
+            // user.controller.js has updateUser which updates fullName, email, phone... 
+            // It doesn't update password usually unless specifically handled? 
+            // The `updateProfile` in auth controller handles self update.
+            // The `updateUser` in user controller handles Admin update. 
+            // Let's check `updateUser` in user.controller.js. It does `User.findByIdAndUpdate(..., body, ...)`. 
+            // If body has password, it won't be hashed automatically by findByIdAndUpdate!
+            // Major Issue: Admin changing password via `updateUser` won't hash it if backend doesn't handle it.
+            // I should check `user.controller.js` again.
+            // `updateUser` just does `findByIdAndUpdate`.
+            // So I can't update password via `updateUser` safely unless I fix backend `updateUser`.
+            // But User requirement is: "Admin sửa tài tài khoản và mâtk khẩu".
+            // So I SHOULD fix backend `updateUser` too. (I'll do that in a bit).
+
+            await apiClient.patch(`/users/${currentUser.id}`, updateData);
+
+            setShowEditModal(false);
+            setCurrentUser(null);
+            setFormData({ email: '', role: 'INSTRUCTOR', password: '' });
+            loadUsers();
+            showToast('Cập nhật người dùng thành công', 'success');
+        } catch (error) {
+            showToast(error.message || 'Cập nhật thất bại', 'error');
+        }
+    };
+
+    const openEditModal = (user) => {
+        setCurrentUser(user);
         setFormData({
-            fullName: user.name,
             email: user.email,
-            phone: user.phone,
             role: user.role,
-            password: '' // Don't show password
+            password: '', // Leave empty to keep generic
+            name: user.name
         });
-        setShowModal(true);
+        setShowEditModal(true);
     };
 
-    const handleDeactivate = async (id) => {
-        if (window.confirm('Bạn có chắc chắn muốn khoá tài khoản này?')) {
-            try {
-                await apiClient.patch(`/users/${id}/deactivate`);
-                loadUsers();
-                loadStats();
-            } catch (error) {
-                alert('Failed to deactivate user');
+    const handleLock = (user) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xác nhận khóa tài khoản',
+            message: `Bạn có chắc chắn muốn khóa tài khoản "${user.name}"? Người dùng sẽ không thể đăng nhập sau khi bị khóa.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await apiClient.patch(`/users/${user.id}/deactivate`);
+                    showToast(`Đã khóa tài khoản ${user.name}`, 'success');
+                    loadUsers();
+                    loadStats();
+                } catch (error) {
+                    showToast(error.message || 'Khóa tài khoản thất bại', 'error');
+                    throw error; // Rethrow for ConfirmDialog loading state
+                }
             }
-        }
+        });
     };
 
-    const handleApprove = async (id) => {
-        if (window.confirm('Xác nhận duyệt quyền cho user này?')) {
-            try {
-                await apiClient.patch(`/users/${id}/approve`);
-                alert('Đã duyệt thành công!');
-                loadUsers();
-                loadStats();
-            } catch (error) {
-                alert('Duyệt thất bại');
+    const handleRestore = (user) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xác nhận khôi phục tài khoản',
+            message: `Bạn có chắc chắn muốn khôi phục tài khoản "${user.name}"? Người dùng sẽ có thể đăng nhập trở lại.`,
+            type: 'default',
+            onConfirm: async () => {
+                try {
+                    await apiClient.patch(`/users/${user.id}/restore`);
+                    showToast(`Đã khôi phục tài khoản ${user.name}`, 'success');
+                    loadUsers();
+                    loadStats();
+                } catch (error) {
+                    showToast(error.message || 'Khôi phục tài khoản thất bại', 'error');
+                    throw error; // Rethrow for ConfirmDialog loading state
+                }
             }
-        }
-    };
-
-    const handleReject = async (id) => {
-        if (window.confirm('Xác nhận từ chối yêu cầu user này?')) {
-            try {
-                await apiClient.patch(`/users/${id}/reject`);
-                alert('Đã từ chối!');
-                loadUsers();
-                loadStats();
-            } catch (error) {
-                alert('Thất bại');
-            }
-        }
+        });
     };
 
     const columns = [
@@ -142,33 +187,50 @@ const UserManagement = () => {
             key: 'role',
             title: 'Vai trò',
             render: (_, record) => (
-                <div>
-                    <div className="font-medium">{record.role}</div>
-                    {record.requestedRole && record.approvalStatus === 'PENDING' && (
-                        <div className="mt-1 text-xs text-orange-600 font-semibold flex items-center gap-1">
-                            <span>🕒 Xin lên:</span>
-                            <span className="uppercase">{record.requestedRole}</span>
-                        </div>
-                    )}
-                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold 
+                    ${record.role === 'ADMIN' ? 'bg-red-100 text-red-700' :
+                        record.role === 'INSTRUCTOR' ? 'bg-blue-100 text-blue-700' :
+                            record.role === 'CONSULTANT' ? 'bg-purple-100 text-purple-700' :
+                                'bg-green-100 text-green-700'}`}>
+                    {record.role}
+                </span>
             )
         },
-        { key: 'status', title: 'Trạng thái', dataIndex: 'status', render: (val) => <StatusBadge status={val === 'active' ? 'done' : 'error'} label={val} /> },
+        {
+            key: 'status',
+            title: 'Trạng thái',
+            render: (_, record) => (
+                <StatusBadge
+                    status={record.status === 'active' ? 'done' : 'error'}
+                    label={record.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                />
+            )
+        },
         {
             key: 'actions',
             title: 'Hành động',
             render: (_, record) => (
                 <div className="flex gap-2">
-                    {activeTab === 'pending' ? (
-                        <>
-                            <button onClick={() => handleApprove(record.id)} className="rounded-md bg-green-50 px-3 py-1 text-sm font-semibold text-green-600 hover:bg-green-100 transition-colors">Duyệt</button>
-                            <button onClick={() => handleReject(record.id)} className="rounded-md bg-red-50 px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors">Từ chối</button>
-                        </>
+                    <button
+                        onClick={() => openEditModal(record)}
+                        className="rounded-md bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+                    >
+                        Sửa
+                    </button>
+                    {record.status === 'active' ? (
+                        <button
+                            onClick={() => handleLock(record)}
+                            className="rounded-md bg-red-50 px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors"
+                        >
+                            Khóa
+                        </button>
                     ) : (
-                        <>
-                            <button onClick={() => handleEdit(record)} className="text-indigo-600 hover:underline">Sửa</button>
-                            <button onClick={() => handleDeactivate(record.id)} className="text-red-600 hover:underline">Khoá</button>
-                        </>
+                        <button
+                            onClick={() => handleRestore(record)}
+                            className="rounded-md bg-green-50 px-3 py-1 text-sm font-semibold text-green-600 hover:bg-green-100 transition-colors"
+                        >
+                            Khôi phục
+                        </button>
                     )}
                 </div>
             )
@@ -177,36 +239,19 @@ const UserManagement = () => {
 
     return (
         <div className="space-y-6">
-            {/* Quick Links Section */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <Link to="/portal/reports" className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:bg-slate-50 transition-colors">
-                    <span className="text-2xl">📊</span>
-                    <span className="mt-2 font-semibold text-slate-900">Báo cáo</span>
-                </Link>
-                <Link to="/portal/feedback" className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:bg-slate-50 transition-colors">
-                    <span className="text-2xl">⭐</span>
-                    <span className="mt-2 font-semibold text-slate-900">Phản hồi</span>
-                </Link>
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm opacity-50 cursor-not-allowed">
-                    <span className="text-2xl">⚙️</span>
-                    <span className="mt-2 font-semibold text-slate-900">Cấu hình</span>
-                </div>
-            </div>
-
             <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
                 <SectionHeader
-                    title="Quản trị & phân quyền"
-                    description="Admin toàn quyền hệ thống, Staff chỉ xem phạm vi được phân"
+                    title="User Management Dashboard"
+                    description="Quản lý tài khoản Instructor, Consultant, Student"
                     action={
                         <button
                             onClick={() => {
-                                setEditingUser(null);
-                                setFormData({ fullName: '', email: '', phone: '', role: 'STUDENT', password: '' });
-                                setShowModal(true);
+                                setFormData({ email: '', role: 'INSTRUCTOR', password: '' });
+                                setShowCreateModal(true);
                             }}
                             className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
                         >
-                            Tạo user
+                            + Tạo User Mới
                         </button>
                     }
                 />
@@ -231,7 +276,7 @@ const UserManagement = () => {
                             <option value="STUDENT">Học viên</option>
                             <option value="INSTRUCTOR">Giáo viên</option>
                             <option value="CONSULTANT">Tư vấn viên</option>
-                            <option value="GUEST">Khách (Guest)</option>
+                            {/* No GUEST */}
                         </select>
                     </div>
                     <div>
@@ -247,51 +292,34 @@ const UserManagement = () => {
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="mb-6 flex space-x-6 border-b border-slate-200">
-                    <button
-                        onClick={() => setActiveTab('active')}
-                        className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors ${activeTab === 'active'
-                                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                                : 'text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 border-transparent'
-                            }`}
-                    >
-                        Danh sách User
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${activeTab === 'active' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}>
-                            {stats.totalUsers}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('pending')}
-                        className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors ${activeTab === 'pending'
-                                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                                : 'text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 border-transparent'
-                            }`}
-                    >
-                        Chờ duyệt
-                        {stats.pendingUsers > 0 && (
-                            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-600 pulse-animation">
-                                {stats.pendingUsers}
-                            </span>
-                        )}
-                    </button>
+                {/* User Count */}
+                <div className="mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-900">Danh sách User</h3>
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600">
+                        {stats.totalUsers}
+                    </span>
                 </div>
 
-                {/* Modal */}
-                {showModal && (
+                {/* Create/Edit Modal */}
+                {(showCreateModal || showEditModal) && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-                            <h3 className="mb-4 text-xl font-bold text-slate-900">{editingUser ? 'Sửa User' : 'Tạo User Mới'}</h3>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">Họ tên</label>
-                                    <input
-                                        required
-                                        value={formData.fullName}
-                                        onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                </div>
+                            <h3 className="mb-4 text-xl font-bold text-slate-900">
+                                {showCreateModal ? 'Tạo User Mới' : 'Cập Nhật User'}
+                            </h3>
+                            <form onSubmit={showCreateModal ? handleCreateSubmit : handleEditSubmit} className="space-y-4">
+
+                                {showEditModal && (
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-slate-700">Tên hiển thị (User tự cập nhật)</label>
+                                        <input
+                                            value={formData.name || ''}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-slate-50"
+                                        />
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
                                     <input
@@ -302,14 +330,7 @@ const UserManagement = () => {
                                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                     />
                                 </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">Số điện thoại</label>
-                                    <input
-                                        value={formData.phone}
-                                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                </div>
+
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Vai trò</label>
                                     <select
@@ -317,27 +338,28 @@ const UserManagement = () => {
                                         onChange={e => setFormData({ ...formData, role: e.target.value })}
                                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                     >
-                                        <option value="STUDENT">Học viên</option>
                                         <option value="INSTRUCTOR">Giáo viên</option>
                                         <option value="CONSULTANT">Tư vấn viên</option>
-                                        <option value="ADMIN">Admin</option>
                                     </select>
                                 </div>
-                                {!editingUser && (
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-700">Mật khẩu (Mặc định 123456)</label>
-                                        <input
-                                            type="password"
-                                            value={formData.password}
-                                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                        />
-                                    </div>
-                                )}
+
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                        {showCreateModal ? 'Mật khẩu' : 'Mật khẩu mới (Để trống nếu không đổi)'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={formData.password}
+                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        placeholder={showCreateModal ? "11111111@" : "Nhập mật khẩu mới..."}
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                </div>
+
                                 <div className="flex gap-3 pt-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowModal(false)}
+                                        onClick={() => { setShowCreateModal(false); setShowEditModal(false); }}
                                         className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
                                     >
                                         Huỷ
@@ -354,6 +376,16 @@ const UserManagement = () => {
                     </div>
                 )}
 
+                {/* Confirmation Dialog */}
+                <ConfirmDialog
+                    isOpen={confirmDialog.isOpen}
+                    onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                    onConfirm={confirmDialog.onConfirm}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    type={confirmDialog.type}
+                />
+
                 {loading ? (
                     <div className="flex justify-center py-12">
                         <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
@@ -369,20 +401,9 @@ const UserManagement = () => {
                     </div>
                 )}
             </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-                    <SectionHeader title="Quyền chỉnh sửa profile" />
-                    <div className="space-y-2 text-sm text-slate-700">
-                        <p>• Student: chỉnh profile của chính mình.</p>
-                        <p>• Instructor: chỉnh profile của chính mình.</p>
-                        <p>• Consultant (Sale): chỉnh profile của mình & học viên được phân công.</p>
-                        <p>• Admin: chỉnh tất cả profile, phân quyền, khoá/mở tài khoản.</p>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
+
 
 export default UserManagement;

@@ -1,150 +1,82 @@
-import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-
-import { Carousel, DatePicker } from '../components/ui';
+import { Link } from 'react-router-dom';
+import { Carousel, Button } from '../components/ui';
 import StatCard from '../components/ui/StatCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
-import { courses as mockCourses, sessions } from '../data/mockData';
-import { formatCurrency } from '../utils/formatters';
-import axiosInstance from '../services/axios';
-import { useToast } from '../context/ToastContext';
+import { sessions } from '../data/mockData';
+import apiClient from '../services/apiClient';
+import PortalLayout from '../components/layout/PortalLayout';
 
 const Landing = () => {
-  const [banners, setBanners] = useState([]);
-  const [courses, setCourses] = useState(mockCourses);
-  const [coursesList, setCoursesList] = useState([]);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    course: '',
-    timeToCall: '',
-    note: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { showToast } = useToast();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+
 
   useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const response = await axiosInstance.get('/banners');
-        console.log(response);
-        if (response.status === 'success' && response.data.length > 0) {
-          const formattedBanners = response.data.map(banner => ({
-            id: banner._id,
-            image: banner.image,
-            title: banner.title,
-            description: banner.description,
-            button: banner.link ? {
-              label: 'Xem ngay',
-              onClick: () => window.location.href = banner.link
-            } : null,
-          }));
-          setBanners(formattedBanners);
-        } else {
-          // Fallback to default banners if no data in DB
-          setBanners([
-            {
-              id: 'default-1',
-              image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200',
-              title: 'Khóa học lái xe B2 - Ưu đãi đặc biệt',
-              description: 'Giảm 500.000đ cho 50 học viên đầu tiên đăng ký trong tháng này',
-              button: { label: 'Đăng ký ngay', onClick: () => window.location.href = '/register' },
-            },
-            {
-              id: 'default-2',
-              image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
-              title: 'Thi thử 600 câu miễn phí',
-              description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
-              button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
-            },
-            {
-              id: 'default-3',
-              image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
-              title: 'Hỗ trợ học phí linh hoạt',
-              description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
-              button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
-            },
-          ]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch banners:', error);
-        // Fallback on error
-        setBanners([
-          {
-            id: 'default-1',
-            image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200',
-            title: 'Khóa học lái xe B2 - Ưu đãi đặc biệt',
-            description: 'Giảm 500.000đ cho 50 học viên đầu tiên đăng ký trong tháng này',
-            button: { label: 'Đăng ký ngay', onClick: () => window.location.href = '/register' },
-          },
-          {
-            id: 'default-2',
-            image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
-            title: 'Thi thử 600 câu miễn phí',
-            description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
-            button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
-          },
-          {
-            id: 'default-3',
-            image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
-            title: 'Hỗ trợ học phí linh hoạt',
-            description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
-            button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
-          },
-        ]);
-      }
-    };
-
-    const fetchCourses = async () => {
-      try {
-        const response = await axiosInstance.get('/courses');
-        if (response.status === 'success' && response.data.length > 0) {
-          setCoursesList(response.data);
-          setFormData(prev => ({ ...prev, course: response.data[0]._id }));
-        }
-      } catch (error) {
-        console.error('Failed to fetch courses:', error);
-      }
-    };
-
-    fetchBanners();
-    fetchCourses();
+    loadCourses();
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.course) {
-      showToast('Vui lòng điền các trường bắt buộc (*)', 'error');
-      return;
-    }
-
-    setIsSubmitting(true);
+  const loadCourses = async () => {
     try {
-      await axiosInstance.post('/leads', formData);
-      showToast('Gửi yêu cầu tư vấn thành công!', 'success');
-      setFormData({
-        name: '',
-        phone: '',
-        course: coursesList[0]?._id || '',
-        timeToCall: '',
-        note: ''
-      });
-    } catch (error) {
-      showToast(error.message || 'Có lỗi xảy ra, vui lòng thử lại.', 'error');
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.get("/courses");
+      if (response.status === "success") {
+        const mappedCourses = (response.data || []).map((course) => ({
+          ...course,
+          id: course._id,   // dùng cho internal
+          code: course.code, // dùng cho URL
+          // Ensure feePayments exists
+          feePayments: course.feePayments || [],
+          // Map for UI display if needed, but we use raw data for editing
+          displayLocation: Array.isArray(course.location)
+            ? course.location.join(", ")
+            : course.location,
+        }));
+        setCourses(mappedCourses);
+      }
+    } catch (err) {
+      console.error("Error loading courses:", err);
+      setError(err.message);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
+
+  const scrollToConsultForm = () => {
+    const element = document.getElementById('consult-form');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const banners = [
+    {
+      image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200',
+      title: 'Khóa học lái xe B2 - Ưu đãi đặc biệt',
+      description: 'Giảm 500.000đ cho 50 học viên đầu tiên đăng ký trong tháng này',
+      button: { label: 'Đăng ký ngay', onClick: () => window.location.href = '/register' },
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
+      title: 'Thi thử 600 câu miễn phí',
+      description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
+      button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
+      title: 'Hỗ trợ học phí linh hoạt',
+      description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
+      button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50">
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-10">
+    <PortalLayout>
+      <div className="pb-16 pt-2">
         {/* Banner Carousel */}
         <div className="mb-10">
           <Carousel items={banners} autoPlay interval={2000} showDots showArrows />
@@ -165,14 +97,14 @@ const Landing = () => {
                 to="/portal/overview"
                 className="rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5"
               >
-                Vào portal quản lý
+                Bắt đầu ngay
               </Link>
-              <a
-                href="#consult-form"
+              <button
+                onClick={scrollToConsultForm}
                 className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:border-indigo-200 hover:text-indigo-700"
               >
                 Nhận tư vấn miễn phí
-              </a>
+              </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <StatCard title="Học viên đang học" value="180" delta="+12 so với tuần trước" />
@@ -220,125 +152,74 @@ const Landing = () => {
           </div>
         </div>
 
-        <div className="mt-14 rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader
-            title="Khóa học & học phí"
-            description="Công khai học phí, lịch khai giảng, phụ phí"
-            action={<Link to="/portal/courses" className="text-sm font-semibold text-indigo-700">Xem chi tiết →</Link>}
-          />
-          <div className="grid gap-4 md:grid-cols-3">
-            {courses.map((course) => (
-              <div key={course.id} className="rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase text-indigo-600">{course.id}</p>
-                  <StatusBadge status="done" label="Nhận hồ sơ" />
-                </div>
-                <p className="mt-2 text-lg font-semibold text-slate-900">{course.name}</p>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(course.price)}</p>
-                <p className="text-xs text-slate-500">Học phí chia đợt</p>
-                <ul className="mt-2 space-y-1 text-sm text-slate-700">
-                  {course.installments.map((item) => (
-                    <li key={item}>• {item}</li>
-                  ))}
-                </ul>
-                <div className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
-                  <p className="font-semibold text-indigo-700">Khai giảng</p>
-                  <p className="text-xs text-slate-500">{course.startDates.join(' · ')}</p>
-                  <p className="text-xs text-slate-500">Thời lượng: {course.duration}</p>
-                </div>
-                <div className="mt-2 space-y-1 text-xs text-slate-600">
-                  {course.perks.map((perk) => (
-                    <div key={perk} className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                      {perk}
-                    </div>
-                  ))}
-                </div>
-                <button className="mt-4 w-full rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-                  Đăng ký tư vấn
-                </button>
-              </div>
-            ))}
-          </div>
+
+        <div className="mt-14 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-8 shadow-sm text-center">
+          <p className="text-xs font-semibold uppercase text-indigo-500 tracking-wider mb-2">Khóa học & Học phí</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            Công khai học phí, lịch khai giảng, phụ phí
+          </h2>
+          <p className="text-slate-500 mb-6 text-sm max-w-md mx-auto">
+            Xem đầy đủ các khóa học, chi tiết học phí từng đợt và lịch khai giảng mới nhất của trung tâm.
+          </p>
+          <Link
+            to="/portal/courses"
+            className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+          >
+            Xem tất cả khóa học →
+          </Link>
         </div>
 
-        <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr] ">
-          <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-100  bg-white p-6 shadow-sm space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">Đặt lịch tư vấn nhanh</h3>
-              <p className="text-sm text-slate-600">Hẹn giờ gọi điện, tự động gửi SMS nhắc</p>
-            </div>
 
-            <div>
-              <label className="text-sm font-medium text-slate-700">Họ tên *</label>
-              <input
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                placeholder="Nhập họ tên"
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+        <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr]">
+          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+            <SectionHeader
+              title="Đặt lịch tư vấn nhanh"
+              description="Hẹn giờ gọi điện, tự động gửi SMS nhắc"
+            />
+            <form className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-700">Số điện thoại *</label>
+                <label className="text-sm font-medium text-slate-700">Họ tên *</label>
                 <input
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  placeholder="0912 xxx xxx"
+                  placeholder="Nhập họ tên"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Chọn khóa *</label>
-                <select
-                  name="course"
-                  value={formData.course}
-                  onChange={handleInputChange}
-                  required
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                >
-                  <option value="" disabled>Chọn khóa học</option>
-                  {coursesList.map((c) => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                  {coursesList.length === 0 && (
-                    <option value="" disabled>Không có khóa học nào</option>
-                  )}
-                </select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Số điện thoại *</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                    placeholder="0912 xxx xxx"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Chọn khóa</label>
+                  <select className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+                    {courses.map((c) => (
+                      <option key={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
-            <div>
-              <DatePicker
-                label="Ngày hẹn gọi tư vấn"
-                name="timeToCall"
-                value={formData.timeToCall}
-                onChange={(e) => setFormData(prev => ({ ...prev, timeToCall: e.target.value }))}
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Lưu ý</label>
-              <input
-                name="note"
-                value={formData.note}
-                onChange={handleInputChange}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                placeholder="Nhập lưu ý"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-full rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              {isSubmitting ? 'Đạng gửi...' : 'Gửi yêu cầu tư vấn'}
-            </button>
-            <p className="text-xs text-slate-500">Chúng tôi sẽ gọi trong vòng 30 phút giờ hành chính.</p>
-          </form>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Thời gian gọi</label>
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                  placeholder="Ví dụ: Sau 18h, ưu tiên thứ 3"
+                />
+              </div>
+              <button
+                type="button"
+                className="w-full rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm"
+                onClick={() => {
+                  // Cần call đến BE để tạo yêu cầu tư vấn
+                }}
+              >
+                Gửi yêu cầu tư vấn
+              </button>
+              <p className="text-xs text-slate-500">Chúng tôi sẽ gọi trong vòng 30 phút giờ hành chính.</p>
+            </form>
+          </div>
           <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Luật & blog" description="Thông tin chính thống, cập nhật liên tục" />
             <div className="space-y-3">
@@ -360,9 +241,8 @@ const Landing = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PortalLayout >
   );
 };
 
 export default Landing;
-

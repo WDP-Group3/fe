@@ -23,6 +23,9 @@ const Leads = () => {
     });
 
     useEffect(() => {
+        console.log(123);
+    }, []);
+    useEffect(() => {
         // Chỉ load danh sách consultants nếu là ADMIN hoặc các role có quyền gán
         if (currentUser?.role === 'ADMIN') {
             loadConsultants();
@@ -163,8 +166,8 @@ const Leads = () => {
             render: (status, record) => (
                 <select
                     className={`rounded-full px-3 py-1 text-xs font-semibold focus:outline-none border-0 shadow-sm ${status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                            status === 'contacted' ? 'bg-emerald-50 text-emerald-700' :
-                                'bg-slate-100 text-slate-600'
+                        status === 'contacted' ? 'bg-emerald-50 text-emerald-700' :
+                            'bg-slate-100 text-slate-600'
                         }`}
                     value={status}
                     onChange={(e) => handleUpdateStatus(record._id, e.target.value)}
@@ -261,7 +264,7 @@ const Leads = () => {
 
                             {/* Pagination Controls */}
                             {pagination.totalPages > 1 && (
-                                <div className="mt-6 flex items-center justify-center gap-2">
+                                <div className="mt-6 flex items-center justify-end gap-2">
                                     <button
                                         disabled={currentPage === 1}
                                         onClick={() => setCurrentPage(p => p - 1)}

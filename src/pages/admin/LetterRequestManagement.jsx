@@ -4,12 +4,21 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import StatusBadge from '../../components/ui/StatusBadge';
 import DataTable from '../../components/ui/DataTable';
 import apiClient from '../../services/apiClient';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const LetterRequestManagement = () => {
     const { showToast } = useToast();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null); // ID of request being updated
+    const [confirmConfig, setConfirmConfig] = useState({
+        isOpen: false,
+        id: null,
+        status: null,
+        title: '',
+        message: '',
+        variant: 'success'
+    });
 
     useEffect(() => {
         loadRequests();
@@ -36,6 +45,7 @@ const LetterRequestManagement = () => {
             const response = await apiClient.put(`/requests/${id}/status`, { status });
             if (response.status === 'success') {
                 showToast(`Đã ${status === 'APPROVED' ? 'duyệt' : 'từ chối'} yêu cầu`, 'success');
+                setConfirmConfig(prev => ({ ...prev, isOpen: false }));
                 loadRequests();
             }
         } catch (err) {
@@ -44,6 +54,18 @@ const LetterRequestManagement = () => {
         } finally {
             setActionLoading(null);
         }
+    };
+
+    const openConfirm = (id, status) => {
+        const isApprove = status === 'APPROVED';
+        setConfirmConfig({
+            isOpen: true,
+            id,
+            status,
+            title: isApprove ? 'Xác nhận duyệt' : 'Xác nhận từ chối',
+            message: `Bạn có chắc chắn muốn ${isApprove ? 'phê duyệt' : 'từ chối'} yêu cầu này không?`,
+            variant: isApprove ? 'success' : 'danger'
+        });
     };
 
     const columns = [
@@ -110,14 +132,14 @@ const LetterRequestManagement = () => {
                 record.status === 'PENDING' ? (
                     <div className="flex gap-2">
                         <button
-                            onClick={() => handleUpdateStatus(record._id, 'APPROVED')}
+                            onClick={() => openConfirm(record._id, 'APPROVED')}
                             disabled={actionLoading === record._id}
                             className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                         >
                             Duyệt
                         </button>
                         <button
-                            onClick={() => handleUpdateStatus(record._id, 'REJECTED')}
+                            onClick={() => openConfirm(record._id, 'REJECTED')}
                             disabled={actionLoading === record._id}
                             className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition-colors disabled:opacity-50"
                         >
@@ -125,7 +147,9 @@ const LetterRequestManagement = () => {
                         </button>
                     </div>
                 ) : (
-                    <span className="text-xs text-slate-400 italic">Đã xử lý</span>
+                    <span className={`text-xs font-medium italic ${record.status === 'APPROVED' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {record.status === 'APPROVED' ? 'Đã duyệt' : 'Đã từ chối'}
+                    </span>
                 )
             )
         },
@@ -152,6 +176,16 @@ const LetterRequestManagement = () => {
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={confirmConfig.isOpen}
+                onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => handleUpdateStatus(confirmConfig.id, confirmConfig.status)}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                variant={confirmConfig.variant}
+                loading={actionLoading === confirmConfig.id}
+            />
         </div>
     );
 };

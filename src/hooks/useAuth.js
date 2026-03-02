@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocalStorage } from './index';
 import apiClient from '../services/apiClient';
 import { STORAGE_KEYS } from '../constants';
