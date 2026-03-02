@@ -15,9 +15,10 @@ import Notifications from './pages/Notifications';
 import Reports from './pages/admin/Reports';
 import UserManagement from './pages/admin/UserManagement';
 import Feedback from './pages/Feedback';
-import Admin from './pages/Admin';
 import Leads from './pages/Lead';
 import Profile from './pages/Profile';
+import LetterRequest from './pages/LetterRequest';
+import LetterRequestManagement from './pages/admin/LetterRequestManagement';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -48,6 +49,8 @@ function App() {
               <Route path="reports" element={<ProtectedRoute requiredRole="ADMIN"><Reports /></ProtectedRoute>} />
               <Route path="feedback" element={<Feedback />} />
               <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
+              <Route path="admin/letter" element={<ProtectedRoute requiredRole="ADMIN"><LetterRequestManagement /></ProtectedRoute>} />
+              <Route path="letter" element={<LetterRequest />} />
               <Route path="profile" element={<Profile />} />
               <Route path="profile/:id" element={<Profile />} />
             </Route>
