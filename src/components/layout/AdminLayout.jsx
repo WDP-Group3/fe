@@ -1,15 +1,15 @@
 
-import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import { Dropdown } from '../ui';
 import { Avatar } from '../common';
 
-// Admin specific navigation
 const navItems = [
     { label: 'Tổng quan', to: '/admin', icon: '📊' },
     { label: 'Duyệt hồ sơ', to: '/admin/documents', icon: '✅' },
     { label: 'Người dùng', to: '/admin/users', icon: '👥' },
     { label: 'Khóa học', to: '/admin/courses', icon: '📚' },
+    { label: 'Học phí', to: '/admin/payments', icon: '💳' },
     { label: 'Thông báo', to: '/admin/notifications', icon: '📢' },
     { label: 'Báo cáo', to: '/admin/reports', icon: '📈' },
     { label: 'Ứng viên', to: '/admin/leads', icon: '👤' },
@@ -35,7 +35,6 @@ const AdminLayout = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar */}
             <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white shadow-xl transition-transform duration-300">
                 <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-800">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white font-bold shadow-md">
@@ -49,7 +48,7 @@ const AdminLayout = () => {
                         <NavLink
                             key={item.to}
                             to={item.to}
-                            end={item.to === '/admin'} // Exact match for root admin
+                            end={item.to === '/admin'}
                             className={({ isActive }) =>
                                 `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${isActive
                                     ? 'bg-indigo-600 text-white shadow-md'
@@ -85,7 +84,6 @@ const AdminLayout = () => {
                 </div>
             </aside>
 
-            {/* Main Content */}
             <main className="ml-64 flex-1 p-8">
                 <Outlet />
             </main>
