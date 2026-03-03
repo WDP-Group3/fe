@@ -85,7 +85,7 @@ const Courses = () => {
             <p>Chưa có khóa học nào</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 mt-4">
             {courses.map((course) => (
               <div
                 key={course.id}
@@ -97,7 +97,15 @@ const Courses = () => {
                     {course.code}
                   </p>
                 </div>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
+                {/* Course Image */}
+                <div className="mt-3 overflow-hidden rounded-xl bg-slate-100">
+                  <img
+                    src={course.image}
+                    alt={course.name}
+                    className="w-full h-48 object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+                <p className="mt-3 text-lg font-semibold text-slate-900">
                   {course.name}
                 </p>
                 <div className="flex items-baseline gap-2">

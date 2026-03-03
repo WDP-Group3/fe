@@ -13,6 +13,7 @@ const navItems = [
     { label: 'Báo cáo', to: '/admin/reports', icon: '📈' },
     { label: 'Ứng viên', to: '/admin/leads', icon: '👤' },
     { label: 'Duyệt đơn', to: '/admin/letter', icon: '📝' },
+    { label: 'Bài viết', to: '/admin/blogs', icon: '✍️' }
 ];
 
 const AdminLayout = () => {
