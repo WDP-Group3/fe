@@ -18,6 +18,8 @@ const AdminCourses = () => {
   const [assigningCourse, setAssigningCourse] = useState(null);
   const [students, setStudents] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [participants, setParticipants] = useState([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignForm, setAssignForm] = useState({
     studentId: "",
@@ -234,25 +236,24 @@ const AdminCourses = () => {
       setAssigningCourse(course);
       setShowAssignModal(true);
       setAssignLoading(true);
-      setAssignForm({
-        studentId: "",
-        batchId: "",
-        status: "PROCESSING",
-        paymentPlanType: "INSTALLMENT",
-      });
+      setParticipantsLoading(true);
+      setAssignForm({ studentId: "", batchId: "", status: "PROCESSING", paymentPlanType: "INSTALLMENT" });
 
-      const [studentRes, batchRes] = await Promise.all([
+      const [studentRes, batchRes, participantRes] = await Promise.all([
         apiClient.get("/users?role=STUDENT&status=ACTIVE"),
         apiClient.get(`/batches?courseId=${course._id}&status=OPEN`),
+        apiClient.get(`/registrations/course/${course._id}/participants`),
       ]);
 
       setStudents(studentRes?.data || []);
       setBatches(batchRes?.data || []);
+      setParticipants(participantRes?.data || []);
     } catch (openError) {
       console.error(openError);
       showToast("Không tải được danh sách học viên/lớp học");
     } finally {
       setAssignLoading(false);
+      setParticipantsLoading(false);
     }
   };
 
@@ -272,8 +273,9 @@ const AdminCourses = () => {
         paymentPlanType: assignForm.paymentPlanType,
         registerMethod: "CONSULTANT",
       });
-      showToast("Gán khóa học cho học viên thành công");
-      setShowAssignModal(false);
+      const participantRes = await apiClient.get(`/registrations/course/${assigningCourse?._id}/participants`);
+      setParticipants(participantRes?.data || []);
+      alert("Gán khóa học cho học viên thành công");
     } catch (assignError) {
       console.error(assignError);
       showToast(assignError.message || "Gán học viên thất bại");
@@ -841,6 +843,26 @@ const AdminCourses = () => {
                   </option>
                   <option value="FULL">Đóng 1 lần</option>
                 </select>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-3">
+                <p className="mb-2 text-sm font-semibold text-slate-800">Học viên đã tham gia khóa này</p>
+                {participantsLoading ? (
+                  <p className="text-xs text-slate-500">Đang tải danh sách học viên...</p>
+                ) : participants.length === 0 ? (
+                  <p className="text-xs text-slate-500">Chưa có học viên nào tham gia.</p>
+                ) : (
+                  <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                    {participants.map((p) => (
+                      <div key={p._id} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
+                        <p className="font-semibold">{p?.studentId?.fullName || '—'} · {p?.studentId?.phone || '—'}</p>
+                        <p className="text-slate-500">
+                          {p?.batchId?.location || '—'} · {p?.status || 'NEW'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
@@ -38,16 +38,38 @@ const Payments = () => {
     note: '',
   });
 
+  const [qrForm, setQrForm] = useState({
+    amount: '',
+    orderInfo: '',
+  });
+  const [creatingQr, setCreatingQr] = useState(false);
+  const [paymentQrUrl, setPaymentQrUrl] = useState('');
+  const [paymentTransferContent, setPaymentTransferContent] = useState('');
+  const [selectedRegistrationForQr, setSelectedRegistrationForQr] = useState('');
+  const [currentTransactionId, setCurrentTransactionId] = useState('');
+  const [transactionStatus, setTransactionStatus] = useState('idle');
+  const [transactions, setTransactions] = useState([]);
+  const pollRef = useRef(null);
+
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+      }
+    };
   }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsResponse, tuitionResponse] = await Promise.all([
+      const [paymentsResponse, tuitionResponse, transactionResponse] = await Promise.all([
         apiClient.get('/payments'),
         apiClient.get('/payments/tuition-info'),
+        apiClient.get('/payments/transactions'),
       ]);
 
       if (paymentsResponse.status === 'success') {
@@ -70,6 +92,10 @@ const Payments = () => {
         if (aiRes.status === 'success') {
           setAiSuggestion(aiRes.data);
         }
+      }
+
+      if (transactionResponse.status === 'success') {
+        setTransactions(transactionResponse.data || []);
       }
     } catch (err) {
       console.error('Error loading payments:', err);
@@ -175,6 +201,91 @@ const Payments = () => {
     } catch (error) {
       console.error(error);
       alert(error.message || 'Xóa giao dịch thất bại');
+    }
+  };
+
+  const startPollingTransaction = (transactionId) => {
+    if (!transactionId) return;
+
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+    }
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const statusRes = await apiClient.get(`/payments/transaction-status/${transactionId}`);
+        const paymentStatus = statusRes?.data?.paymentStatus || 'pending';
+        setTransactionStatus(paymentStatus);
+
+        if (paymentStatus === 'completed') {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          await loadData();
+          alert('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí.');
+        }
+      } catch (e) {
+        // ignore single polling errors
+      }
+    }, 5000);
+  };
+
+  const handleCreateQr = async (e) => {
+    e.preventDefault();
+
+    if (!qrForm.amount || Number(qrForm.amount) <= 0) {
+      alert('Vui lòng nhập số tiền hợp lệ');
+      return;
+    }
+
+    try {
+      setCreatingQr(true);
+      setPaymentQrUrl('');
+      setPaymentTransferContent('');
+      setCurrentTransactionId('');
+      setTransactionStatus('pending');
+
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+      }
+
+      const response = await apiClient.post('/payments/create-qr', {
+        vnp_Amount: Number(qrForm.amount),
+        vnp_OrderInfo: qrForm.orderInfo || `Thanh toan hoc phi ${new Date().toLocaleDateString('vi-VN')}`,
+        user: user?.id,
+        registrationId: selectedRegistrationForQr || undefined,
+      });
+
+      const qrUrl = response?.data?.paymentUrl || response?.paymentUrl || '';
+      const transferContent = response?.data?.transferContent || '';
+      const transactionId = response?.data?.transactionId || '';
+
+      if (qrUrl) {
+        setPaymentQrUrl(qrUrl);
+        setPaymentTransferContent(transferContent);
+        setCurrentTransactionId(transactionId);
+        startPollingTransaction(transactionId);
+      } else {
+        alert('Đã tạo QR nhưng không đọc được đường dẫn thanh toán.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error.message || 'Tạo QR thanh toán thất bại');
+    } finally {
+      setCreatingQr(false);
+    }
+  };
+
+  const handleConfirmTransaction = async (transactionId) => {
+    try {
+      await apiClient.patch(`/payments/transactions/${transactionId}/confirm`, {});
+      if (currentTransactionId === transactionId) {
+        setTransactionStatus('completed');
+      }
+      await loadData();
+      alert('Đã xác nhận giao dịch thành công');
+    } catch (error) {
+      console.error(error);
+      alert(error.message || 'Xác nhận giao dịch thất bại');
     }
   };
 
@@ -292,19 +403,90 @@ const Payments = () => {
       </div>
 
       {isStudent && (
-        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader title="Gia hạn hạn thanh toán" description="Học viên có thể xin gia hạn hạn đóng phí" />
-          <form onSubmit={handleStudentExtend} className="grid gap-3 md:grid-cols-2">
+        <>
+          <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+            <SectionHeader title="Thanh toán qua QR" description="Tạo link VNPay để thanh toán học phí" />
+            <form onSubmit={handleCreateQr} className="grid gap-3 md:grid-cols-2">
+              <select
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={selectedRegistrationForQr}
+                onChange={(e) => setSelectedRegistrationForQr(e.target.value)}
+              >
+                <option value="">-- Chọn khóa học (khuyến nghị) --</option>
+                {(tuitionInfo?.items || []).map((item) => (
+                  <option key={item.registrationId} value={item.registrationId}>
+                    [{item.courseCode || 'N/A'}] [{item.courseCode || 'N/A'}] {item.courseName} - Còn nợ {formatCurrency(item.remaining)}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min="1000"
+                placeholder="Số tiền cần thanh toán"
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={qrForm.amount}
+                onChange={(e) => setQrForm((prev) => ({ ...prev, amount: e.target.value }))}
+                required
+              />
+              <input
+                placeholder="Nội dung thanh toán"
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={qrForm.orderInfo}
+                onChange={(e) => setQrForm((prev) => ({ ...prev, orderInfo: e.target.value }))}
+              />
+              <button
+                type="submit"
+                disabled={creatingQr}
+                className="md:col-span-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+              >
+                {creatingQr ? 'Đang tạo QR...' : 'Tạo QR thanh toán'}
+              </button>
+            </form>
+
+            {paymentQrUrl && (
+              <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm">
+                <p className="font-semibold text-indigo-900">Link thanh toán đã tạo</p>
+                <a href={paymentQrUrl} target="_blank" rel="noreferrer" className="mt-1 block break-all text-indigo-700 underline">
+                  {paymentQrUrl}
+                </a>
+                {paymentTransferContent && (
+                  <p className="mt-2 text-xs text-slate-700">
+                    Nội dung chuyển khoản (bắt buộc đúng):
+                    <span className="ml-1 rounded bg-white px-2 py-1 font-semibold text-indigo-700">{paymentTransferContent}</span>
+                  </p>
+                )}
+                {currentTransactionId && (
+                  <p className="mt-2 text-xs text-slate-700">
+                    Trạng thái giao dịch:
+                    <span className={`ml-1 rounded px-2 py-1 font-semibold ${transactionStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {transactionStatus === 'completed' ? 'Đã thanh toán' : 'Chờ thanh toán'}
+                    </span>
+                  </p>
+                )}
+                <div className="mt-3">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(paymentQrUrl)}`}
+                    alt="QR thanh toán"
+                    className="h-40 w-40 rounded-lg border border-slate-200 bg-white p-2"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+            <SectionHeader title="Gia hạn hạn thanh toán" description="Học viên có thể xin gia hạn hạn đóng phí" />
+            <form onSubmit={handleStudentExtend} className="grid gap-3 md:grid-cols-2">
             <select
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
               value={studentExtendForm.registrationId}
               onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
               required
             >
-              <option value="">-- Chọn hồ sơ --</option>
+              <option value="">-- Chọn khóa học --</option>
               {(tuitionInfo?.items || []).map((item) => (
                 <option key={item.registrationId} value={item.registrationId}>
-                  {item.courseName}
+                  [{item.courseCode || 'N/A'}] {item.courseName}
                 </option>
               ))}
             </select>
@@ -341,6 +523,7 @@ const Payments = () => {
             </button>
           </form>
         </div>
+        </>
       )}
 
       {canCollect && (
@@ -354,10 +537,10 @@ const Payments = () => {
                 onChange={(e) => setAdminDueDateForm((prev) => ({ ...prev, registrationId: e.target.value }))}
                 required
               >
-                <option value="">-- Chọn hồ sơ --</option>
+                <option value="">-- Chọn khóa học --</option>
                 {(tuitionInfo?.items || []).map((item) => (
                   <option key={item.registrationId} value={item.registrationId}>
-                    {item.studentName ? `${item.studentName} - ` : ''}{item.courseName}
+                    {item.studentName ? `${item.studentName} - ` : ''}[{item.courseCode || 'N/A'}] {item.courseName}
                   </option>
                 ))}
               </select>
@@ -417,7 +600,7 @@ const Payments = () => {
                 <option value="">-- Chọn hồ sơ/khóa học --</option>
                 {(tuitionInfo?.items || []).map((item) => (
                   <option key={item.registrationId} value={item.registrationId}>
-                    {item.studentName ? `${item.studentName} - ` : ''}{item.courseName} - Còn nợ {formatCurrency(item.remaining)}
+                    {item.studentName ? `${item.studentName} - ` : ''}[{item.courseCode || 'N/A'}] [{item.courseCode || 'N/A'}] {item.courseName} - Còn nợ {formatCurrency(item.remaining)}
                   </option>
                 ))}
               </select>
@@ -454,6 +637,33 @@ const Payments = () => {
             </form>
           </div>
         </>
+      )}
+
+      {canCollect && (
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+          <SectionHeader title="Xác nhận giao dịch SePay" description="Danh sách giao dịch đang chờ xác nhận" />
+          {transactions.filter((t) => t.status !== 'completed').length === 0 ? (
+            <div className="py-4 text-sm text-slate-500">Không có giao dịch chờ xác nhận.</div>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {transactions.filter((t) => t.status !== 'completed').map((t) => (
+                <div key={t._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div>
+                    <p className="font-medium text-slate-900">{formatCurrency(t.amount)}</p>
+                    <p className="text-xs text-slate-500">{t.transferContent} · {new Date(t.createdAt).toLocaleString('vi-VN')}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmTransaction(t._id)}
+                    className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Xác nhận
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
