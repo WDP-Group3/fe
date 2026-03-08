@@ -44,6 +44,10 @@ export const API_ENDPOINTS = {
     CANCEL: '/schedule/:id/cancel',
     ATTENDANCE: '/schedule/:id/attendance',
   },
+  BOOKING: {
+    BASE: '/bookings',
+    STATUS: '/bookings/status',
+  },
   EXAMS: {
     BASE: '/exams',
     QUESTIONS: '/exams/questions',

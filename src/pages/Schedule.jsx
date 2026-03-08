@@ -29,6 +29,9 @@ const Schedule = () => {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [mySessions, setMySessions] = useState([]);
 
+  // [MỚI] Trạng thái mở đăng ký tuần sau
+  const [bookingStatus, setBookingStatus] = useState({ isNextWeekOpen: false, message: '' });
+
   // Modals
   const [confirmBookingModal, setConfirmBookingModal] = useState({ isOpen: false, data: null, type: 'PRACTICE' });
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, bookingId: null, rating: 5, comment: '' });
@@ -41,7 +44,7 @@ const Schedule = () => {
     gmail: 'ntmh18062004@gmail.com',
   };
 
-  useEffect(() => { fetchLocations(); loadMySessions(); }, []);
+  useEffect(() => { fetchLocations(); loadMySessions(); fetchBookingStatus(); }, []);
 
   useEffect(() => {
     if (selectedLocation) {
@@ -93,8 +96,59 @@ const Schedule = () => {
     } finally { setLoadingSessions(false); }
   };
 
+  // [MỚI] Lấy trạng thái mở đăng ký tuần sau (18:30 thứ 6)
+  const fetchBookingStatus = async () => {
+    try {
+      const res = await apiClient.get('/bookings/status');
+      if (res.status === 'success') {
+        setBookingStatus({
+          isNextWeekOpen: res.data.isNextWeekOpen,
+          message: res.data.message
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching booking status:', error);
+    }
+  };
+
   // Handlers
+  // [MỚI] Helper: Kiểm tra xem ngày có phải tuần sau không
+  const isNextWeek = (date) => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const daysUntilSunday = 0 - currentDay + (currentDay === 0 ? 0 : 7);
+    const thisSunday = new Date(today);
+    thisSunday.setDate(today.getDate() + daysUntilSunday);
+    thisSunday.setHours(23, 59, 59, 999);
+    return new Date(date) > thisSunday;
+  };
+
   const handleSlotClick = (date, slotId, data) => {
+    // [MỚI] Kiểm tra nếu ca đã trôi qua (trước thời điểm hiện tại) - không cho đăng ký
+    const now = new Date();
+    const slotDate = new Date(date);
+    
+    // Thời gian bắt đầu ca học
+    const SLOT_START_HOURS = { 
+      "1": 7, "2": 8.5, "3": 10, "4": 11.5, 
+      "5": 13, "6": 14.5, "7": 16, "8": 17.5, 
+      "9": 19, "10": 20.5 
+    };
+    const startHour = SLOT_START_HOURS[slotId] || 7;
+    slotDate.setHours(Math.floor(startHour), (startHour % 1) * 60, 0, 0);
+    
+    // Nếu ca đã bắt đầu (quá khứ) - không cho đăng ký
+    if (slotDate < now) {
+      showToast('Ca học này đã diễn ra, không thể đăng ký.', 'warning');
+      return;
+    }
+
+    // [MỚI] Kiểm tra nếu là tuần sau nhưng chưa mở đăng ký
+    if (!data && isNextWeek(date) && !bookingStatus.isNextWeekOpen) {
+      showToast(bookingStatus.message || 'Chưa đến giờ mở đăng ký tuần sau', 'warning');
+      return;
+    }
+
     if (data) {
       setDetailModal({ isOpen: true, data: data });
     } else {
@@ -176,6 +230,20 @@ const Schedule = () => {
 
   return (
     <div className="space-y-10">
+      {/* [MỚI] Banner thông báo trạng thái đăng ký tuần sau */}
+      {!bookingStatus.isNextWeekOpen && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <div className="text-amber-500 text-xl">⏰</div>
+          <div>
+            <p className="font-bold text-amber-800">Chưa mở đăng ký tuần sau</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Bạn sẽ có thể đăng ký lịch tuần sau vào lúc <span className="font-bold">18:30 (6:30 tối) thứ 6</span>. 
+              Vui lòng đăng ký lịch tuần này hoặc chờ đến thứ 6.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
         <SectionHeader title="Đặt lịch học mới" description="Chọn khu vực và giáo viên phù hợp" />
         
@@ -275,10 +343,13 @@ const Schedule = () => {
         <div className="space-y-4">
           <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
              <p className="text-sm font-bold text-indigo-800 mb-3 text-center uppercase">Chọn nội dung buổi học</p>
-             <div className="grid grid-cols-2 gap-3">
-               {[{ id: 'PRACTICE', label: '🚗 Thực hành' }, { id: 'THEORY', label: '📖 Lý thuyết' }, { id: 'MOCK_TEST', label: '📝 Thi thử' }, { id: 'NIGHT_DRIVING', label: '🌙 Lái đêm' }].map((item) => (
-                 <button key={item.id} onClick={() => setConfirmBookingModal({ ...confirmBookingModal, type: item.id })} className={`p-3 rounded-lg text-xs font-bold border transition-all ${confirmBookingModal.type === item.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}>{item.label}</button>
-               ))}
+             <div className="grid grid-cols-1 gap-3">
+               <button 
+                 onClick={() => setConfirmBookingModal({ ...confirmBookingModal, type: 'PRACTICE' })} 
+                 className={`p-3 rounded-lg text-xs font-bold border transition-all ${confirmBookingModal.type === 'PRACTICE' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}
+               >
+                 🚗 Thực hành
+               </button>
              </div>
              <div className="flex justify-end gap-2 mt-4">
                 <Button variant="secondary" onClick={() => setConfirmBookingModal({ ...confirmBookingModal, isOpen: false })}>Hủy</Button>

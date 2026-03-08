@@ -2,10 +2,16 @@ import React from 'react';
 import { formatDate } from '../../utils/formatters';
 
 const SLOTS = [
-  { id: 1, label: 'Ca 1 (07:00 - 09:00)', startHour: 7 },
-  { id: 2, label: 'Ca 2 (09:00 - 11:00)', startHour: 9 },
-  { id: 3, label: 'Ca 3 (13:00 - 15:00)', startHour: 13 },
-  { id: 4, label: 'Ca 4 (15:00 - 17:00)', startHour: 15 },
+  { id: 1, label: 'Ca 1 (07:00 - 08:00)', startHour: 7, startMinute: 0 },
+  { id: 2, label: 'Ca 2 (08:30 - 09:30)', startHour: 8, startMinute: 30 },
+  { id: 3, label: 'Ca 3 (10:00 - 11:00)', startHour: 10, startMinute: 0 },
+  { id: 4, label: 'Ca 4 (11:30 - 12:30)', startHour: 11, startMinute: 30 },
+  { id: 5, label: 'Ca 5 (13:00 - 14:00)', startHour: 13, startMinute: 0 },
+  { id: 6, label: 'Ca 6 (14:30 - 15:30)', startHour: 14, startMinute: 30 },
+  { id: 7, label: 'Ca 7 (16:00 - 17:00)', startHour: 16, startMinute: 0 },
+  { id: 8, label: 'Ca 8 (17:30 - 18:30)', startHour: 17, startMinute: 30 },
+  { id: 9, label: 'Ca 9 (19:00 - 20:00)', startHour: 19, startMinute: 0 },
+  { id: 10, label: 'Ca 10 (20:30 - 21:30)', startHour: 20, startMinute: 30 },
 ];
 
 const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = 'STUDENT' }) => {
@@ -41,20 +47,39 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                 const data = getSlotData(dayIndex, slot.id);
                 const cellDate = new Date(startDate); 
                 cellDate.setDate(startDate.getDate() + dayIndex); 
-                cellDate.setHours(slot.startHour, 0, 0, 0);
+                cellDate.setHours(slot.startHour, slot.startMinute, 0, 0);
                 
                 const now = new Date();
                 const isPast = cellDate < now;
                 
-                let cellClass = "h-28 min-w-[120px] p-1 border text-center transition-all";
+                let cellClass = "h-24 min-w-[120px] p-1 border text-center transition-all";
                 let content = <span className="text-slate-200">-</span>;
 
                 if (data) {
                   if (data.category === 'BUSY') {
-                    cellClass += " bg-slate-100 opacity-80 cursor-pointer";
+                    // Giáo viên báo bận - CAM NHẠT + IN ĐẠM
+                    cellClass += " bg-orange-100 cursor-pointer";
                     content = (
                       <div className="flex flex-col items-center justify-center h-full">
-                        <span className="text-slate-500 font-extrabold text-[10px] uppercase tracking-tighter">BÁO BẬN</span>
+                        <span className="text-orange-700 font-extrabold text-[10px] uppercase tracking-tighter">BÁO BẬN</span>
+                      </div>
+                    );
+                  } else if (data.status === 'COMPLETED') {
+                    // Điểm danh có mặt - XANH LÁ NHẠT
+                    cellClass += " bg-green-100 cursor-pointer";
+                    content = (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-green-200 text-green-700">Đã hoàn thành</span>
+                        <span className="text-green-800 font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                      </div>
+                    );
+                  } else if (data.status === 'ABSENT') {
+                    // Điểm danh vắng - ĐỎ NHẠT
+                    cellClass += " bg-red-100 cursor-pointer";
+                    content = (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-red-200 text-red-700">Vắng mặt</span>
+                        <span className="text-red-800 font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
                       </div>
                     );
                   } else {
@@ -73,8 +98,9 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                     );
                   }
                 } else if (isPast) {
-                  cellClass += " bg-slate-50 opacity-40 cursor-not-allowed";
-                  content = <span className="text-slate-300 text-[11px] italic">Quá hạn</span>;
+                  // Ca quá hạn - CAM NHẠT + IN ĐẠM
+                  cellClass += " bg-orange-50 opacity-60 cursor-not-allowed";
+                  content = <span className="text-orange-600 font-bold text-[11px] italic">Quá hạn</span>;
                 } else {
                   cellClass += " hover:bg-blue-50 cursor-pointer border-dashed";
                 }
