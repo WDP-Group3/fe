@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Carousel, Button } from '../components/ui';
 import StatCard from '../components/ui/StatCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import { sessions } from '../data/mockData';
-import { formatCurrency } from '../utils/formatters';
 import apiClient from '../services/apiClient';
 import PortalLayout from '../components/layout/PortalLayout';
 
 const Landing = () => {
-  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -154,76 +152,23 @@ const Landing = () => {
           </div>
         </div>
 
-        <div className="mt-14 rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader
-            title="Khóa học & học phí"
-            description="Công khai học phí, lịch khai giảng, phụ phí"
-          // action={<Link to="/portal/courses" className="text-sm font-semibold text-indigo-700">Xem chi tiết →</Link>}
-          />
-          <div className="grid gap-4 md:grid-cols-3">
-            {loading ? (
-              <div className="col-span-3 flex justify-center py-8">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-              </div>
-            ) : error ? (
-              <div className="col-span-3 text-center py-8 text-red-600">
-                <p>Lỗi tải dữ liệu: {error}</p>
-              </div>
-            ) : courses.length === 0 ? (
-              <div className="col-span-3 text-center py-8 text-slate-500">
-                <p>Chưa có khóa học nào</p>
-              </div>
-            ) : (
-              courses.map((course) => (
-                <div key={course._id} className="rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase text-indigo-600">{course.code}</p>
-                    <StatusBadge status="done" label="Nhận hồ sơ" />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">{course.name}</p>
-                  <p className="text-2xl font-bold text-slate-900">{formatCurrency(course.estimatedCost)}</p>
 
-                  {/* Display Fee Payments */}
-
-
-                  <div className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
-                    <p className="font-semibold text-indigo-700">Thời lượng</p>
-                    <p className="text-xs text-slate-500">
-                      {course.estimatedDuration ? `${course.estimatedDuration}` : 'Chưa cập nhật'}
-                    </p>
-                  </div>
-
-                  {/* Display Locations as perks if available */}
-                  {course.location && course.location.length > 0 && (
-                    <div className="mt-2 space-y-1 text-xs text-slate-600">
-                      {course.location.map((loc, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                          {loc}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => navigate(`/courses/${course.id}`)}
-                      className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Xem chi tiết
-                    </button>
-                    <button
-                      onClick={scrollToConsultForm}
-                      className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
-                    >
-                      Đăng ký tư vấn
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="mt-14 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-8 shadow-sm text-center">
+          <p className="text-xs font-semibold uppercase text-indigo-500 tracking-wider mb-2">Khóa học & Học phí</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            Công khai học phí, lịch khai giảng, phụ phí
+          </h2>
+          <p className="text-slate-500 mb-6 text-sm max-w-md mx-auto">
+            Xem đầy đủ các khóa học, chi tiết học phí từng đợt và lịch khai giảng mới nhất của trung tâm.
+          </p>
+          <Link
+            to="/portal/courses"
+            className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+          >
+            Xem tất cả khóa học →
+          </Link>
         </div>
+
 
         <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr]">
           <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -296,9 +241,8 @@ const Landing = () => {
           </div>
         </div>
       </div>
-    </PortalLayout>
+    </PortalLayout >
   );
 };
 
 export default Landing;
-

@@ -11,7 +11,7 @@ const ExamTaking = () => {
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 phút = 900 giây
+  const [timeLeft, setTimeLeft] = useState(0); // sẽ set sau khi tải xong câu hỏi
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(Date.now());
@@ -28,17 +28,21 @@ const ExamTaking = () => {
   }, [location]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      handleSubmit();
-      return;
-    }
+    if (loading || timeLeft <= 0) return; // chờ tải xong mới đếm
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [loading]); // chỉ khởi động 1 lần khi loading xong
 
   const loadQuestions = async (category = null) => {
     try {
@@ -49,12 +53,15 @@ const ExamTaking = () => {
       }
       const response = await axios.get(url);
       if (response.status === 'success') {
-        setQuestions(response.data);
+        const loaded = response.data || [];
+        setQuestions(loaded);
+        // 35 giây/câu — chuẩn thi lý thuyết xe máy/ô tô Việt Nam
+        setTimeLeft(loaded.length * 35);
       }
     } catch (error) {
       console.error('Error loading questions:', error);
       alert('Không thể tải đề thi. Vui lòng thử lại!');
-      navigate('/portal/exams');
+      navigate(user ? '/portal/exams' : '/exams');
     } finally {
       setLoading(false);
     }
@@ -129,8 +136,10 @@ const ExamTaking = () => {
 
       const categoryName = examCategory ? (categoryMap[examCategory] || 'Ngẫu nhiên') : 'Ngẫu nhiên';
 
+      const studentId = user?.id || user?._id;
+
       const submitData = {
-        studentId: user?.id || user?._id,
+        studentId,
         questions: processedQuestions,
         duration,
         score,
@@ -140,10 +149,20 @@ const ExamTaking = () => {
         category: categoryName
       };
 
+      // Nếu là guest, không lưu vào DB, chuyển thẳng sang trang kết quả local
+      if (!studentId) {
+        const resultRoute = user ? '/portal/exam-result' : '/exam-result';
+        navigate(`${resultRoute}/guest`, {
+          state: { score, correctAnswers: correctCount, totalQuestions, category: categoryName, wrongQuestionNumbers }
+        });
+        return;
+      }
+
       const response = await axios.post('/exam-results/submit', submitData);
 
       if (response.status === 'success') {
-        navigate(`/portal/exam-result/${response.data._id}`);
+        const resultRoute = user ? '/portal/exam-result' : '/exam-result';
+        navigate(`${resultRoute}/${response.data._id}`);
       }
     } catch (error) {
       console.error('Error submitting exam:', error);
@@ -175,7 +194,7 @@ const ExamTaking = () => {
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <p className="text-slate-600">Không có câu hỏi nào!</p>
-          <Button onClick={() => navigate('/portal/exams')} className="mt-4">
+          <Button onClick={() => navigate(user ? '/portal/exams' : '/exams')} className="mt-4">
             Quay lại
           </Button>
         </div>

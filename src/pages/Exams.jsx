@@ -70,8 +70,10 @@ const Exams = () => {
     });
   };
 
+  const examTakingBase = user ? '/portal/exam-taking' : '/exam-taking';
+
   const handleStartExamByTopic = (topicSlug) => {
-    navigate(`/portal/exam-taking?category=${topicSlug}`);
+    navigate(`${examTakingBase}?category=${topicSlug}`);
   };
 
   return (
@@ -83,7 +85,7 @@ const Exams = () => {
           action={
             <Button
               variant="primary"
-              onClick={() => navigate('/portal/exam-taking')}
+              onClick={() => navigate(examTakingBase)}
             >
               Bắt đầu đề ngẫu nhiên
             </Button>
@@ -126,7 +128,7 @@ const Exams = () => {
             <Button
               variant="primary"
               className="mt-4"
-              onClick={() => navigate('/portal/exam-taking')}
+              onClick={() => navigate(examTakingBase)}
             >
               Bắt đầu thi thử
             </Button>
@@ -166,7 +168,7 @@ const Exams = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/portal/exam-result/${result._id}`)}
+                    onClick={() => navigate(user ? `/portal/exam-result/${result._id}` : `/exam-result/${result._id}`)}
                   >
                     Xem chi tiết
                   </Button>
