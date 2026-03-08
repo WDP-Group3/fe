@@ -24,7 +24,7 @@ const getNavItems = (userRole) => {
     { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
-    { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
+    { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     // { label: 'Đặt lịch xe', to: '/portal/book-lesson', roles: ['STUDENT'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
@@ -74,7 +74,7 @@ const PortalLayout = ({ children }) => {
       )}
 
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
+        <div className="mx-auto flex max-w-full items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
           <Link to={user ? "/portal/overview" : "/"} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
@@ -111,7 +111,7 @@ const PortalLayout = ({ children }) => {
         </div>
         {(
           <div className="border-t border-slate-100 bg-white">
-            <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+            <div className="mx-auto flex max-w-full items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -131,7 +131,7 @@ const PortalLayout = ({ children }) => {
         )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 xl:ml-64 xl:mr-64">
+      <main className="mx-auto max-w-full px-4 py-8 xl:ml-64 xl:mr-64">
         {children || <Outlet />}
       </main>
     </div>
