@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { FileUpload, Input, Button, SectionHeader, StatusBadge, DataTable, Select, SearchInput, Modal } from '../components/ui';
@@ -13,23 +13,24 @@ const Enrollment = () => {
   const [registrations, setRegistrations] = useState([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
-  // Create registration (UC09)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [batches, setBatches] = useState([]);
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [creatingRegistration, setCreatingRegistration] = useState(false);
 
-  // Lựa chọn Sale tư vấn cho hồ sơ (frontend only, không đổi payload gửi BE)
-  const [saleOption, setSaleOption] = useState('HAS'); // 'HAS' | 'NONE'
+  const [studentPayments, setStudentPayments] = useState([]);
+  const [loadingStudentPayments, setLoadingStudentPayments] = useState(false);
+
+  const [myDocument, setMyDocument] = useState(null);
+  const [loadingMyDocument, setLoadingMyDocument] = useState(false);
+
+  const [saleOption, setSaleOption] = useState('HAS');
   const [sales, setSales] = useState([]);
   const [loadingSales, setLoadingSales] = useState(false);
   const [saleSearch, setSaleSearch] = useState('');
   const [selectedSaleId, setSelectedSaleId] = useState('');
 
-  // Lưu ý: giấy tờ CCCD/khám sức khoẻ/ảnh 3x4 dùng chung, nên FE sẽ tự áp dụng upload cho tất cả hồ sơ hiện có.
-  // selectedRegistrationId chỉ dùng để hiển thị "hồ sơ mới nhất" (nếu cần), không bắt buộc người dùng chọn.
-  const [selectedRegistrationId, setSelectedRegistrationId] = useState('');
   const [cccdNumber, setCccdNumber] = useState('');
   const [cccdFile, setCccdFile] = useState(null);
   const [healthFile, setHealthFile] = useState(null);
@@ -43,17 +44,32 @@ const Enrollment = () => {
   ];
 
   const registrationColumns = [
-    { key: 'code', title: 'Mã hồ sơ', dataIndex: 'code' },
-    { key: 'batch', title: 'Lớp / địa điểm', dataIndex: 'batch' },
+    { key: 'code', title: 'Mã đăng ký', dataIndex: 'code' },
+    { key: 'batch', title: 'Khóa học / địa điểm', dataIndex: 'batch' },
     { key: 'status', title: 'Trạng thái', dataIndex: 'status' },
   ];
 
-  const mappedRegistrations = registrations.map((item, index) => ({
-    key: item._id || index,
-    code: item._id || '-',
-    batch: item.batchId?.location || '—',
-    status: item.status || 'NEW',
-  }));
+  const mappedRegistrations = registrations.map((item, index) => {
+    const courseName = item?.batchId?.courseId?.name || item?.batchId?.courseId?.code || 'Khóa học';
+    const location = item?.batchId?.location || '—';
+
+    return {
+      key: item._id || index,
+      code: item._id || '-',
+      batch: `${courseName} · ${location}`,
+      status: item.status || 'NEW',
+    };
+  });
+
+  const isDocumentComplete = useMemo(
+    () => !!(myDocument?.cccdNumber && myDocument?.cccdImage && myDocument?.healthCertificate && myDocument?.photo),
+    [myDocument]
+  );
+
+  const totalPaid = useMemo(
+    () => (studentPayments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+    [studentPayments]
+  );
 
   const loadRegistrations = async () => {
     if (!user?.id) return;
@@ -61,18 +77,28 @@ const Enrollment = () => {
       setLoadingRegistrations(true);
       const response = await apiClient.get(`/registrations?studentId=${user.id}`);
       if (response.status === 'success') {
-        const list = response.data || [];
-        setRegistrations(list);
-
-        // API BE sort createdAt desc, phần tử đầu là hồ sơ mới nhất → dùng để hiển thị (không bắt buộc chọn)
-        if (!selectedRegistrationId && list.length > 0) {
-          setSelectedRegistrationId(list[0]?._id || '');
-        }
+        setRegistrations(response.data || []);
       }
     } catch (error) {
       console.error('Error loading registrations:', error);
     } finally {
       setLoadingRegistrations(false);
+    }
+  };
+
+  const loadMyDocument = async () => {
+    if (!user?.id) return;
+    try {
+      setLoadingMyDocument(true);
+      const response = await apiClient.get('/documents/me');
+      if (response.status === 'success') {
+        setMyDocument(response.data || null);
+        setCccdNumber(response.data?.cccdNumber || '');
+      }
+    } catch (error) {
+      console.error('Error loading my document:', error);
+    } finally {
+      setLoadingMyDocument(false);
     }
   };
 
@@ -91,40 +117,21 @@ const Enrollment = () => {
     }
   };
 
-  const handleCreateRegistration = async () => {
-    if (!selectedBatchId) {
-      showToast('Vui lòng chọn lớp (batch) để tạo hồ sơ', 'error');
-      return;
-    }
-
+  const loadStudentPayments = async () => {
+    if (!user?.id) return;
     try {
-      setCreatingRegistration(true);
-
-      // BE hỗ trợ registerMethod enum: ONLINE | CONSULTANT
-      const registerMethod = saleOption === 'HAS' ? 'CONSULTANT' : 'ONLINE';
-
-      const response = await apiClient.post('/registrations', {
-        batchId: selectedBatchId,
-        registerMethod,
-      });
-
+      setLoadingStudentPayments(true);
+      const response = await apiClient.get('/payments');
       if (response.status === 'success') {
-        showToast('Tạo hồ sơ đăng ký thành công', 'success');
-        setIsCreateModalOpen(false);
-        setSelectedBatchId('');
-        await loadRegistrations();
-      } else {
-        showToast(response.message || 'Tạo hồ sơ thất bại', 'error');
+        setStudentPayments(response.data || []);
       }
     } catch (error) {
-      console.error('Create registration error:', error);
-      showToast(error?.message || 'Tạo hồ sơ thất bại', 'error');
+      console.error('Error loading student payments:', error);
     } finally {
-      setCreatingRegistration(false);
+      setLoadingStudentPayments(false);
     }
   };
 
-  // Load danh sách Sale (tư vấn viên) khi cần, dùng role CONSULTANT từ BE
   const loadSales = async () => {
     try {
       setLoadingSales(true);
@@ -139,6 +146,8 @@ const Enrollment = () => {
 
   useEffect(() => {
     loadRegistrations();
+    loadMyDocument();
+    loadStudentPayments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -149,7 +158,6 @@ const Enrollment = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateModalOpen]);
 
-  // Chỉ load danh sách Sale khi người dùng chọn "Có Sale tư vấn"
   useEffect(() => {
     if (saleOption === 'HAS' && sales.length === 0 && !loadingSales) {
       loadSales();
@@ -161,11 +169,7 @@ const Enrollment = () => {
     if (!file) return null;
 
     if (!config.cloudinary.cloudName || !config.cloudinary.uploadPreset) {
-      showToast(
-        'Cloudinary chưa được cấu hình. Vui lòng thêm VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET.',
-        'error',
-      );
-      return null;
+      throw new Error('Cloudinary chưa cấu hình VITE_CLOUDINARY_CLOUD_NAME hoặc VITE_CLOUDINARY_UPLOAD_PRESET');
     }
 
     const form = new FormData();
@@ -173,12 +177,7 @@ const Enrollment = () => {
     form.append('upload_preset', config.cloudinary.uploadPreset);
 
     const uploadUrl = `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/image/upload`;
-
-    const res = await fetch(uploadUrl, {
-      method: 'POST',
-      body: form,
-    });
-
+    const res = await fetch(uploadUrl, { method: 'POST', body: form });
     const data = await res.json();
 
     if (!res.ok || !data.secure_url) {
@@ -190,16 +189,6 @@ const Enrollment = () => {
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    // Giấy tờ dùng chung → áp dụng cho tất cả hồ sơ đăng ký hiện có của học viên
-    const registrationIds = (registrations || [])
-      .map((r) => r?._id)
-      .filter(Boolean);
-
-    if (registrationIds.length === 0) {
-      showToast('Bạn chưa có hồ sơ đăng ký nào. Vui lòng tạo hồ sơ mới trước khi upload giấy tờ.', 'error');
-      setIsCreateModalOpen(true);
-      return;
-    }
 
     if (!cccdNumber.trim()) {
       showToast('Vui lòng nhập số CMND/CCCD', 'error');
@@ -215,20 +204,15 @@ const Enrollment = () => {
         uploadToCloudinary(photoFile),
       ]);
 
-      // Upload 1 lần và áp dụng cho tất cả hồ sơ đăng ký (không thay đổi logic BE)
-      await Promise.all(
-        registrationIds.map((registrationId) =>
-          apiClient.post('/documents/upload', {
-            registrationId,
-            cccdImage: cccdImageUrl,
-            healthCertificate: healthUrl,
-            photo: photoUrl,
-            cccdNumber: cccdNumber.trim(),
-          })
-        )
-      );
+      await apiClient.post('/documents/upload', {
+        cccdImage: cccdImageUrl,
+        healthCertificate: healthUrl,
+        photo: photoUrl,
+        cccdNumber: cccdNumber.trim(),
+      });
 
-      showToast(`Upload hồ sơ thành công (áp dụng cho ${registrationIds.length} hồ sơ)`, 'success');
+      await loadMyDocument();
+      showToast('Lưu hồ sơ cá nhân thành công', 'success');
     } catch (error) {
       console.error('Upload documents error:', error);
       showToast(error?.message || 'Upload hồ sơ thất bại', 'error');
@@ -237,18 +221,55 @@ const Enrollment = () => {
     }
   };
 
+  const handleCreateRegistration = async () => {
+    if (!selectedBatchId) {
+      showToast('Vui lòng chọn lớp (batch) để đăng ký', 'error');
+      return;
+    }
+
+    if (!isDocumentComplete) {
+      showToast('Bạn cần nộp đủ hồ sơ cá nhân trước khi đăng ký lớp', 'error');
+      return;
+    }
+
+    try {
+      setCreatingRegistration(true);
+      const registerMethod = saleOption === 'HAS' ? 'CONSULTANT' : 'ONLINE';
+
+      const response = await apiClient.post('/registrations', {
+        batchId: selectedBatchId,
+        registerMethod,
+      });
+
+      if (response.status === 'success') {
+        showToast('Tạo đăng ký lớp thành công', 'success');
+        setIsCreateModalOpen(false);
+        setSelectedBatchId('');
+        await loadRegistrations();
+      } else {
+        showToast(response.message || 'Tạo đăng ký thất bại', 'error');
+      }
+    } catch (error) {
+      console.error('Create registration error:', error);
+      showToast(error?.message || 'Tạo đăng ký thất bại', 'error');
+    } finally {
+      setCreatingRegistration(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
         <SectionHeader
           title="Quy trình hồ sơ"
-          description="Chuẩn hóa đăng ký – duyệt hồ sơ – nộp Sở"
+          description="Nộp hồ sơ cá nhân → duyệt hồ sơ → đăng ký lớp"
           action={
             <button
-              className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+              className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               onClick={() => setIsCreateModalOpen(true)}
+              disabled={!isDocumentComplete}
             >
-              Tạo hồ sơ mới
+              Tạo đăng ký lớp
             </button>
           }
         />
@@ -269,23 +290,20 @@ const Enrollment = () => {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Tạo hồ sơ đăng ký mới"
+        title="Tạo đăng ký lớp mới"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)} disabled={creatingRegistration}>
               Hủy
             </Button>
             <Button onClick={handleCreateRegistration} loading={creatingRegistration} disabled={loadingBatches}>
-              Tạo hồ sơ
+              Tạo đăng ký
             </Button>
           </div>
         }
       >
         <div className="space-y-3 text-sm">
-          <p className="text-slate-600">
-            Chọn lớp (batch) đang mở đăng ký để tạo hồ sơ. Sau khi tạo xong bạn có thể upload giấy tờ dùng chung.
-          </p>
-
+          <p className="text-slate-600">Chọn lớp (batch) đang mở đăng ký. Bạn phải nộp đủ hồ sơ cá nhân trước khi đăng ký.</p>
           <Select
             label="Chọn lớp (batch)"
             value={selectedBatchId}
@@ -297,45 +315,52 @@ const Enrollment = () => {
               const locationLabel = b?.location || b?.location?.join?.(', ') || '';
               const startLabel = b?.startDate ? new Date(b.startDate).toLocaleDateString('vi-VN') : '';
               const label = [courseLabel, locationLabel, startLabel].filter(Boolean).join(' · ');
-              return {
-                value: b?._id,
-                label: label || (b?._id || 'Batch'),
-              };
+              return { value: b?._id, label: label || (b?._id || 'Batch') };
             })}
             helperText="Chỉ hiển thị các lớp có trạng thái OPEN từ backend."
           />
-
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs font-semibold text-slate-700">Ghi chú</p>
-            <p className="mt-1 text-xs text-slate-600">
-              - Nếu bạn chọn <span className="font-semibold">Có Sale tư vấn</span>, hồ sơ sẽ được tạo với registerMethod = CONSULTANT.
-            </p>
-            <p className="mt-1 text-xs text-slate-600">
-              - Nếu chọn <span className="font-semibold">Không có Sale tư vấn</span>, hồ sơ sẽ là ONLINE để Admin quản lý.
-            </p>
-          </div>
         </div>
       </Modal>
 
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
         <SectionHeader
-          title="Hồ sơ đăng ký của tôi"
-          description="Danh sách hồ sơ đã đăng ký theo tài khoản hiện tại · Giấy tờ (CCCD/Khám sức khoẻ/Ảnh) dùng chung"
+          title="Student dashboard"
+          description="Theo dõi nhanh hồ sơ, đăng ký và thanh toán của bạn"
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-xs text-slate-500">Hồ sơ cá nhân</p>
+            <p className="mt-1 text-base font-semibold text-slate-900">{isDocumentComplete ? 'Đầy đủ' : 'Chưa đủ'}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-xs text-slate-500">Tổng đăng ký</p>
+            <p className="mt-1 text-base font-semibold text-slate-900">{mappedRegistrations.length}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-xs text-slate-500">Đang học</p>
+            <p className="mt-1 text-base font-semibold text-slate-900">{registrations.filter((r) => r.status === 'STUDYING').length}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-xs text-slate-500">Đã thanh toán</p>
+            <p className="mt-1 text-base font-semibold text-emerald-700">
+              {totalPaid.toLocaleString('vi-VN')} đ
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+        <SectionHeader
+          title="Đăng ký lớp của tôi"
+          description="Danh sách đăng ký lớp theo tài khoản hiện tại"
         />
         {loadingRegistrations ? (
-          <div className="flex justify-center py-6 text-sm text-slate-500">
-            Đang tải danh sách hồ sơ...
-          </div>
+          <div className="flex justify-center py-6 text-sm text-slate-500">Đang tải danh sách đăng ký...</div>
         ) : mappedRegistrations.length === 0 ? (
-          <div className="py-6 text-sm text-slate-500">
-            Chưa có hồ sơ đăng ký nào được tạo cho tài khoản này.
-          </div>
+          <div className="py-6 text-sm text-slate-500">Chưa có đăng ký lớp nào.</div>
         ) : (
           <div className="space-y-3">
             <DataTable columns={registrationColumns} data={mappedRegistrations} />
-            <p className="text-xs text-slate-500">
-              Khi upload giấy tờ, hệ thống sẽ tự áp dụng cho <span className="font-semibold">{mappedRegistrations.length}</span> hồ sơ hiện có của bạn.
-            </p>
           </div>
         )}
       </div>
@@ -344,40 +369,37 @@ const Enrollment = () => {
         <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
           <SectionHeader
             title="Tài liệu cần thiết"
-            description="Học viên upload ảnh, staff kiểm tra và duyệt"
+            description="Học viên upload ảnh, staff/admin kiểm tra và duyệt"
             action={<button className="text-sm font-semibold text-indigo-700">Gửi link upload</button>}
           />
           <DataTable columns={docColumns} data={docs} />
+          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            {loadingMyDocument
+              ? 'Đang tải hồ sơ cá nhân...'
+              : isDocumentComplete
+                ? 'Hồ sơ cá nhân đã đủ điều kiện để đăng ký lớp.'
+                : 'Hồ sơ cá nhân chưa đầy đủ. Vui lòng bổ sung đủ CCCD, giấy khám sức khỏe và ảnh 3x4 trước khi đăng ký lớp.'}
+          </div>
 
           <div className="mt-6 border-t border-slate-100 pt-4">
-            <h3 className="text-sm font-semibold text-slate-900">Upload hồ sơ</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              Nhập số CMND/CCCD và upload ảnh giấy tờ. Giấy tờ sẽ được áp dụng cho tất cả hồ sơ đăng ký hiện có.
-            </p>
+            <h3 className="text-sm font-semibold text-slate-900">Upload hồ sơ cá nhân</h3>
+            <p className="mt-1 text-xs text-slate-500">Hồ sơ dùng chung cho mọi đăng ký lớp và có thể cập nhật bổ sung bất kỳ lúc nào.</p>
+
             <form onSubmit={handleUploadSubmit} className="mt-3 space-y-3 text-sm">
-              {/* UC09 - Chọn Sale tư vấn (chỉ hiển thị trên giao diện, không đổi logic BE) */}
               <div className="space-y-2 rounded-2xl bg-slate-50 px-3 py-3">
                 <p className="text-xs font-semibold text-slate-700">Sale tư vấn hồ sơ</p>
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
                     onClick={() => setSaleOption('HAS')}
-                    className={`rounded-full px-3 py-1 text-xs font-medium border ${
-                      saleOption === 'HAS'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-slate-200 bg-white text-slate-600'
-                    }`}
+                    className={`rounded-full px-3 py-1 text-xs font-medium border ${saleOption === 'HAS' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600'}`}
                   >
                     Có Sale tư vấn
                   </button>
                   <button
                     type="button"
                     onClick={() => setSaleOption('NONE')}
-                    className={`rounded-full px-3 py-1 text-xs font-medium border ${
-                      saleOption === 'NONE'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-slate-200 bg-white text-slate-600'
-                    }`}
+                    className={`rounded-full px-3 py-1 text-xs font-medium border ${saleOption === 'NONE' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600'}`}
                   >
                     Không có Sale tư vấn
                   </button>
@@ -401,18 +423,15 @@ const Enrollment = () => {
                       onChange={(e) => setSelectedSaleId(e.target.value)}
                       disabled={loadingSales}
                       options={[
-                        {
-                          value: '',
-                          label: loadingSales ? 'Đang tải danh sách Sale...' : 'Chọn Sale phụ trách',
-                        },
+                        { value: '', label: loadingSales ? 'Đang tải danh sách Sale...' : 'Chọn Sale phụ trách' },
                         ...sales
                           .filter((s) => {
                             if (!saleSearch.trim()) return true;
                             const keyword = saleSearch.toLowerCase();
                             return (
-                              (s.fullName || s.name || '').toLowerCase().includes(keyword) ||
-                              (s.phone || '').toLowerCase().includes(keyword) ||
-                              (s.email || '').toLowerCase().includes(keyword)
+                              (s.fullName || s.name || '').toLowerCase().includes(keyword)
+                              || (s.phone || '').toLowerCase().includes(keyword)
+                              || (s.email || '').toLowerCase().includes(keyword)
                             );
                           })
                           .map((s) => ({
@@ -421,9 +440,7 @@ const Enrollment = () => {
                           })),
                       ]}
                     />
-                    <p className="text-[11px] text-slate-500">
-                      Thông tin Sale chỉ dùng để hiển thị cho học viên, chưa thay đổi luồng xử lý hồ sơ ở backend.
-                    </p>
+                    <p className="text-[11px] text-slate-500">Thông tin Sale chỉ dùng để hiển thị, chưa thay đổi luồng backend.</p>
                   </div>
                 )}
               </div>
@@ -435,6 +452,7 @@ const Enrollment = () => {
                 onChange={(e) => setCccdNumber(e.target.value)}
                 required
               />
+
               <div className="grid gap-4 md:grid-cols-3">
                 <FileUpload
                   label="Ảnh CMND/CCCD"
@@ -461,21 +479,43 @@ const Enrollment = () => {
                   helperText="Ảnh nền sáng, rõ mặt"
                 />
               </div>
+
               <button
                 type="submit"
                 disabled={uploading}
                 className="mt-2 w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                {uploading ? 'Đang upload hồ sơ...' : 'Lưu hồ sơ đăng ký'}
+                {uploading ? 'Đang upload hồ sơ...' : 'Lưu hồ sơ cá nhân'}
               </button>
             </form>
           </div>
         </div>
+
         <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-          <SectionHeader
-            title="Luật huỷ hồ sơ"
-            description="Tự động cảnh báo sau thời gian quá hạn"
-          />
+          <SectionHeader title="Lịch sử thanh toán gần đây" description="Các giao dịch học phí mới nhất của bạn" />
+          {loadingStudentPayments ? (
+            <div className="py-4 text-sm text-slate-500">Đang tải lịch sử thanh toán...</div>
+          ) : studentPayments.length === 0 ? (
+            <div className="py-4 text-sm text-slate-500">Chưa có giao dịch thanh toán.</div>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {studentPayments.slice(0, 6).map((p) => (
+                <div key={p._id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                  <div>
+                    <p className="font-medium text-slate-900">{p.method || 'PAYMENT'}</p>
+                    <p className="text-xs text-slate-500">
+                      {p.paidAt ? new Date(p.paidAt).toLocaleDateString('vi-VN') : '—'}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-emerald-700">{(Number(p.amount) || 0).toLocaleString('vi-VN')} đ</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+          <SectionHeader title="Luật huỷ hồ sơ" description="Tự động cảnh báo sau thời gian quá hạn" />
           <div className="space-y-3 text-sm text-slate-700">
             <p>• Đóng học phí chậm: có đơn gia hạn 1 tháng → quá hạn → huỷ hồ sơ.</p>
             <p>• Không đơn: 7 ngày không liên lạc → huỷ hồ sơ.</p>
@@ -489,4 +529,3 @@ const Enrollment = () => {
 };
 
 export default Enrollment;
-
