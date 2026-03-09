@@ -194,7 +194,7 @@ const CourseDetail = () => {
                             Đăng ký tư vấn ngay
                         </button>
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={() => navigate('/courses')}
                             className="rounded-full border-2 border-slate-200 px-6 py-4 text-base font-semibold text-slate-700 hover:border-indigo-200 hover:text-indigo-700 transition"
                         >
                             Xem khóa khác
