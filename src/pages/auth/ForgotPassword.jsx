@@ -5,7 +5,6 @@ import { Button, Input } from '../../components/ui';
 import { Container, Card } from '../../components/common';
 import apiClient from '../../services/apiClient';
 import PortalLayout from '../../components/layout/PortalLayout';
-import config from '../../config';
 
 const ForgotPassword = () => {
   const { showToast } = useToast();
