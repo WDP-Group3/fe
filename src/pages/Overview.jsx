@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+
 import { Carousel, Button } from '../components/ui';
 import StatCard from '../components/ui/StatCard';
 import SectionHeader from '../components/ui/SectionHeader';
@@ -9,6 +10,7 @@ import { adminMetrics, paymentSchedule, sessions } from '../data/mockData';
 import { formatCurrency } from '../utils/formatters';
 
 const Overview = () => {
+
   // Banner carousel data
   const banners = [
     {
@@ -69,12 +71,14 @@ const Overview = () => {
     { key: 'status', title: 'Trạng thái', dataIndex: 'status', render: (val) => <StatusBadge status={val} /> },
   ];
 
+
   return (
     <div className="space-y-8">
       {/* Banner Carousel */}
       <div className="overflow-hidden rounded-3xl">
         <Carousel items={banners} autoPlay interval={2000} showDots showArrows />
       </div>
+
 
       {/* Stats Section with Images */}
       <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-indigo-50/30 to-white p-6 shadow-sm backdrop-blur">

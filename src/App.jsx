@@ -33,7 +33,9 @@ import Blogs from './pages/Blogs';
 import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
+import AdminBlogs from './pages/admin/AdminBlogs';
 import DocumentApproval from './pages/DocumentApproval';
+import StudentDashboard from './pages/StudentDashboard';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -112,6 +114,7 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="student-dashboard" element={<StudentDashboard />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
@@ -131,6 +134,7 @@ function App() {
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leads" element={<Leads />} />
+                <Route path="blogs" element={<AdminBlogs />} />
               </Route>
             </Route>
 
