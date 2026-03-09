@@ -51,8 +51,18 @@ const useAuth = () => {
   const logout = () => {
     setToken(null);
     setUser(null);
-    // Optional: call backend logout endpoint if available
-    // apiClient.post('/auth/logout').catch(() => {});
+  };
+
+  // Lưu thông tin sau khi đăng nhập Google thành công (được gọi từ GoogleCallback page)
+  const loginWithGoogle = (token, userData) => {
+    setToken(token);
+    setUser(userData);
+  };
+
+  // Khởi tạo Google OAuth flow - redirect đến backend
+  const initiateGoogleLogin = () => {
+    const backendUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000';
+    window.location.href = `${backendUrl}/api/auth/google`;
   };
 
   // Register function
@@ -122,6 +132,8 @@ const useAuth = () => {
     logout,
     register,
     getProfile,
+    loginWithGoogle,
+    initiateGoogleLogin,
   };
 };
 
