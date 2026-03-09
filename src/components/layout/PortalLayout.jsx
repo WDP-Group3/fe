@@ -21,18 +21,18 @@ const getNavItems = (userRole) => {
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['STUDENT', 'GUEST'] },
     { label: 'Bài viết', to: '/blogs', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
+    { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
-    { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
+    { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
-    // { label: 'Đặt lịch xe', to: '/portal/book-lesson', roles: ['STUDENT'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
     { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
   ];
 
   if (!userRole) return [];
-  return allItems.filter(item => item.roles.includes(userRole));
+  return allItems.filter((item) => item.roles.includes(userRole));
 };
 
 const PortalLayout = ({ children }) => {
@@ -41,7 +41,6 @@ const PortalLayout = ({ children }) => {
 
   const handleLogout = () => {
     navigate('/');
-    // Defer logout to ensure navigation to public route occurs before ProtectedRoute checks auth
     setTimeout(() => {
       logout();
     }, 100);
@@ -52,6 +51,14 @@ const PortalLayout = ({ children }) => {
       label: 'Thông tin cá nhân',
       onClick: () => navigate('/portal/profile'),
     },
+    ...(user?.role === 'STUDENT'
+      ? [
+          {
+            label: 'Student Dashboard',
+            onClick: () => navigate('/portal/student-dashboard'),
+          },
+        ]
+      : []),
     { divider: true },
     {
       label: 'Đăng xuất',
@@ -64,8 +71,6 @@ const PortalLayout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50">
-
-      {/* Pending Approval Banner */}
       {user?.approvalStatus === 'PENDING' && (
         <div className="bg-orange-100 px-4 py-2 text-center text-sm font-semibold text-orange-800 border-b border-orange-200">
           ⚠️ Tài khoản của bạn đang chờ duyệt quyền <span className="uppercase">{user.requestedRole}</span>. Hiện tại bạn đang sử dụng quyền Guest (Khách).
@@ -74,7 +79,7 @@ const PortalLayout = ({ children }) => {
 
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
-          <Link to={user ? "/portal/overview" : "/"} className="flex items-center gap-3">
+          <Link to={user ? '/portal/overview' : '/'} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
             </div>
@@ -108,29 +113,27 @@ const PortalLayout = ({ children }) => {
             )}
           </div>
         </div>
-        {(
-          <div className="border-t border-slate-100 bg-white">
-            <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:bg-slate-100'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
+        <div className="border-t border-slate-100 bg-white">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-600 hover:bg-slate-100'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           </div>
-        )}
+        </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 xl:ml-64 xl:mr-64">
+      <main className="mx-auto max-w-full px-4 py-8 xl:ml-64 xl:mr-64">
         {children || <Outlet />}
       </main>
     </div>

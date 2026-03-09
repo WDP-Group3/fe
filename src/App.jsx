@@ -34,8 +34,9 @@ import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
 import AdminBlogs from './pages/admin/AdminBlogs';
+import DocumentApproval from './pages/DocumentApproval';
+import StudentDashboard from './pages/StudentDashboard';
 
-// Component xử lý điều hướng khi người dùng gõ linh tinh (404)
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
 
@@ -70,7 +71,6 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Student/Instructor/Consultant/Admin Portal */}
             <Route
               element={
                 <ProtectedRoute
@@ -88,6 +88,14 @@ function App() {
                 <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
                 <Route path="letter" element={<LetterRequest />} />
                 <Route path="leads" element={<Leads />} />
+
+                <Route
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'CONSULTANT']} />
+                  }
+                >
+                  <Route path="document-approval" element={<DocumentApproval />} />
+                </Route>
                 <Route
                   element={
                     <ProtectedRoute
@@ -106,6 +114,7 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="student-dashboard" element={<StudentDashboard />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
@@ -117,9 +126,11 @@ function App() {
             >
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
+                <Route path="documents" element={<DocumentApproval />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />
                 <Route path="courses" element={<AdminCourses />} />
+                <Route path="payments" element={<Payments />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leads" element={<Leads />} />
@@ -127,7 +138,6 @@ function App() {
               </Route>
             </Route>
 
-            {/* Global catch-all - Điều hướng thông minh theo role */}
             <Route path="*" element={<NotFoundRedirect />} />
           </Routes>
         </BrowserRouter>

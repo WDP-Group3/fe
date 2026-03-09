@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { SectionHeader } from "../../components/ui";
+import { SectionHeader, FileUpload } from "../../components/ui";
+import { FormGroup } from "../../components/forms";
 import StatusBadge from "../../components/ui/StatusBadge";
 import apiClient from "../../services/apiClient";
 import { formatCurrency } from "../../utils/formatters";
+import config from "../../config";
+import { useToast } from "../../context/ToastContext";
 
 const AdminCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -11,7 +14,29 @@ const AdminCourses = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
 
-  // Initial form state
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningCourse, setAssigningCourse] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [participants, setParticipants] = useState([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    studentId: "",
+    batchId: "",
+    status: "PROCESSING",
+    paymentPlanType: "INSTALLMENT",
+  });
+
+  const [courseBatches, setCourseBatches] = useState([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchForm, setBatchForm] = useState({
+    startDate: "",
+    estimatedEndDate: "",
+    location: "",
+    status: "OPEN",
+  });
+
   const initialFormState = {
     code: "",
     name: "",
@@ -26,6 +51,8 @@ const AdminCourses = () => {
   };
 
   const [formData, setFormData] = useState(initialFormState);
+  const [imageUploading, setImageUploading] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadCourses();
@@ -52,6 +79,19 @@ const AdminCourses = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCourseBatches = async (courseId) => {
+    try {
+      setBatchLoading(true);
+      const batchRes = await apiClient.get(`/batches?courseId=${courseId}`);
+      setCourseBatches(batchRes?.data || []);
+    } catch (batchError) {
+      console.error(batchError);
+      setCourseBatches([]);
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -83,14 +123,15 @@ const AdminCourses = () => {
       setShowModal(false);
       setEditingCourse(null);
       setFormData(initialFormState);
+      setCourseBatches([]);
       loadCourses();
-    } catch (error) {
-      console.error(error);
-      alert("Failed to save course");
+    } catch (submitError) {
+      console.error(submitError);
+      showToast("Failed to save course");
     }
   };
 
-  const handleEdit = (course) => {
+  const handleEdit = async (course) => {
     setEditingCourse(course);
     setFormData({
       code: course.code || "",
@@ -111,7 +152,136 @@ const AdminCourses = () => {
           }))
         : [],
     });
+
+    await loadCourseBatches(course._id);
+
+    setBatchForm({
+      startDate: "",
+      estimatedEndDate: "",
+      location: Array.isArray(course.location)
+        ? course.location[0] || ""
+        : course.location || "",
+      status: "OPEN",
+    });
+
     setShowModal(true);
+  };
+
+  const handleCreateBatch = async (e) => {
+    e.preventDefault();
+    if (!editingCourse?._id) return;
+
+    if (
+      !batchForm.startDate ||
+      !batchForm.estimatedEndDate ||
+      !batchForm.location
+    ) {
+      showToast("Vui lòng nhập đủ thông tin lớp (batch)");
+      return;
+    }
+
+    try {
+      setBatchLoading(true);
+      await apiClient.post("/batches", {
+        courseId: editingCourse._id,
+        startDate: batchForm.startDate,
+        estimatedEndDate: batchForm.estimatedEndDate,
+        location: batchForm.location,
+        status: batchForm.status,
+      });
+
+      setBatchForm((prev) => ({
+        ...prev,
+        startDate: "",
+        estimatedEndDate: "",
+      }));
+
+      await loadCourseBatches(editingCourse._id);
+      showToast("Tạo lớp học thành công");
+    } catch (createBatchError) {
+      console.error(createBatchError);
+      showToast(createBatchError.message || "Tạo lớp học thất bại");
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleDeleteBatch = async (batchId) => {
+    if (!window.confirm("Bạn có chắc muốn xoá lớp này?")) return;
+
+    try {
+      setBatchLoading(true);
+      await apiClient.delete(`/batches/${batchId}`);
+      await loadCourseBatches(editingCourse._id);
+    } catch (deleteBatchError) {
+      console.error(deleteBatchError);
+      showToast(deleteBatchError.message || "Xóa lớp thất bại");
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleUpdateBatchStatus = async (batchId, status) => {
+    try {
+      await apiClient.put(`/batches/${batchId}`, { status });
+      await loadCourseBatches(editingCourse._id);
+    } catch (updateBatchError) {
+      console.error(updateBatchError);
+      showToast(updateBatchError.message || "Cập nhật trạng thái lớp thất bại");
+    }
+  };
+
+  const handleOpenAssignModal = async (course) => {
+    try {
+      setAssigningCourse(course);
+      setShowAssignModal(true);
+      setAssignLoading(true);
+      setParticipantsLoading(true);
+      setAssignForm({ studentId: "", batchId: "", status: "PROCESSING", paymentPlanType: "INSTALLMENT" });
+
+      const [studentRes, batchRes, participantRes] = await Promise.all([
+        apiClient.get("/users?role=STUDENT&status=ACTIVE"),
+        apiClient.get(`/batches?courseId=${course._id}&status=OPEN`),
+        apiClient.get(`/registrations/course/${course._id}/participants`),
+      ]);
+
+      setStudents(studentRes?.data || []);
+      setBatches(batchRes?.data || []);
+      setParticipants(participantRes?.data || []);
+    } catch (openError) {
+      console.error(openError);
+      showToast("Không tải được danh sách học viên/lớp học");
+    } finally {
+      setAssignLoading(false);
+      setParticipantsLoading(false);
+    }
+  };
+
+  const handleAssignStudent = async (e) => {
+    e.preventDefault();
+    if (!assignForm.studentId || !assignForm.batchId) {
+      showToast("Vui lòng chọn học viên và lớp học");
+      return;
+    }
+
+    try {
+      setAssignLoading(true);
+      await apiClient.post("/registrations/assign", {
+        studentId: assignForm.studentId,
+        batchId: assignForm.batchId,
+        status: assignForm.status,
+        paymentPlanType: assignForm.paymentPlanType,
+        registerMethod: "CONSULTANT",
+      });
+      const participantRes = await apiClient.get(`/registrations/course/${assigningCourse?._id}/participants`);
+      setParticipants(participantRes?.data || []);
+      alert("Gán khóa học cho học viên thành công");
+    } catch (assignError) {
+      console.error(assignError);
+      showToast(assignError.message || "Gán học viên thất bại");
+    } finally {
+      setAssignLoading(false);
+    }
   };
 
   const handleAddPayment = () => {
@@ -139,8 +309,9 @@ const AdminCourses = () => {
       try {
         await apiClient.delete(`/courses/${id}`);
         loadCourses();
-      } catch (error) {
-        alert("Failed to delete course");
+      } catch (deleteError) {
+        console.error(deleteError);
+        showToast("Failed to delete course");
       }
     }
   };
@@ -167,6 +338,48 @@ const AdminCourses = () => {
     );
   }
 
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+
+    if (!config.cloudinary.cloudName || !config.cloudinary.uploadPreset) {
+      showToast(
+        "Cloudinary chưa được cấu hình. Vui lòng thêm VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET.",
+      );
+      return;
+    }
+
+    try {
+      setImageUploading(true);
+
+      const form = new FormData();
+      form.append("file", file);
+      form.append("upload_preset", config.cloudinary.uploadPreset);
+
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/image/upload`;
+
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.secure_url) {
+        throw new Error(data.error?.message || "Upload ảnh thất bại");
+      }
+
+      const imageUrl = data.secure_url;
+
+      // Cập nhật local state để hiển thị ngay
+      setFormData((prev) => ({ ...prev, image: imageUrl }));
+    } catch (err) {
+      console.error("Image upload error:", err);
+      showToast(err.message || "Upload ảnh thất bại");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -177,6 +390,7 @@ const AdminCourses = () => {
             onClick={() => {
               setEditingCourse(null);
               setFormData(initialFormState);
+              setCourseBatches([]);
               setShowModal(true);
             }}
             className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -186,208 +400,338 @@ const AdminCourses = () => {
         }
       />
 
-      {/* Modal Form */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl h-[80vh] overflow-hidden">
             <h3 className="mb-4 text-lg font-bold text-slate-900">
               {editingCourse ? "Sửa khoá học" : "Thêm khoá học mới"}
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form
+              onSubmit={handleSubmit}
+              className="relative flex flex-col h-full max-h-[90vh]"
+            >
+              {" "}
+              <div className="max-w-xs">
+                <FormGroup
+                  label="Ảnh khóa học"
+                  helperText="Hỗ trợ .jpg, .png. Ảnh sẽ được lưu trên Cloudinary."
+                >
+                  <FileUpload
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                    maxSize={5 * 1024 * 1024}
+                    onChange={handleImageUpload}
+                    disabled={imageUploading}
+                  />
+                  {imageUploading && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Đang upload ảnh...
+                    </p>
+                  )}
+                  {formData.image && !imageUploading && (
+                    <div className="mt-2">
+                      <img
+                        src={formData.image}
+                        alt="Course"
+                        className="h-32 w-auto object-cover rounded-md"
+                      />
+                    </div>
+                  )}
+                </FormGroup>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Mã khoá học
+                    </label>
+                    <input
+                      required
+                      value={formData.code}
+                      onChange={(e) =>
+                        setFormData({ ...formData, code: e.target.value })
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Tên khoá học
+                    </label>
+                    <input
+                      required
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Học phí (VND)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.estimatedCost}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          estimatedCost: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Thời lượng (tháng)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.estimatedDuration}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          estimatedDuration: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                      placeholder="VD: 3"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Mã khoá học
+                    Địa điểm (phân cách bằng dấu phẩy)
                   </label>
                   <input
-                    required
-                    value={formData.code}
+                    value={formData.location}
                     onChange={(e) =>
-                      setFormData({ ...formData, code: e.target.value })
+                      setFormData({ ...formData, location: e.target.value })
                     }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Tên khoá học
+                    Mô tả
                   </label>
-                  <input
-                    required
-                    value={formData.name}
+                  <textarea
+                    rows="3"
+                    value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({ ...formData, description: e.target.value })
                     }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Học phí (VND)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.estimatedCost}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        estimatedCost: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                  />
+                  ></textarea>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Thời lượng (tháng)
+                    Ghi chú
                   </label>
-                  <input
-                    type="number"
-                    value={formData.estimatedDuration}
+                  <textarea
+                    rows="2"
+                    value={formData.note}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        estimatedDuration: e.target.value,
-                      })
+                      setFormData({ ...formData, note: e.target.value })
                     }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                    placeholder="VD: 3"
-                  />
+                  ></textarea>
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Địa điểm (phân cách bằng dấu phẩy)
-                </label>
-                <input
-                  value={formData.location}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                  placeholder="VD: Phòng 101, Online"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Mô tả
-                </label>
-                <textarea
-                  rows="3"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Ghi chú
-                </label>
-                <textarea
-                  rows="2"
-                  value={formData.note}
-                  onChange={(e) =>
-                    setFormData({ ...formData, note: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                ></textarea>
-              </div>
-
-              {/* Fee Payments Section */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-bold text-slate-800">
-                    Cấu hình đợt đóng phí
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleAddPayment}
-                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
-                  >
-                    + Thêm đợt
-                  </button>
-                </div>
-
-                {formData.feePayments.length === 0 && (
-                  <p className="text-sm text-slate-500 italic">
-                    Chưa có đợt đóng phí nào. Mặc định sẽ đóng 1 lần.
-                  </p>
-                )}
-
-                <div className="space-y-3">
-                  {formData.feePayments.map((payment, index) => (
-                    <div
-                      key={index}
-                      className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-slate-200"
+                <div className="border-t pt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="block text-sm font-bold text-slate-800">
+                      Cấu hình đợt đóng phí
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddPayment}
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
                     >
-                      <div className="flex-1 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
+                      + Thêm đợt
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {formData.feePayments.map((payment, index) => (
+                      <div
+                        key={index}
+                        className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-slate-200"
+                      >
+                        <div className="flex-1 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              placeholder="Tên đợt"
+                              value={payment.name}
+                              onChange={(e) =>
+                                handlePaymentChange(
+                                  index,
+                                  "name",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                            />
+                            <input
+                              type="number"
+                              placeholder="Số tiền"
+                              value={payment.amount}
+                              onChange={(e) =>
+                                handlePaymentChange(
+                                  index,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                            />
+                          </div>
                           <input
-                            placeholder="Tên đợt (VD: Đợt 1)"
-                            value={payment.name}
+                            placeholder="Ghi chú"
+                            value={payment.note}
                             onChange={(e) =>
-                              handlePaymentChange(index, "name", e.target.value)
-                            }
-                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                          />
-                          <input
-                            type="number"
-                            placeholder="Số tiền"
-                            value={payment.amount}
-                            onChange={(e) =>
-                              handlePaymentChange(
-                                index,
-                                "amount",
-                                e.target.value,
-                              )
+                              handlePaymentChange(index, "note", e.target.value)
                             }
                             className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                           />
                         </div>
-                        <input
-                          placeholder="Ghi chú (VD: Sau 1 tháng)"
-                          value={payment.note}
-                          onChange={(e) =>
-                            handlePaymentChange(index, "note", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePayment(index)}
+                          className="text-red-500 p-2"
+                        >
+                          ✕
+                        </button>
                       </div>
+                    ))}
+                  </div>
+                </div>
+                {editingCourse && (
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-slate-800">
+                        Quản lý lớp học (Batch)
+                      </h4>
+                      {batchLoading && (
+                        <span className="text-xs text-slate-500">
+                          Đang tải...
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-4">
+                      <input
+                        type="date"
+                        value={batchForm.startDate}
+                        onChange={(e) =>
+                          setBatchForm((prev) => ({
+                            ...prev,
+                            startDate: e.target.value,
+                          }))
+                        }
+                        className="rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                      />
+                      <input
+                        type="date"
+                        value={batchForm.estimatedEndDate}
+                        onChange={(e) =>
+                          setBatchForm((prev) => ({
+                            ...prev,
+                            estimatedEndDate: e.target.value,
+                          }))
+                        }
+                        className="rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                      />
+                      <input
+                        placeholder="Địa điểm lớp"
+                        value={batchForm.location}
+                        onChange={(e) =>
+                          setBatchForm((prev) => ({
+                            ...prev,
+                            location: e.target.value,
+                          }))
+                        }
+                        className="rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                      />
                       <button
                         type="button"
-                        onClick={() => handleRemovePayment(index)}
-                        className="text-red-500 p-2 hover:bg-red-50 rounded-lg"
-                        title="Xóa đợt này"
+                        onClick={handleCreateBatch}
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"
                       >
-                        ✕
+                        + Tạo lớp
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="flex gap-3 pt-4 border-t mt-4">
+                    <div className="space-y-2">
+                      {courseBatches.length === 0 ? (
+                        <p className="text-xs text-slate-500">
+                          Chưa có lớp nào cho khóa học này.
+                        </p>
+                      ) : (
+                        courseBatches.map((batch) => (
+                          <div
+                            key={batch._id}
+                            className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2"
+                          >
+                            <div className="text-sm text-slate-700">
+                              <p>
+                                {new Date(batch.startDate).toLocaleDateString(
+                                  "vi-VN",
+                                )}{" "}
+                                →{" "}
+                                {new Date(
+                                  batch.estimatedEndDate,
+                                ).toLocaleDateString("vi-VN")}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {batch.location}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={batch.status}
+                                onChange={(e) =>
+                                  handleUpdateBatchStatus(
+                                    batch._id,
+                                    e.target.value,
+                                  )
+                                }
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                              >
+                                <option value="OPEN">OPEN</option>
+                                <option value="CLOSED">CLOSED</option>
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBatch(batch._id)}
+                                className="rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-600"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="sticky bottom-0 left-0 right-0 bg-white border-t p-4 flex gap-3 z-[999]">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
                 >
                   Huỷ
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors"
                 >
-                  Lưu
+                  Lưu thay đổi
                 </button>
               </div>
             </form>
@@ -395,7 +739,154 @@ const AdminCourses = () => {
         </div>
       )}
 
-      {/* Danh sách khoá học */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">
+              Gán khóa học cho học viên
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Khóa học:{" "}
+              <span className="font-semibold">{assigningCourse?.name}</span>
+            </p>
+
+            <form className="mt-4 space-y-4" onSubmit={handleAssignStudent}>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Học viên
+                </label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={assignForm.studentId}
+                  onChange={(e) =>
+                    setAssignForm((prev) => ({
+                      ...prev,
+                      studentId: e.target.value,
+                    }))
+                  }
+                  required
+                  disabled={assignLoading}
+                >
+                  <option value="">-- Chọn học viên --</option>
+                  {students.map((student) => (
+                    <option key={student._id} value={student._id}>
+                      {student.fullName} - {student.phone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Lớp học (Batch)
+                </label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={assignForm.batchId}
+                  onChange={(e) =>
+                    setAssignForm((prev) => ({
+                      ...prev,
+                      batchId: e.target.value,
+                    }))
+                  }
+                  required
+                  disabled={assignLoading}
+                >
+                  <option value="">-- Chọn lớp --</option>
+                  {batches.map((batch) => (
+                    <option key={batch._id} value={batch._id}>
+                      {new Date(batch.startDate).toLocaleDateString("vi-VN")} -{" "}
+                      {batch.location}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Trạng thái hồ sơ
+                </label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={assignForm.status}
+                  onChange={(e) =>
+                    setAssignForm((prev) => ({
+                      ...prev,
+                      status: e.target.value,
+                    }))
+                  }
+                  disabled={assignLoading}
+                >
+                  <option value="NEW">NEW</option>
+                  <option value="PROCESSING">PROCESSING</option>
+                  <option value="STUDYING">STUDYING</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Hình thức thu học phí
+                </label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={assignForm.paymentPlanType}
+                  onChange={(e) =>
+                    setAssignForm((prev) => ({
+                      ...prev,
+                      paymentPlanType: e.target.value,
+                    }))
+                  }
+                  disabled={assignLoading}
+                >
+                  <option value="INSTALLMENT">
+                    Theo đợt (theo cấu hình khóa học)
+                  </option>
+                  <option value="FULL">Đóng 1 lần</option>
+                </select>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-3">
+                <p className="mb-2 text-sm font-semibold text-slate-800">Học viên đã tham gia khóa này</p>
+                {participantsLoading ? (
+                  <p className="text-xs text-slate-500">Đang tải danh sách học viên...</p>
+                ) : participants.length === 0 ? (
+                  <p className="text-xs text-slate-500">Chưa có học viên nào tham gia.</p>
+                ) : (
+                  <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                    {participants.map((p) => (
+                      <div key={p._id} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
+                        <p className="font-semibold">{p?.studentId?.fullName || '—'} · {p?.studentId?.phone || '—'}</p>
+                        <p className="text-slate-500">
+                          {p?.batchId?.location || '—'} · {p?.status || 'NEW'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700"
+                  disabled={assignLoading}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white"
+                  disabled={assignLoading}
+                >
+                  {assignLoading ? "Đang gán..." : "Gán học viên"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {courses.length === 0 ? (
         <div className="text-center py-8 text-slate-500">
           <p>Chưa có khóa học nào</p>
@@ -410,6 +901,12 @@ const AdminCourses = () => {
               <div className="flex items-center justify-between">
                 <StatusBadge status="done" label="Mở đăng ký" />
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => handleOpenAssignModal(course)}
+                    className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                  >
+                    Gán học viên
+                  </button>
                   <button
                     onClick={() => handleEdit(course)}
                     className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
@@ -450,6 +947,14 @@ const AdminCourses = () => {
                   </button>
                 </div>
               </div>
+              {/* Course Image */}
+              <div className="mt-3 overflow-hidden rounded-xl bg-slate-100 w-full flex items-center justify-center">
+                <img
+                  src={course.image}
+                  alt={course.name}
+                  className="w-50% h-48 object-cover transition-transform duration-300 hover:scale-105"
+                />
+              </div>
               <p className="mt-2 text-lg font-semibold text-slate-900">
                 {course.name}
               </p>
@@ -463,9 +968,7 @@ const AdminCourses = () => {
                   </span>
                 )}
               </div>
-
-              {/* Display Fee Payments Preview */}
-              <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto custom-scrollbar pr-1">
+              <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto pr-1">
                 {course.feePayments && course.feePayments.length > 0 ? (
                   course.feePayments.map((p, idx) => (
                     <p key={idx}>
@@ -479,29 +982,6 @@ const AdminCourses = () => {
                   <p className="text-slate-500 italic text-xs">Phí nộp 1 lần</p>
                 )}
               </div>
-
-              <div className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
-                <p className="font-semibold text-indigo-700">
-                  Thời lượng:{" "}
-                  {course.estimatedDuration
-                    ? `${course.estimatedDuration} tháng`
-                    : "Chưa cập nhật"}
-                </p>
-              </div>
-
-              {/* Locations */}
-              {course.location && course.location.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {course.location.map((loc, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs"
-                    >
-                      {loc}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </div>
