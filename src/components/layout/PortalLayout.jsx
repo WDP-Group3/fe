@@ -24,7 +24,7 @@ const getNavItems = (userRole) => {
     { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
-    { label: 'Quản trị', to: '/portal/admin', roles: ['ADMIN'] },
+    { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     // { label: 'Đặt lịch xe', to: '/portal/book-lesson', roles: ['STUDENT'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
