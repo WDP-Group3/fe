@@ -27,7 +27,7 @@ const getNavItems = (userRole) => {
     { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
-    { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
+    // { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
   ];
 
@@ -53,11 +53,11 @@ const PortalLayout = ({ children }) => {
     },
     ...(user?.role === 'STUDENT'
       ? [
-          {
-            label: 'Student Dashboard',
-            onClick: () => navigate('/portal/student-dashboard'),
-          },
-        ]
+        {
+          label: 'Student Dashboard',
+          onClick: () => navigate('/portal/student-dashboard'),
+        },
+      ]
       : []),
     { divider: true },
     {
