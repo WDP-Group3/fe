@@ -30,12 +30,14 @@ const Notifications = () => {
 
   useEffect(() => {
     loadNotifications();
-  }, [filterType]);
+  }, [filterType, user?.id]);
 
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const query = filterType ? `?type=${filterType}` : '';
+      const query = filterType
+        ? `?type=${filterType}&userId=${user?.id || ''}`
+        : `?userId=${user?.id || ''}`;
       const response = await apiClient.get(`/notifications${query}`);
       if (response.status === 'success') {
         setNotifications(response.data);
@@ -49,9 +51,20 @@ const Notifications = () => {
 
 
 
-  const openDetail = (notif) => {
+  const openDetail = async (notif) => {
     setSelectedNotification(notif);
     setShowDetailModal(true);
+
+    if (!notif.isRead) {
+      try {
+        await apiClient.patch(`/notifications/${notif._id}/read`, {});
+        setNotifications((prev) =>
+          prev.map((item) => (item._id === notif._id ? { ...item, isRead: true } : item)),
+        );
+      } catch (error) {
+        console.error('Error marking notification read:', error);
+      }
+    }
   };
 
   return (
@@ -108,7 +121,9 @@ const Notifications = () => {
                   </div>
                   <h3 className="mt-1 text-sm font-bold text-slate-900">{item.title}</h3>
                 </div>
-
+                {!item.isRead && (
+                  <span className="inline-flex h-3 w-3 rounded-full bg-red-500" />
+                )}
 
               </div>
             ))}

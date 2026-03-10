@@ -9,6 +9,7 @@ import Overview from './pages/Overview';
 import Courses from './pages/Courses';
 import Enrollment from './pages/Enrollment';
 import Payments from './pages/Payments';
+import PaymentQr from './pages/PaymentQr';
 import Schedule from './pages/Schedule';
 import Exams from './pages/Exams';
 import ExamTaking from './pages/ExamTaking';
@@ -84,6 +85,7 @@ function App() {
                 <Route path="courses" element={<Courses />} />
                 <Route path="enrollment" element={<Enrollment />} />
                 <Route path="payments" element={<Payments />} />
+                <Route path="payments/qr" element={<PaymentQr />} />
                 <Route path="schedule" element={<Schedule />} />
                 <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
                 <Route path="letter" element={<LetterRequest />} />
