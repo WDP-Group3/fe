@@ -73,7 +73,7 @@ const Courses = () => {
     try {
       setLoadingBatches(true);
       const response = await apiClient.get(
-        `/batches?status=OPEN&courseId=${course?._id}`
+        `/batches?status=OPEN&courseId=${course?._id}`,
       );
       if (response.status === "success") {
         setBatches(response.data || []);
@@ -162,7 +162,7 @@ const Courses = () => {
             <p>Chưa có khóa học nào</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 mt-4">
             {courses.map((course) => (
               <div
                 key={course.id}
@@ -174,7 +174,15 @@ const Courses = () => {
                     {course.code}
                   </p>
                 </div>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
+                {/* Course Image */}
+                <div className="mt-3 overflow-hidden rounded-xl bg-slate-100">
+                  <img
+                    src={course.image}
+                    alt={course.name}
+                    className="w-full h-48 object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+                <p className="mt-3 text-lg font-semibold text-slate-900">
                   {course.name}
                 </p>
                 <div className="flex items-baseline gap-2">
@@ -230,20 +238,19 @@ const Courses = () => {
                 )}
 
                 <div className="mt-4 flex gap-2">
-                <button
-                  className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-                  onClick={() => openRegisterModal(course)}
-                >
+                  <button
+                    className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+                    onClick={() => openRegisterModal(course)}
+                  >
                     Chọn khóa
                   </button>
-                <button
-                  className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
-                  onClick={() => navigate("/#consult-form")}
-                >
+                  <button
+                    className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
+                    onClick={() => navigate("/#consult-form")}
+                  >
                     Tư vấn
                   </button>
                 </div>
-
               </div>
             ))}
           </div>
@@ -300,18 +307,21 @@ const Courses = () => {
               const startLabel = b?.startDate
                 ? new Date(b.startDate).toLocaleDateString("vi-VN")
                 : "";
-              const label = [locationLabel, startLabel].filter(Boolean).join(" · ");
+              const label = [locationLabel, startLabel]
+                .filter(Boolean)
+                .join(" · ");
               return {
                 value: b?._id,
-                label: label || (b?._id || "Batch"),
+                label: label || b?._id || "Batch",
               };
             })}
             helperText="Chỉ hiển thị các lớp có trạng thái OPEN."
           />
 
-          {(!loadingBatches && batches.length === 0) && (
+          {!loadingBatches && batches.length === 0 && (
             <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
-              Hiện chưa có lớp (batch) nào đang mở cho khóa học này. Vui lòng chọn khóa khác hoặc liên hệ tư vấn.
+              Hiện chưa có lớp (batch) nào đang mở cho khóa học này. Vui lòng
+              chọn khóa khác hoặc liên hệ tư vấn.
             </div>
           )}
         </div>

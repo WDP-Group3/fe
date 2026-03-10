@@ -24,6 +24,8 @@ const DocumentApproval = () => {
     title: '',
     message: '',
     type: 'default',
+    confirmText: 'Xác nhận',
+    cancelText: 'Hủy',
     onConfirm: async () => {},
   });
 
@@ -50,7 +52,7 @@ const DocumentApproval = () => {
   }, [statusFilter]);
 
   const handleUpdateStatus = (doc, nextStatus) => {
-    const studentName = doc?.registrationId?.studentId?.fullName || 'Học viên';
+    const studentName = doc?.studentId?.fullName || doc?.registrationId?.studentId?.fullName || 'Học viên';
     const cccd = doc?.cccdNumber ? ` (CCCD: ${doc.cccdNumber})` : '';
     const isApprove = nextStatus === 'APPROVED';
 
@@ -59,6 +61,8 @@ const DocumentApproval = () => {
       title: isApprove ? 'Duyệt hồ sơ' : 'Từ chối hồ sơ',
       message: `${isApprove ? 'Duyệt' : 'Từ chối'} hồ sơ của "${studentName}"${cccd}?`,
       type: isApprove ? 'default' : 'danger',
+      confirmText: isApprove ? 'Duyệt' : 'Từ chối',
+      cancelText: 'Hủy',
       onConfirm: async () => {
         try {
           await apiClient.patch(`/documents/${doc._id}/status`, { status: nextStatus });
@@ -72,10 +76,34 @@ const DocumentApproval = () => {
     });
   };
 
+  const handleSoftDelete = (doc) => {
+    const studentName = doc?.studentId?.fullName || doc?.registrationId?.studentId?.fullName || 'Học viên';
+    const cccd = doc?.cccdNumber ? ` (CCCD: ${doc.cccdNumber})` : '';
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xóa ảo hồ sơ',
+      message: `Xóa ảo hồ sơ của "${studentName}"${cccd}? Hồ sơ sẽ không hiển thị ở danh sách duyệt nữa.`,
+      type: 'warning',
+      confirmText: 'Xóa ảo',
+      cancelText: 'Hủy',
+      onConfirm: async () => {
+        try {
+          await apiClient.patch(`/documents/${doc._id}/soft-delete`);
+          showToast('Đã xóa ảo hồ sơ', 'success');
+          await loadDocs();
+        } catch (err) {
+          showToast(err?.message || 'Xóa ảo hồ sơ thất bại', 'error');
+          throw err;
+        }
+      },
+    });
+  };
+
   const rows = useMemo(() => {
     return (docs || []).map((d, idx) => {
       const reg = d.registrationId || {};
-      const student = reg.studentId || {};
+      const student = d.studentId || reg.studentId || {};
       const batch = reg.batchId || {};
       const course = batch.courseId || {};
 
@@ -120,6 +148,9 @@ const DocumentApproval = () => {
             </Button>
             <Button size="sm" variant="danger" onClick={() => handleUpdateStatus(d, 'REJECTED')} disabled={d.status === 'REJECTED'}>
               Từ chối
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleSoftDelete(d)}>
+              Xóa ảo
             </Button>
           </div>
         ),
@@ -180,6 +211,8 @@ const DocumentApproval = () => {
         title={confirmDialog.title}
         message={confirmDialog.message}
         type={confirmDialog.type}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
       />
     </div>
   );

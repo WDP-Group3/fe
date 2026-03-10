@@ -17,10 +17,8 @@ import {
   Button,
   Input,
   Select,
-  Textarea,
   Loading,
   ErrorMessage,
-  SectionHeader,
   FileUpload,
 } from '../components/ui';
 import { FormGroup, FormRow } from '../components/forms';
@@ -37,6 +35,8 @@ const Profile = () => {
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [studentDocument, setStudentDocument] = useState(null);
+  const [loadingStudentDocument, setLoadingStudentDocument] = useState(false);
 
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !id || id === currentUser?.id;
@@ -108,6 +108,25 @@ const Profile = () => {
   // Check permissions
   const canEdit = profileUser ? canEditProfile(currentUser, profileUser) : false;
   const canView = profileUser ? canViewProfile(currentUser, profileUser) : false;
+
+  useEffect(() => {
+    const loadStudentDocument = async () => {
+      if (!profileUser || profileUser.role !== 'STUDENT' || !isOwnProfile) return;
+      try {
+        setLoadingStudentDocument(true);
+        const response = await apiClient.get('/documents/me');
+        if (response.status === 'success') {
+          setStudentDocument(response.data || null);
+        }
+      } catch (err) {
+        console.error('Load student document error:', err);
+      } finally {
+        setLoadingStudentDocument(false);
+      }
+    };
+
+    loadStudentDocument();
+  }, [profileUser, isOwnProfile]);
 
   // Handle form change
   const handleChange = (field, value) => {
@@ -435,18 +454,63 @@ const Profile = () => {
 
         {/* Role-specific Information */}
         {profileUser?.role === 'STUDENT' && (
-          <Card title="Thông tin học viên">
-            <Grid cols={2} gap={4}>
-              <div>
-                <p className="text-sm font-medium text-slate-500">Mã học viên</p>
-                <p className="mt-1 text-slate-900">{profileUser?.studentCode || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500">Trạng thái đăng ký</p>
-                <p className="mt-1 text-slate-900">{profileUser?.enrollmentStatus || '-'}</p>
-              </div>
-            </Grid>
-          </Card>
+          <>
+            <Card title="Thông tin học viên">
+              <Grid cols={2} gap={4}>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Mã học viên</p>
+                  <p className="mt-1 text-slate-900">{profileUser?.studentCode || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Trạng thái đăng ký</p>
+                  <p className="mt-1 text-slate-900">{profileUser?.enrollmentStatus || '-'}</p>
+                </div>
+              </Grid>
+            </Card>
+
+            <Card title="Hồ sơ cá nhân đã nộp">
+              {loadingStudentDocument ? (
+                <p className="text-sm text-slate-500">Đang tải hồ sơ...</p>
+              ) : !studentDocument ? (
+                <p className="text-sm text-slate-500">Chưa có hồ sơ cá nhân.</p>
+              ) : (
+                <Grid cols={2} gap={4}>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Số CMND/CCCD</p>
+                    <p className="mt-1 text-slate-900">{studentDocument?.cccdNumber || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Trạng thái duyệt</p>
+                    <p className="mt-1 text-slate-900">{studentDocument?.status || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Ảnh CCCD</p>
+                    {studentDocument?.cccdImage ? (
+                      <a href={studentDocument.cccdImage} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                        Xem file
+                      </a>
+                    ) : <p className="mt-1 text-slate-900">-</p>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Giấy khám sức khỏe</p>
+                    {studentDocument?.healthCertificate ? (
+                      <a href={studentDocument.healthCertificate} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                        Xem file
+                      </a>
+                    ) : <p className="mt-1 text-slate-900">-</p>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Ảnh 3x4</p>
+                    {studentDocument?.photo ? (
+                      <a href={studentDocument.photo} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                        Xem file
+                      </a>
+                    ) : <p className="mt-1 text-slate-900">-</p>}
+                  </div>
+                </Grid>
+              )}
+            </Card>
+          </>
         )}
 
         {profileUser?.role === 'INSTRUCTOR' && (
