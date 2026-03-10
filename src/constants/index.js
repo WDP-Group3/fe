@@ -186,5 +186,6 @@ export const TYPE_TITLES_Notification = [
   { value: 'PHOTO', label: 'Bổ sung ảnh' },
   { value: 'CABIN', label: 'Học Ca Bin' },
   { value: 'HOLIDAY', label: 'Lịch nghỉ Lễ/ Tết' },
+  { value: 'MAINTENANCE', label: 'Bảo trì hệ thống' },
   { value: 'OTHER', label: 'Khác' },
 ];

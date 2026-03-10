@@ -22,11 +22,11 @@ const AdminLayout = () => {
     const navigate = useNavigate();
 
     const userMenuItems = [
-        {
-            label: 'Thông tin cá nhân',
-            onClick: () => navigate('/portal/profile'),
-        },
-        { divider: true },
+        // {
+        //     label: 'Thông tin cá nhân',
+        //     onClick: () => navigate('/portal/profile'),
+        // // },
+        // { divider: true },
         {
             label: 'Đăng xuất',
             onClick: logout,
