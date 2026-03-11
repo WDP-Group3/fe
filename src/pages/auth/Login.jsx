@@ -103,25 +103,6 @@ const Login = () => {
               <p className="text-slate-600">Chào mừng trở lại {config.appName}</p>
             </div>
 
-            {/* Nút đăng nhập bằng Google */}
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => {
-                message.error('Đăng nhập Google thất bại');
-              }}
-            />
-
-            {/* Divider */}
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-3 text-slate-400 font-medium">
-                  Hoặc đăng nhập với email
-                </span>
-              </div>
-            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
@@ -187,6 +168,27 @@ const Login = () => {
                 Đăng nhập
               </Button>
             </form>
+
+
+            {/* Divider */}
+            <div className="relative mb-4 mt-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-3 text-slate-400 font-medium">
+                  Hoặc đăng nhập với Google
+                </span>
+              </div>
+            </div>
+
+            {/* Nút đăng nhập bằng Google */}
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                message.error('Đăng nhập Google thất bại');
+              }}
+            />
 
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-600">

@@ -7,10 +7,12 @@ import { Container, Card } from '../../components/common';
 import { FormRow } from '../../components/forms';
 import PortalLayout from '../../components/layout/PortalLayout';
 import config from '../../config';
+import { GoogleLogin } from '@react-oauth/google';
+import axiosInstance from "../../services/axios";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, loading } = useAuthContext();
+  const { register, loading, loginWithGoogle } = useAuthContext();
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
@@ -48,6 +50,36 @@ const Register = () => {
       navigate('/login');
     } catch (error) {
       showToast(error.message || 'Đăng ký thất bại', 'error');
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const response = await axiosInstance.post('/auth/google', {
+        token: credentialResponse.credential,
+      });
+
+      showToast("Đăng ký bằng Google thành công!", "success");
+
+      const mappedUser = {
+        id: response.user._id || response.user.id,
+        email: response.user.email,
+        name: response.user.fullName || response.user.name,
+        role: response.user.role,
+        phone: response.user.phone,
+        avatar: response.user.avatar || null,
+      };
+
+      loginWithGoogle(response.token, mappedUser);
+
+      if (mappedUser?.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/portal");
+      }
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      showToast(error.message || "Đăng ký bằng Google thất bại", "error", 5000);
     }
   };
 
@@ -132,6 +164,27 @@ const Register = () => {
                 Đăng ký
               </Button>
             </form>
+
+            {/* Divider */}
+            <div className="relative mb-4 mt-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-3 text-slate-400 font-medium">
+                  Hoặc đăng ký với Google
+                </span>
+              </div>
+            </div>
+
+            {/* Nút đăng nhập bằng Google */}
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                message.error('Đăng nhập Google thất bại');
+              }}
+              text="signup_with"
+            />
 
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-600">
