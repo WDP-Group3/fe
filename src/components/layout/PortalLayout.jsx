@@ -97,7 +97,7 @@ const PortalLayout = ({ children }) => {
       )}
 
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
+        <div className="mx-auto flex max-w-full items-center justify-between px-4 py-4 xl:ml-64 xl:mr-64">
           <Link to={user ? '/portal/overview' : '/'} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white font-semibold shadow-md">
               DC
@@ -133,7 +133,7 @@ const PortalLayout = ({ children }) => {
           </div>
         </div>
         <div className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+          <div className="mx-auto flex max-w-full items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
