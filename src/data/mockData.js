@@ -30,7 +30,7 @@ export const courses = [
 ];
 
 export const enrollmentSteps = [
-  { id: 1, title: 'Đăng ký', status: 'done', owner: 'Học viên', note: 'Đã nhập thông tin & upload hồ sơ' },
+  { id: 1, title: 'Nộp hồ sơ', status: 'done', owner: 'Học viên', note: 'Đã nhập thông tin & upload hồ sơ' },
   { id: 2, title: 'Duyệt hồ sơ', status: 'doing', owner: 'Staff', note: 'Chờ kiểm tra CMND + giấy khám sức khoẻ' },
   { id: 3, title: 'Nộp Sở', status: 'idle', owner: 'Staff', note: 'Hồ sơ đủ, lên danh sách nộp Sở' },
   { id: 4, title: 'Lịch học', status: 'idle', owner: 'Học viên', note: 'Đặt lịch thực hành sau khi đóng đợt 1' },
