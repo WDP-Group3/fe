@@ -5,10 +5,17 @@ import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 
 const SLOTS = [
-  { id: 1, label: 'Ca 1 (07:00 - 09:00)', startHour: 7 },
-  { id: 2, label: 'Ca 2 (09:00 - 11:00)', startHour: 9 },
-  { id: 3, label: 'Ca 3 (13:00 - 15:00)', startHour: 13 },
-  { id: 4, label: 'Ca 4 (15:00 - 17:00)', startHour: 15 },
+  { id: 1, label: 'Ca 1 (07:00 - 08:00)', startHour: 7, isBreak: false },
+  { id: 2, label: 'Ca 2 (08:00 - 09:00)', startHour: 8, isBreak: false },
+  { id: 3, label: 'Ca 3 (09:00 - 10:00)', startHour: 9, isBreak: false },
+  { id: 4, label: 'Ca 4 (10:00 - 11:00)', startHour: 10, isBreak: false },
+  { id: 5, label: 'Ca 5 (11:00 - 12:00)', startHour: 11, isBreak: false },
+  { id: 'BREAK', label: 'Nghỉ trưa (12:00 - 13:00)', startHour: 12, isBreak: true },
+  { id: 6, label: 'Ca 6 (13:00 - 14:00)', startHour: 13, isBreak: false },
+  { id: 7, label: 'Ca 7 (14:00 - 15:00)', startHour: 14, isBreak: false },
+  { id: 8, label: 'Ca 8 (15:00 - 16:00)', startHour: 15, isBreak: false },
+  { id: 9, label: 'Ca 9 (16:00 - 17:00)', startHour: 16, isBreak: false },
+  { id: 10, label: 'Ca 10 (17:00 - 18:00)', startHour: 17, isBreak: false },
 ];
 
 const getMonday = (d) => {
@@ -24,10 +31,37 @@ const InstructorSchedule = () => {
   const [schedules, setSchedules] = useState([]);
   const [currentMonday, setCurrentMonday] = useState(getMonday(new Date()));
   
+  // [MỚI] Thông tin nghỉ phép khẩn cấp
+  const [emergencyLeaveInfo, setEmergencyLeaveInfo] = useState({ usedCount: 0, remainingCount: 2, maxPerMonth: 2, currentMonth: '' });
+  
   // [NEW] Modal chi tiết học viên
   const [studentDetailModal, setStudentDetailModal] = useState({ isOpen: false, data: null });
+  
+  // [MỚI] Modal chọn báo bận ca hay cả ngày
+  const [confirmBusyModal, setConfirmBusyModal] = useState({ 
+    isOpen: false, 
+    date: null, 
+    dateString: '', 
+    dayLabel: '',
+    slotId: null,
+    slotLabel: '',
+    isLoading: false,
+    mode: 'select' // 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
+  });
 
   useEffect(() => { fetchSchedule(); }, [currentMonday]);
+  useEffect(() => { fetchEmergencyLeaveInfo(); }, []);
+
+  const fetchEmergencyLeaveInfo = async () => {
+    try {
+      const res = await apiClient.get('/schedule/emergency-leave');
+      if (res.status === 'success') {
+        setEmergencyLeaveInfo(res.data);
+      }
+    } catch (error) { 
+      console.error('Error fetching emergency leave info:', error); 
+    }
+  };
 
   const fetchSchedule = async () => {
     setLoading(true);
@@ -78,10 +112,73 @@ const InstructorSchedule = () => {
     if (checkDate < now) { showToast('Không thể báo bận quá khứ', 'error'); return; }
     if (existingData?.category === 'BOOKED') { showToast('Lịch đã có người đặt', 'info'); return; }
 
+    // Lấy thông tin slot được chọn (đã khai báo ở trên)
+    const slotLabel = currentSlot ? currentSlot.label : `Ca ${slotId}`;
+    
+    const dayLabel = new Date(date).toLocaleDateString('vi-VN', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'numeric',
+      year: 'numeric'
+    });
+    
+    // Hiển modal chọn: báo bận ca hay cả ngày
+    setConfirmBusyModal({
+      isOpen: true,
+      date: date,
+      dateString: dateString,
+      dayLabel: dayLabel,
+      slotId: slotId,
+      slotLabel: slotLabel,
+      isLoading: false,
+      mode: 'select' // Mode chọn: 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
+    });
+  };
+
+  // [MỚI] Xác nhận báo bận - theo ca
+  const confirmBusySlot = async () => {
+    const { dateString, slotId } = confirmBusyModal;
+    setConfirmBusyModal(prev => ({ ...prev, isLoading: true }));
+    
     try {
       const res = await apiClient.post('/schedule/busy', { date: dateString, timeSlot: slotId });
-      showToast(res.message, 'success'); fetchSchedule();
-    } catch (error) { showToast(error.message, 'error'); }
+      
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+      fetchSchedule();
+      fetchEmergencyLeaveInfo();
+
+      if (res.data?.isEmergency && res.data?.cancelledBooking) {
+        showToast(`✅ ${res.message} - Đã gửi email thông báo cho học viên!`, 'success');
+      } else {
+        showToast(res.message, 'success');
+      }
+    } catch (error) { 
+      showToast(error.message, 'error');
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+    }
+  };
+
+  // [MỚI] Xác nhận báo bận cả ngày
+  const confirmBusyDay = async () => {
+    const { dateString } = confirmBusyModal;
+    setConfirmBusyModal(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const res = await apiClient.post('/schedule/busy-all-day', { date: dateString });
+      
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+      fetchSchedule();
+      fetchEmergencyLeaveInfo();
+
+      if (res.data?.isEmergency && res.data?.cancelledCount > 0) {
+        showToast(`✅ ${res.message} - Đã gửi email thông báo cho học viên!`, 'success');
+      } else {
+        showToast(res.message, 'success');
+      }
+    } catch (error) { 
+      showToast(error.message, 'error');
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+    }
   };
 
   // HÀM XỬ LÝ ĐIỂM DANH (Được gọi từ Modal)
@@ -122,6 +219,33 @@ const InstructorSchedule = () => {
 
   return (
     <div className="space-y-10">
+      {/* [MỚI] Thông tin nghỉ phép khẩn cấp */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">📋</div>
+            <div>
+              <h3 className="font-bold text-amber-800">Nghỉ phép khẩn cấp (Emergency Leave)</h3>
+              <p className="text-sm text-amber-700">Tháng {emergencyLeaveInfo.currentMonth} - Bạn đã sử dụng {emergencyLeaveInfo.usedCount}/2 lần</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-bold text-amber-600">{emergencyLeaveInfo.remainingCount}</div>
+            <div className="text-xs text-amber-600">lần còn lại</div>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="mt-3 w-full bg-amber-200 rounded-full h-2">
+          <div 
+            className={`h-2 rounded-full ${emergencyLeaveInfo.remainingCount === 0 ? 'bg-red-500' : 'bg-amber-500'}`}
+            style={{ width: `${(emergencyLeaveInfo.usedCount / emergencyLeaveInfo.maxPerMonth) * 100}%` }}
+          />
+        </div>
+        <p className="text-xs text-amber-600 mt-2">
+          ⚠️ Lưu ý: Báo bận vượt deadline (sau thứ 6, 18:00) sẽ tính là nghỉ phép khẩn cấp. Tối đa 2 lần/tháng.
+        </p>
+      </div>
+
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <SectionHeader title="Quản Lý Lịch Dạy" description="Click ô xanh để xem thông tin & điểm danh, ô trống báo bận" />
@@ -220,6 +344,73 @@ const InstructorSchedule = () => {
               </div>
            </div>
         )}
+      </Modal>
+
+      {/* [MỚI] MODAL CHỌN BÁO BẬN CA HAY CẢ NGÀY */}
+      <Modal 
+        isOpen={confirmBusyModal.isOpen} 
+        onClose={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' })} 
+        title="⚠️ Báo bận"
+      >
+        <div className="p-4 space-y-4">
+          <div className="text-center">
+            <div className="text-4xl mb-3">📅</div>
+            <p className="text-lg font-bold text-slate-800">{confirmBusyModal.dayLabel}</p>
+            {confirmBusyModal.slotLabel && (
+              <p className="text-sm font-medium text-amber-600 mt-1">{confirmBusyModal.slotLabel}</p>
+            )}
+          </div>
+
+          {/* Mode: Chọn báo bận ca hay cả ngày */}
+          <div className="space-y-3">
+            <p className="text-slate-700 font-medium">Bạn muốn báo bận như thế nào?</p>
+            
+            {/* Chọn báo bận ca */}
+            <button
+              onClick={confirmBusySlot}
+              disabled={confirmBusyModal.isLoading}
+              className="w-full p-4 border-2 border-blue-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">📌</div>
+                <div>
+                  <p className="font-bold text-slate-800">Báo bận ca học này</p>
+                  <p className="text-sm text-slate-500">Chỉ báo bận {confirmBusyModal.slotLabel || 'ca được chọn'}</p>
+                </div>
+              </div>
+            </button>
+
+            {/* Chọn báo bận cả ngày */}
+            <button
+              onClick={confirmBusyDay}
+              disabled={confirmBusyModal.isLoading}
+              className="w-full p-4 border-2 border-amber-200 rounded-xl hover:border-amber-400 hover:bg-amber-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold">📅</div>
+                <div>
+                  <p className="font-bold text-slate-800">Báo bận cả ngày</p>
+                  <p className="text-sm text-slate-500">Báo bận tất cả các ca trong ngày</p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-blue-800 text-sm">
+              📌 <strong>Lưu ý:</strong> Báo bận trong tuần hiện tại hoặc sau 18h thứ 6 sẽ tính là <strong>báo bận khẩn cấp</strong> và giới hạn 2 lần/tháng.
+            </p>
+          </div>
+
+          <Button 
+            className="w-full" 
+            variant="outline"
+            onClick={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' })}
+            disabled={confirmBusyModal.isLoading}
+          >
+            Hủy
+          </Button>
+        </div>
       </Modal>
     </div>
   );
