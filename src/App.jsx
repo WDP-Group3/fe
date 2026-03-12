@@ -20,6 +20,7 @@ import UserManagement from './pages/admin/UserManagement';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminNotifications from './pages/admin/AdminNotifications';
+import AdminFeedbacks from './pages/admin/AdminFeedbacks';
 import Feedback from './pages/Feedback';
 import Leads from './pages/Lead';
 import Profile from './pages/Profile';
@@ -37,6 +38,7 @@ import InstructorSchedule from './pages/instructor/InstructorSchedule';
 import AdminBlogs from './pages/admin/AdminBlogs';
 import DocumentApproval from './pages/DocumentApproval';
 import StudentDashboard from './pages/StudentDashboard';
+import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -134,9 +136,11 @@ function App() {
                 <Route path="courses" element={<AdminCourses />} />
                 <Route path="payments" element={<Payments />} />
                 <Route path="notifications" element={<AdminNotifications />} />
+                <Route path="feedbacks" element={<AdminFeedbacks />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leads" element={<Leads />} />
                 <Route path="blogs" element={<AdminBlogs />} />
+                <Route path="system-holidays" element={<AdminSystemHolidays />} />
               </Route>
             </Route>
 
