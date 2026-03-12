@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
@@ -8,19 +9,14 @@ import { useAuthContext } from '../context/AuthContext';
 
 const Payments = () => {
   const { user } = useAuthContext();
+  const navigate = useNavigate();
   const [payments, setPayments] = useState([]);
   const [tuitionInfo, setTuitionInfo] = useState(null);
-  const [aiSuggestion, setAiSuggestion] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [dueDateSubmitting, setDueDateSubmitting] = useState(false);
+  const [showScheduleList, setShowScheduleList] = useState(true);
+  const [expandedSchedules, setExpandedSchedules] = useState({});
 
-  const [paymentForm, setPaymentForm] = useState({
-    registrationId: '',
-    amount: '',
-    method: 'TRANSFER',
-    note: '',
-  });
 
   const [studentExtendForm, setStudentExtendForm] = useState({
     registrationId: '',
@@ -38,27 +34,71 @@ const Payments = () => {
     note: '',
   });
 
+  const [notifyForm, setNotifyForm] = useState({
+    userId: '',
+    registrationId: '',
+    scheduleIndex: '',
+    message: '',
+  });
+  const [notifySubmitting, setNotifySubmitting] = useState(false);
+
   const [qrForm, setQrForm] = useState({
     amount: '',
-    orderInfo: '',
   });
   const [creatingQr, setCreatingQr] = useState(false);
   const [paymentQrUrl, setPaymentQrUrl] = useState('');
   const [paymentTransferContent, setPaymentTransferContent] = useState('');
   const [selectedRegistrationForQr, setSelectedRegistrationForQr] = useState('');
+  const [selectedScheduleIndex, setSelectedScheduleIndex] = useState('');
   const [currentTransactionId, setCurrentTransactionId] = useState('');
   const [transactionStatus, setTransactionStatus] = useState('idle');
   const [transactions, setTransactions] = useState([]);
   const pollRef = useRef(null);
+  const pendingPollRef = useRef(null);
+
+  const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
+  const isStudent = user?.role === 'STUDENT';
 
   useEffect(() => {
     loadData();
   }, []);
 
   useEffect(() => {
+    if (!isStudent) return undefined;
+
+    if (pendingPollRef.current) {
+      clearInterval(pendingPollRef.current);
+    }
+
+    pendingPollRef.current = setInterval(async () => {
+      try {
+        const response = await apiClient.get('/payments/transactions?status=pending');
+        const pending = response?.data || [];
+        const currentPending = transactions.filter((t) => t.status !== 'completed');
+
+        if (pending.length !== currentPending.length) {
+          await loadData();
+        }
+      } catch (error) {
+        // ignore polling error
+      }
+    }, 8000);
+
+    return () => {
+      if (pendingPollRef.current) {
+        clearInterval(pendingPollRef.current);
+        pendingPollRef.current = null;
+      }
+    };
+  }, [isStudent, transactions]);
+
+  useEffect(() => {
     return () => {
       if (pollRef.current) {
         clearInterval(pollRef.current);
+      }
+      if (pendingPollRef.current) {
+        clearInterval(pendingPollRef.current);
       }
     };
   }, []);
@@ -84,14 +124,6 @@ const Payments = () => {
         setStudentExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
         setAdminDueDateForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
 
-        const aiRes = await apiClient.post('/payments/ai-suggestion', {
-          totalFee: info.totalFee,
-          paidAmount: info.paidAmount,
-          remaining: info.remaining,
-        });
-        if (aiRes.status === 'success') {
-          setAiSuggestion(aiRes.data);
-        }
       }
 
       if (transactionResponse.status === 'success') {
@@ -104,38 +136,6 @@ const Payments = () => {
     }
   };
 
-  const handleCreatePayment = async (e) => {
-    e.preventDefault();
-    if (!paymentForm.registrationId || !paymentForm.amount) {
-      alert('Vui lòng chọn hồ sơ và nhập số tiền');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const paymentRes = await apiClient.post('/payments', {
-        registrationId: paymentForm.registrationId,
-        amount: Number(paymentForm.amount),
-        method: paymentForm.method,
-        receivedBy: 'CONSULTANT',
-        note: paymentForm.note,
-      });
-
-      const paymentId = paymentRes?.data?._id;
-      if (paymentId) {
-        await apiClient.post(`/invoices/from-payment/${paymentId}`, {});
-      }
-
-      setPaymentForm({ registrationId: '', amount: '', method: 'TRANSFER', note: '' });
-      await loadData();
-      alert('Đã ghi nhận giao dịch học phí và tạo hóa đơn tự động');
-    } catch (error) {
-      console.error(error);
-      alert(error.message || 'Tạo giao dịch thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleStudentExtend = async (e) => {
     e.preventDefault();
@@ -190,6 +190,34 @@ const Payments = () => {
     }
   };
 
+  const handleQuickExtend = async (registrationId, scheduleIndex) => {
+    const days = window.prompt('Nhập số ngày gia hạn (1-30):', '7');
+    if (!days) return;
+
+    const parsedDays = Math.max(1, Math.min(Number(days) || 0, 30));
+    if (!parsedDays) {
+      alert('Số ngày không hợp lệ');
+      return;
+    }
+
+    try {
+      setDueDateSubmitting(true);
+      await apiClient.post('/payments/upsert-due-date', {
+        registrationId,
+        scheduleIndex: Number(scheduleIndex),
+        dueDate: new Date(Date.now() + parsedDays * 24 * 60 * 60 * 1000).toISOString(),
+        note: `Admin gia hạn ${parsedDays} ngày`,
+      });
+      await loadData();
+      alert('Đã gia hạn hạn thanh toán');
+    } catch (error) {
+      console.error(error);
+      alert(error.message || 'Gia hạn thất bại');
+    } finally {
+      setDueDateSubmitting(false);
+    }
+  };
+
   const handleDeletePayment = async (paymentId) => {
     const confirmed = window.confirm('Bạn chắc chắn muốn xóa giao dịch này?');
     if (!confirmed) return;
@@ -201,6 +229,34 @@ const Payments = () => {
     } catch (error) {
       console.error(error);
       alert(error.message || 'Xóa giao dịch thất bại');
+    }
+  };
+
+  const handleSendNotification = async (e) => {
+    e.preventDefault();
+
+    if (!notifyForm.userId || !notifyForm.message.trim()) {
+      alert('Vui lòng nhập nội dung thông báo');
+      return;
+    }
+
+    try {
+      setNotifySubmitting(true);
+      await apiClient.post('/notifications', {
+        type: 'OTHER',
+        title: 'Nhắc đóng học phí',
+        message: notifyForm.message.trim(),
+        expirationDays: 7,
+        userId: notifyForm.userId,
+      });
+
+      setNotifyForm({ userId: '', registrationId: '', scheduleIndex: '', message: '' });
+      alert('Đã gửi thông báo đến học viên');
+    } catch (error) {
+      console.error(error);
+      alert(error.message || 'Gửi thông báo thất bại');
+    } finally {
+      setNotifySubmitting(false);
     }
   };
 
@@ -232,6 +288,11 @@ const Payments = () => {
   const handleCreateQr = async (e) => {
     e.preventDefault();
 
+    if (!selectedRegistrationForQr || selectedScheduleIndex === '') {
+      alert('Vui lòng chọn khóa học và đợt thanh toán');
+      return;
+    }
+
     if (!qrForm.amount || Number(qrForm.amount) <= 0) {
       alert('Vui lòng nhập số tiền hợp lệ');
       return;
@@ -250,9 +311,10 @@ const Payments = () => {
 
       const response = await apiClient.post('/payments/create-qr', {
         vnp_Amount: Number(qrForm.amount),
-        vnp_OrderInfo: qrForm.orderInfo || `Thanh toan hoc phi ${new Date().toLocaleDateString('vi-VN')}`,
+        vnp_OrderInfo: `Thanh toan hoc phi ${new Date().toLocaleDateString('vi-VN')}`,
         user: user?.id,
         registrationId: selectedRegistrationForQr || undefined,
+        scheduleIndex: selectedScheduleIndex !== '' ? Number(selectedScheduleIndex) : undefined,
       });
 
       const qrUrl = response?.data?.paymentUrl || response?.paymentUrl || '';
@@ -264,6 +326,26 @@ const Payments = () => {
         setPaymentTransferContent(transferContent);
         setCurrentTransactionId(transactionId);
         startPollingTransaction(transactionId);
+
+        const selectedItem = (tuitionInfo?.items || []).find(
+          (item) => item.registrationId === selectedRegistrationForQr,
+        );
+        const schedule = selectedItem?.paymentSchedule || [];
+        const scheduleItem = schedule[Number(selectedScheduleIndex)] || null;
+
+        navigate('/portal/payments/qr', {
+          state: {
+            paymentUrl: qrUrl,
+            transferContent,
+            transactionId,
+            amount: Number(qrForm.amount),
+            courseName: selectedItem?.courseName || '',
+            courseCode: selectedItem?.courseCode || '',
+            scheduleName: scheduleItem?.name || `Đợt ${Number(selectedScheduleIndex) + 1}`,
+            scheduleAmount: scheduleItem?.amount || Number(qrForm.amount),
+            scheduleNote: scheduleItem?.note || '',
+          },
+        });
       } else {
         alert('Đã tạo QR nhưng không đọc được đường dẫn thanh toán.');
       }
@@ -288,9 +370,6 @@ const Payments = () => {
       alert(error.message || 'Xác nhận giao dịch thất bại');
     }
   };
-
-  const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
-  const isStudent = user?.role === 'STUDENT';
 
   const columns = [
     { key: 'title', title: 'Mã GD', dataIndex: '_id' },
@@ -325,6 +404,7 @@ const Payments = () => {
   ];
 
   const scheduleColumns = [
+    { key: 'studentName', title: 'Học viên', dataIndex: 'studentName', render: (val) => val || '—' },
     { key: 'courseName', title: 'Khoá học', dataIndex: 'courseName' },
     { key: 'totalFee', title: 'Tổng phí', dataIndex: 'totalFee', render: (val) => formatCurrency(val) },
     { key: 'paidAmount', title: 'Đã đóng', dataIndex: 'paidAmount', render: (val) => formatCurrency(val) },
@@ -339,17 +419,20 @@ const Payments = () => {
       ),
     },
     {
-      key: 'dueDate',
-      title: 'Hạn thanh toán',
-      dataIndex: 'dueDate',
-      render: (val, row) => {
-        if (!val) return 'Chưa có';
-        return (
-          <span className={row.isOverdue ? 'font-semibold text-red-600' : 'text-slate-700'}>
-            {new Date(val).toLocaleDateString('vi-VN')}
-          </span>
-        );
-      },
+      key: 'detailToggle',
+      title: 'Chi tiết',
+      render: (_, row) => (
+        <button
+          type="button"
+          onClick={() => setExpandedSchedules((prev) => ({
+            ...prev,
+            [row.registrationId]: !prev[row.registrationId],
+          }))}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100"
+        >
+          {expandedSchedules[row.registrationId] ? '-' : '+'}
+        </button>
+      ),
     },
   ];
 
@@ -357,7 +440,7 @@ const Payments = () => {
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
         <SectionHeader
-          title="Tuition / Wallet"
+          title="HỌC PHÍ"
           description="Xem tổng phí, đã đóng, công nợ còn lại và lịch thanh toán"
         />
 
@@ -369,35 +452,149 @@ const Payments = () => {
           <>
             <div className="mb-4 grid gap-4 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-4">
               <div>
-                <p className="text-xs font-semibold text-slate-600">Total Fee</p>
+                <p className="text-xs font-semibold text-slate-600">TỔNG PHÍ</p>
                 <p className="mt-1 text-base font-semibold text-slate-900">{formatCurrency(tuitionInfo?.totalFee || 0)}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-600">Paid</p>
+                <p className="text-xs font-semibold text-slate-600">ĐÃ TRẢ</p>
                 <p className="mt-1 text-base font-semibold text-emerald-700">{formatCurrency(tuitionInfo?.paidAmount || 0)}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-600">Remaining</p>
+                <p className="text-xs font-semibold text-slate-600">DƯ NỢ</p>
                 <p className={`mt-1 text-base font-semibold ${tuitionInfo?.isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
                   {formatCurrency(tuitionInfo?.remaining || 0)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-600">Due Date</p>
-                <p className={`mt-1 text-base font-semibold ${tuitionInfo?.isOverdue ? 'text-red-600' : 'text-slate-800'}`}>
-                  {tuitionInfo?.dueDate ? new Date(tuitionInfo.dueDate).toLocaleDateString('vi-VN') : 'Chưa có'}
-                </p>
-              </div>
+             
             </div>
 
-            {aiSuggestion && (
-              <div className="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
-                <p className="font-semibold">AI đề xuất</p>
-                <p>{aiSuggestion.message}</p>
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <p className="font-semibold text-slate-700">Danh sách khóa học</p>
+              <button
+                type="button"
+                onClick={() => setShowScheduleList((prev) => !prev)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100"
+              >
+                {showScheduleList ? '-' : '+'}
+              </button>
+            </div>
+
+            {showScheduleList && (
+              <div className="space-y-3">
+                <DataTable columns={scheduleColumns} data={tuitionInfo?.items || []} />
+                {(tuitionInfo?.items || []).filter((item) => expandedSchedules[item.registrationId]).map((item) => {
+                  const schedule = item.paymentSchedule || [];
+                  const paidAmount = Number(item.paidAmount || 0);
+                  let accumulated = 0;
+
+                  return (
+                    <div key={`detail-${item.registrationId}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500">Thời gian khóa học</p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {item.courseStartDate ? new Date(item.courseStartDate).toLocaleDateString('vi-VN') : 'Chưa có'}
+                            {' '}→{' '}
+                            {item.courseEndDate ? new Date(item.courseEndDate).toLocaleDateString('vi-VN') : 'Chưa có'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold text-slate-500">Học viên</p>
+                          <p className="text-sm font-semibold text-slate-900">{item.studentName || '—'}</p>
+                        </div>
+                      </div>
+
+                      {schedule.length === 0 ? (
+                        <p className="mt-3 text-xs text-slate-500">Chưa có lịch đóng phí.</p>
+                      ) : (
+                        <div className="mt-3 grid gap-2">
+                          {schedule.map((scheduleItem, idx) => {
+                            const installmentAmount = Number(scheduleItem?.amount || 0);
+                            const paidForInstallment = Math.min(Math.max(paidAmount - accumulated, 0), installmentAmount);
+                            const remainingForInstallment = Math.max(installmentAmount - paidForInstallment, 0);
+                            const isPaid = remainingForInstallment === 0;
+
+                            accumulated += installmentAmount;
+
+                            return (
+                              <div key={`${item.registrationId}-schedule-${idx}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
+                                <div>
+                                  <p className="font-medium text-slate-900">{scheduleItem?.name || `Đợt ${idx + 1}`}</p>
+                                  <p className="text-xs text-slate-500">
+                                    Hạn nộp: {scheduleItem?.dueDate ? new Date(scheduleItem.dueDate).toLocaleDateString('vi-VN') : 'Chưa có'}
+                                  </p>
+                                  {scheduleItem?.note && (
+                                    <p className="text-xs text-slate-500">Ghi chú: {scheduleItem.note}</p>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 text-right">
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-900">{formatCurrency(installmentAmount)}</p>
+                                    <p className="text-xs text-slate-500">Đã đóng: {formatCurrency(paidForInstallment)}</p>
+                                    <p className="text-xs text-slate-500">Còn lại: {formatCurrency(remainingForInstallment)}</p>
+                                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                      {isPaid ? 'Đã đóng' : 'Chưa đóng'}
+                                    </span>
+                                  </div>
+                                  {!isPaid && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuickExtend(item.registrationId, idx)}
+                                        className="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                                      >
+                                        Gia hạn
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNotifyForm({
+                                            userId: item.studentId,
+                                            registrationId: item.registrationId,
+                                            scheduleIndex: idx,
+                                            message: `Nhắc đóng ${scheduleItem?.name || `Đợt ${idx + 1}`} cho khóa ${item.courseName}. Còn thiếu ${formatCurrency(remainingForInstallment)}.`,
+                                          });
+                                        }}
+                                        className="rounded-full border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+                                      >
+                                        Thông báo
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          <form onSubmit={handleSendNotification} className="mt-3 grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs">
+                            <p className="text-xs font-semibold text-indigo-700">Gửi thông báo nhắc đóng</p>
+                            <textarea
+                              rows={2}
+                              placeholder="Nội dung thông báo"
+                              className="w-full rounded-lg border border-indigo-200 px-3 py-2 text-xs"
+                              value={notifyForm.registrationId === item.registrationId ? notifyForm.message : ''}
+                              onChange={(e) => setNotifyForm((prev) => ({
+                                ...prev,
+                                userId: item.studentId,
+                                registrationId: item.registrationId,
+                                message: e.target.value,
+                              }))}
+                            />
+                            <button
+                              type="submit"
+                              disabled={notifySubmitting || notifyForm.registrationId !== item.registrationId}
+                              className="w-full rounded-full bg-indigo-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                            >
+                              {notifySubmitting ? 'Đang gửi...' : 'Gửi thông báo'}
+                            </button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
-
-            <DataTable columns={scheduleColumns} data={tuitionInfo?.items || []} />
           </>
         )}
       </div>
@@ -405,34 +602,82 @@ const Payments = () => {
       {isStudent && (
         <>
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-            <SectionHeader title="Thanh toán qua QR" description="Tạo link VNPay để thanh toán học phí" />
+            <SectionHeader title="Thanh toán qua QR" description="Chọn khóa học và đợt đóng phí cố định" />
             <form onSubmit={handleCreateQr} className="grid gap-3 md:grid-cols-2">
               <select
                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 value={selectedRegistrationForQr}
-                onChange={(e) => setSelectedRegistrationForQr(e.target.value)}
+                onChange={(e) => {
+                  setSelectedRegistrationForQr(e.target.value);
+                  setSelectedScheduleIndex('');
+                  setQrForm((prev) => ({ ...prev, amount: '' }));
+                }}
               >
-                <option value="">-- Chọn khóa học (khuyến nghị) --</option>
+                <option value="">-- Chọn khóa học --</option>
                 {(tuitionInfo?.items || []).map((item) => (
                   <option key={item.registrationId} value={item.registrationId}>
-                    [{item.courseCode || 'N/A'}] [{item.courseCode || 'N/A'}] {item.courseName} - Còn nợ {formatCurrency(item.remaining)}
+                    [{item.courseCode || 'N/A'}] {item.courseName} - Còn nợ {formatCurrency(item.remaining)}
                   </option>
                 ))}
+              </select>
+              <select
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={selectedScheduleIndex}
+                onChange={(e) => {
+                  const index = e.target.value;
+                  setSelectedScheduleIndex(index);
+
+                  const selectedItem = (tuitionInfo?.items || []).find(
+                    (item) => item.registrationId === selectedRegistrationForQr,
+                  );
+                  const schedule = selectedItem?.paymentSchedule || [];
+                  const scheduleItem = schedule[Number(index)];
+                  const amount = scheduleItem?.amount ? String(scheduleItem.amount) : '';
+                  setQrForm((prev) => ({ ...prev, amount }));
+                }}
+                disabled={!selectedRegistrationForQr}
+              >
+                <option value="">-- Chọn đợt thanh toán --</option>
+                {(() => {
+                  const selectedItem = (tuitionInfo?.items || []).find(
+                    (item) => item.registrationId === selectedRegistrationForQr,
+                  );
+                  const schedule = selectedItem?.paymentSchedule || [];
+                  const paidAmount = Number(selectedItem?.paidAmount || 0);
+
+                  let accumulated = 0;
+                  const unpaidItems = schedule.filter((scheduleItem) => {
+                    accumulated += Number(scheduleItem?.amount || 0);
+                    return paidAmount < accumulated;
+                  });
+
+                  if (unpaidItems.length === 0) {
+                    return (
+                      <option value="" disabled>
+                        Đã hoàn tất thanh toán
+                      </option>
+                    );
+                  }
+
+                  return unpaidItems.map((scheduleItem) => {
+                    const idx = schedule.indexOf(scheduleItem);
+                    return (
+                      <option key={`${selectedRegistrationForQr}-${idx}`} value={idx}>
+                        {scheduleItem?.name || `Đợt ${idx + 1}`} - {formatCurrency(scheduleItem?.amount || 0)}
+                      </option>
+                    );
+                  });
+                })()}
               </select>
               <input
                 type="number"
                 min="1000"
-                placeholder="Số tiền cần thanh toán"
+                placeholder="Số tiền theo đợt"
                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 value={qrForm.amount}
                 onChange={(e) => setQrForm((prev) => ({ ...prev, amount: e.target.value }))}
                 required
-              />
-              <input
-                placeholder="Nội dung thanh toán"
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                value={qrForm.orderInfo}
-                onChange={(e) => setQrForm((prev) => ({ ...prev, orderInfo: e.target.value }))}
+                readOnly
               />
               <button
                 type="submit"
@@ -529,7 +774,7 @@ const Payments = () => {
       {canCollect && (
         <>
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-            <SectionHeader title="Chỉnh / Add hạn thanh toán" description="Admin/Sale chỉnh hạn từng đợt hoặc thêm đợt mới" />
+            <SectionHeader title="Gia Hạn Thanh Toán Học Phí" description="Admin/Sale chỉnh hạn từng đợt hoặc thêm đợt mới" />
             <form onSubmit={handleAdminUpsertDueDate} className="grid gap-3 md:grid-cols-2">
               <select
                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -588,54 +833,6 @@ const Payments = () => {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-            <SectionHeader title="Nhập giao dịch học phí" description="Admin/Sale ghi nhận thu tiền" />
-            <form onSubmit={handleCreatePayment} className="grid gap-3 md:grid-cols-2">
-              <select
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                value={paymentForm.registrationId}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, registrationId: e.target.value }))}
-                required
-              >
-                <option value="">-- Chọn hồ sơ/khóa học --</option>
-                {(tuitionInfo?.items || []).map((item) => (
-                  <option key={item.registrationId} value={item.registrationId}>
-                    {item.studentName ? `${item.studentName} - ` : ''}[{item.courseCode || 'N/A'}] [{item.courseCode || 'N/A'}] {item.courseName} - Còn nợ {formatCurrency(item.remaining)}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                placeholder="Số tiền thu"
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                value={paymentForm.amount}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
-                required
-              />
-              <select
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                value={paymentForm.method}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, method: e.target.value }))}
-              >
-                <option value="TRANSFER">Chuyển khoản</option>
-                <option value="CASH">Tiền mặt</option>
-                <option value="ONLINE">Online</option>
-              </select>
-              <input
-                placeholder="Ghi chú"
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                value={paymentForm.note}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, note: e.target.value }))}
-              />
-              <button
-                type="submit"
-                className="md:col-span-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-                disabled={submitting}
-              >
-                {submitting ? 'Đang lưu...' : 'Ghi nhận thanh toán'}
-              </button>
-            </form>
-          </div>
         </>
       )}
 

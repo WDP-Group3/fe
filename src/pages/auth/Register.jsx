@@ -18,7 +18,7 @@ const Register = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'STUDENT',
+    role: 'USER',
   });
   const [errors, setErrors] = useState({});
 
@@ -94,16 +94,6 @@ const Register = () => {
                   required
                 />
               </FormRow>
-
-              <Select
-                label="Vai trò"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                options={[
-                  { value: 'STUDENT', label: 'Học viên' },
-                  { value: 'INSTRUCTOR', label: 'Giáo viên' },
-                ]}
-              />
 
               <FormRow cols={2}>
                 <Input
