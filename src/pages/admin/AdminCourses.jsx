@@ -33,6 +33,7 @@ const AdminCourses = () => {
     startDate: "",
     estimatedEndDate: "",
     location: "",
+    examLocation: "",
     maxStudents: 30,
     status: "OPEN",
   });
@@ -142,16 +143,12 @@ const AdminCourses = () => {
             }
           }
           
-          // Get student count
-          let studentCount = 0;
-          try {
-            const regRes = await apiClient.get(`/registrations/batch/${batch._id}/participants`);
-            studentCount = regRes?.data?.length || 0;
-          } catch (e) {
-            console.error("Error loading participants:", e);
-          }
-          
-          return { ...batch, courseInfo, studentCount };
+          // studentCount is now provided by the getAllBatches API response
+          return { 
+            ...batch, 
+            courseInfo, 
+            studentCount: batch.studentCount || 0 
+          };
         })
       );
       
@@ -250,6 +247,7 @@ const AdminCourses = () => {
       location: Array.isArray(course.location)
         ? course.location[0] || ""
         : course.location || "",
+      examLocation: "",
       maxStudents: 30,
       status: "OPEN",
     });
@@ -295,6 +293,7 @@ const AdminCourses = () => {
         startDate: "",
         estimatedEndDate: "",
         location: "",
+        examLocation: "",
         maxStudents: 30,
         status: "OPEN",
       });
@@ -313,6 +312,7 @@ const AdminCourses = () => {
       startDate: batch.startDate ? batch.startDate.split('T')[0] : "",
       estimatedEndDate: batch.estimatedEndDate ? batch.estimatedEndDate.split('T')[0] : "",
       location: batch.location || "",
+      examLocation: batch.examLocation || "",
       maxStudents: batch.maxStudents || 30,
       status: batch.status || "OPEN",
     });
@@ -341,12 +341,16 @@ const AdminCourses = () => {
 
       const courseId = batch.courseId?._id || batch.courseId;
       
-      const [studentRes, participantRes] = await Promise.all([
-        apiClient.get("/users?role=STUDENT&status=ACTIVE"),
+      const [pendingRegRes, participantRes] = await Promise.all([
+        apiClient.get(`/registrations?courseId=${courseId}&unassigned=true&status=NEW,PROCESSING,WAITING`),
         apiClient.get(`/registrations/batch/${batch._id}/participants`),
       ]);
 
-      setStudents(studentRes?.data || []);
+      const eligibleStudents = (pendingRegRes?.data || [])
+        .map(reg => reg.studentId)
+        .filter(student => student != null);
+
+      setStudents(eligibleStudents);
       setParticipants(participantRes?.data || []);
     } catch (openError) {
       console.error(openError);
@@ -404,6 +408,7 @@ const AdminCourses = () => {
         startDate: batchForm.startDate,
         estimatedEndDate: batchForm.estimatedEndDate,
         location: batchForm.location,
+        examLocation: batchForm.examLocation,
         maxStudents: batchForm.maxStudents,
         status: batchForm.status,
       });
@@ -413,6 +418,7 @@ const AdminCourses = () => {
         name: "",
         startDate: "",
         estimatedEndDate: "",
+        examLocation: "",
       }));
 
       await loadCourseBatches(editingCourse._id);
@@ -845,7 +851,7 @@ const AdminCourses = () => {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-5">
+                      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-6">
                         <input
                           type="text"
                           placeholder="Tên lớp"
@@ -922,9 +928,14 @@ const AdminCourses = () => {
                                     batch.estimatedEndDate,
                                   ).toLocaleDateString("vi-VN")}
                                 </p>
-                                <p className="text-xs text-slate-500">
-                                  {batch.location}
+                                <p className="text-xs text-slate-500 mt-1">
+                                  Học: {batch.location}
                                 </p>
+                                {batch.examLocation && (
+                                  <p className="text-xs text-slate-500 gap-1 mt-1">
+                                    Thi: {batch.examLocation}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <select
@@ -1203,8 +1214,8 @@ const AdminCourses = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {batches.map((batch) => (
-                    <tr key={batch._id} className="hover:bg-slate-50">
+                  {batches.map((batch, idx) => (
+                    <tr key={`${batch._id}-${idx}`} className="hover:bg-slate-50">
                       <td className="px-6 py-4">
                         <p className="font-medium text-slate-900">{batch.name || "Lớp không tên"}</p>
                       </td>
@@ -1227,7 +1238,8 @@ const AdminCourses = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {batch.location || "—"}
+                        <div>Học: {batch.location || "—"}</div>
+                        {batch.examLocation && <div className="mt-1">Thi: {batch.examLocation}</div>}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -1370,6 +1382,17 @@ const AdminCourses = () => {
                   onChange={(e) => setBatchForm({ ...batchForm, location: e.target.value })}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   placeholder="VD: 123 Nguyễn Trãi, Q1, TP.HCM"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Trường sát hạch (Tuỳ chọn)
+                </label>
+                <input
+                  value={batchForm.examLocation}
+                  onChange={(e) => setBatchForm({ ...batchForm, examLocation: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="VD: Trung tâm Sát hạch lái xe A"
                 />
               </div>
               <div>
