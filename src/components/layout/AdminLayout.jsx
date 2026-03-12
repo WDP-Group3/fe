@@ -11,10 +11,12 @@ const navItems = [
     { label: 'Khóa học', to: '/admin/courses', icon: '📚' },
     { label: 'Học phí', to: '/admin/payments', icon: '💳' },
     { label: 'Thông báo', to: '/admin/notifications', icon: '📢' },
+    { label: 'Đánh giá', to: '/admin/feedbacks', icon: '⭐' },
     { label: 'Báo cáo', to: '/admin/reports', icon: '📈' },
     { label: 'Ứng viên', to: '/admin/leads', icon: '👤' },
     { label: 'Duyệt đơn', to: '/admin/letter', icon: '📝' },
-    { label: 'Bài viết', to: '/admin/blogs', icon: '✍️' }
+    { label: 'Bài viết', to: '/admin/blogs', icon: '✍️' },
+    { label: 'Lịch nghỉ', to: '/admin/system-holidays', icon: '📅' }
 ];
 
 const AdminLayout = () => {

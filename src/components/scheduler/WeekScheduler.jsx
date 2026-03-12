@@ -1,21 +1,27 @@
 import React from 'react';
 import { formatDate } from '../../utils/formatters';
 
+// Ca học: 1(7-8), 2(8-9), 3(9-10), 4(10-11), 5(11-12), 6(13-14), 7(14-15), 8(15-16), 9(16-17), 10(17-18)
+// Nghỉ trưa: 12h-13h (giữa ca 5 và ca 6)
 const SLOTS = [
-  { id: 1, label: 'Ca 1 (07:00 - 08:00)', startHour: 7, startMinute: 0 },
-  { id: 2, label: 'Ca 2 (08:30 - 09:30)', startHour: 8, startMinute: 30 },
-  { id: 3, label: 'Ca 3 (10:00 - 11:00)', startHour: 10, startMinute: 0 },
-  { id: 4, label: 'Ca 4 (11:30 - 12:30)', startHour: 11, startMinute: 30 },
-  { id: 5, label: 'Ca 5 (13:00 - 14:00)', startHour: 13, startMinute: 0 },
-  { id: 6, label: 'Ca 6 (14:30 - 15:30)', startHour: 14, startMinute: 30 },
-  { id: 7, label: 'Ca 7 (16:00 - 17:00)', startHour: 16, startMinute: 0 },
-  { id: 8, label: 'Ca 8 (17:30 - 18:30)', startHour: 17, startMinute: 30 },
-  { id: 9, label: 'Ca 9 (19:00 - 20:00)', startHour: 19, startMinute: 0 },
-  { id: 10, label: 'Ca 10 (20:30 - 21:30)', startHour: 20, startMinute: 30 },
+  { id: 1, label: 'Ca 1 (07:00 - 08:00)', startHour: 7, isBreak: false },
+  { id: 2, label: 'Ca 2 (08:00 - 09:00)', startHour: 8, isBreak: false },
+  { id: 3, label: 'Ca 3 (09:00 - 10:00)', startHour: 9, isBreak: false },
+  { id: 4, label: 'Ca 4 (10:00 - 11:00)', startHour: 10, isBreak: false },
+  { id: 5, label: 'Ca 5 (11:00 - 12:00)', startHour: 11, isBreak: false },
+  { id: 'BREAK', label: 'Nghỉ trưa (12:00 - 13:00)', startHour: 12, isBreak: true },
+  { id: 6, label: 'Ca 6 (13:00 - 14:00)', startHour: 13, isBreak: false },
+  { id: 7, label: 'Ca 7 (14:00 - 15:00)', startHour: 14, isBreak: false },
+  { id: 8, label: 'Ca 8 (15:00 - 16:00)', startHour: 15, isBreak: false },
+  { id: 9, label: 'Ca 9 (16:00 - 17:00)', startHour: 16, isBreak: false },
+  { id: 10, label: 'Ca 10 (17:00 - 18:00)', startHour: 17, isBreak: false },
 ];
 
 const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = 'STUDENT' }) => {
   const getSlotData = (dayIndex, slotId) => {
+    // Skip if it's a break slot
+    if (slotId === 'BREAK') return null;
+    
     const currentDay = new Date(startDate);
     currentDay.setDate(startDate.getDate() + dayIndex);
     const dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
@@ -25,6 +31,16 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
       const sDateStr = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, '0')}-${String(sDate.getDate()).padStart(2, '0')}`;
       return sDateStr === dateStr && Number(s.timeSlot) === Number(slotId);
     });
+  };
+
+  const handleSlotClickWrapper = (date, slotId, data) => {
+    // Don't allow clicking on break slots
+    if (slotId === 'BREAK') return;
+    // Don't allow clicking on holiday slots
+    if (data?.category === 'HOLIDAY') return;
+    if (onSlotClick) {
+      onSlotClick(date, slotId, data);
+    }
   };
 
   return (
@@ -47,7 +63,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                 const data = getSlotData(dayIndex, slot.id);
                 const cellDate = new Date(startDate); 
                 cellDate.setDate(startDate.getDate() + dayIndex); 
-                cellDate.setHours(slot.startHour, slot.startMinute, 0, 0);
+                cellDate.setHours(slot.startHour, 0, 0, 0);
                 
                 const now = new Date();
                 const isPast = cellDate < now;
@@ -55,8 +71,26 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                 let cellClass = "h-24 min-w-[120px] p-1 border text-center transition-all";
                 let content = <span className="text-slate-200">-</span>;
 
-                if (data) {
-                  if (data.category === 'BUSY') {
+                // Xử lý ca nghỉ trưa
+                if (slot.isBreak) {
+                  cellClass += " bg-gray-100 cursor-not-allowed";
+                  content = (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <span className="text-gray-500 font-bold text-[10px] uppercase">Nghỉ trưa</span>
+                      <span className="text-gray-400 text-[9px]">12:00 - 13:00</span>
+                    </div>
+                  );
+                } else if (data) {
+                  if (data.category === 'HOLIDAY') {
+                    // Ngày nghỉ lễ - XANH DƯƠNG ĐẬM + KHÓA
+                    cellClass += " bg-blue-600 cursor-not-allowed";
+                    content = (
+                      <div className="flex flex-col items-center justify-center h-full px-1">
+                        <span className="text-white font-extrabold text-[9px] uppercase tracking-tight">Nghỉ lễ</span>
+                        <span className="text-white font-bold text-[10px] truncate w-full text-center leading-tight mt-1">{data.title || 'Lịch nghỉ'}</span>
+                      </div>
+                    );
+                  } else if (data.category === 'BUSY') {
                     // Giáo viên báo bận - CAM NHẠT + IN ĐẠM
                     cellClass += " bg-orange-100 cursor-pointer";
                     content = (
@@ -105,7 +139,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                   cellClass += " hover:bg-blue-50 cursor-pointer border-dashed";
                 }
 
-                return <td key={dayIndex} className={cellClass} onClick={() => onSlotClick(cellDate, slot.id, data)}>{content}</td>;
+                return <td key={dayIndex} className={cellClass} onClick={() => handleSlotClickWrapper(cellDate, slot.id, data)}>{content}</td>;
               })}
             </tr>
           ))}
