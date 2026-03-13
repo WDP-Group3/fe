@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
@@ -10,6 +10,7 @@ import { useAuthContext } from '../context/AuthContext';
 const Payments = () => {
   const { user } = useAuthContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const [payments, setPayments] = useState([]);
   const [tuitionInfo, setTuitionInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,8 @@ const Payments = () => {
   const [transactions, setTransactions] = useState([]);
   const pollRef = useRef(null);
   const pendingPollRef = useRef(null);
+  const autoQrCreatedRef = useRef(false);
+  const incomingRegistrationIdRef = useRef('');
 
   const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
   const isStudent = user?.role === 'STUDENT';
@@ -62,6 +65,16 @@ const Payments = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const incomingRegistration = location.state?.registration;
+    if (!incomingRegistration) return;
+
+    const incomingId = String(incomingRegistration._id || incomingRegistration.registrationId || '');
+    setSelectedRegistrationForQr(incomingId);
+    incomingRegistrationIdRef.current = incomingId;
+    autoQrCreatedRef.current = false;
+  }, [location.state]);
 
   useEffect(() => {
     if (!isStudent) return undefined;
@@ -120,10 +133,23 @@ const Payments = () => {
         const info = tuitionResponse.data;
         setTuitionInfo(info);
 
-        const defaultRegId = info?.items?.[0]?.registrationId || '';
+        const incomingRegistrationId = location.state?.registration?._id || location.state?.registration?.registrationId || '';
+        const defaultRegId = incomingRegistrationId || info?.items?.[0]?.registrationId || '';
         setStudentExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
         setAdminDueDateForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
 
+        if (incomingRegistrationId) {
+          setSelectedRegistrationForQr(defaultRegId);
+
+          const target = (info?.items || []).find((item) => item.registrationId === defaultRegId);
+          if (target) {
+            const schedule = target.paymentSchedule || [];
+            if (schedule.length > 0) {
+              setSelectedScheduleIndex('0');
+              setQrForm((prev) => ({ ...prev, amount: String(schedule[0]?.amount || '') }));
+            }
+          }
+        }
       }
 
       if (transactionResponse.status === 'success') {
@@ -277,7 +303,7 @@ const Payments = () => {
           clearInterval(pollRef.current);
           pollRef.current = null;
           await loadData();
-          alert('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí.');
+          alert('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí và tự động gán lớp (nếu có lớp OPEN).');
         }
       } catch (e) {
         // ignore single polling errors
@@ -312,7 +338,7 @@ const Payments = () => {
       const response = await apiClient.post('/payments/create-qr', {
         vnp_Amount: Number(qrForm.amount),
         vnp_OrderInfo: `Thanh toan hoc phi ${new Date().toLocaleDateString('vi-VN')}`,
-        user: user?.id,
+        user: user?._id || user?.id,
         registrationId: selectedRegistrationForQr || undefined,
         scheduleIndex: selectedScheduleIndex !== '' ? Number(selectedScheduleIndex) : undefined,
       });
@@ -356,6 +382,31 @@ const Payments = () => {
       setCreatingQr(false);
     }
   };
+
+  // Auto-create QR for installment 1 when navigating from course registration
+  useEffect(() => {
+    const incomingId = incomingRegistrationIdRef.current;
+    if (!incomingId) return;
+    if (!tuitionInfo) return;
+    if (creatingQr) return;
+    if (autoQrCreatedRef.current) return;
+
+    // Must be installment 1 (index 0)
+    if (String(selectedRegistrationForQr || '') !== String(incomingId)) return;
+    if (String(selectedScheduleIndex) !== '0') return;
+    if (!qrForm.amount || Number(qrForm.amount) <= 0) return;
+
+    // Avoid creating another QR if we already have one in state
+    if (paymentQrUrl && currentTransactionId) {
+      autoQrCreatedRef.current = true;
+      return;
+    }
+
+    autoQrCreatedRef.current = true;
+    // simulate a form submit without needing the event object
+    handleCreateQr({ preventDefault: () => {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tuitionInfo, selectedRegistrationForQr, selectedScheduleIndex, qrForm.amount]);
 
   const handleConfirmTransaction = async (transactionId) => {
     try {

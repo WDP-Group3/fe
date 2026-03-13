@@ -98,7 +98,7 @@ const FileUpload = ({
             : error
             ? 'border-rose-300 bg-rose-50'
             : 'border-slate-300 bg-slate-50 hover:border-slate-400'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} min-h-[120px]`}
       >
         <input
           ref={fileInputRef}
@@ -110,14 +110,14 @@ const FileUpload = ({
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           {...props}
         />
-        <div className="flex flex-col items-center justify-center p-6 text-center">
-          <svg className="mb-2 h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex flex-col items-center justify-center p-4 text-center">
+          <svg className="mb-1.5 h-7 w-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <p className="mb-1 text-sm text-slate-700">
-            <span className="font-semibold text-indigo-600">Click để upload</span> hoặc kéo thả file vào đây
+          <p className="mb-0.5 text-[11px] text-slate-700">
+            <span className="font-semibold text-indigo-600">Click để upload</span> hoặc kéo thả
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-[10px] text-slate-500">
             {accept && `Định dạng: ${accept}`}
             {maxSize && ` • Tối đa: ${(maxSize / 1024 / 1024).toFixed(2)}MB`}
           </p>

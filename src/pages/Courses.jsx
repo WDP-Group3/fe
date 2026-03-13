@@ -4,7 +4,7 @@ import SectionHeader from "../components/ui/SectionHeader";
 import StatusBadge from "../components/ui/StatusBadge";
 import apiClient from "../services/apiClient";
 import { formatCurrency } from "../utils/formatters";
-import { Modal, Select, Button } from "../components/ui";
+import { Modal, Button } from "../components/ui";
 import { useAuthContext } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
@@ -21,9 +21,6 @@ const Courses = () => {
   // Register-from-courses modal
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [batches, setBatches] = useState([]);
-  const [loadingBatches, setLoadingBatches] = useState(false);
-  const [selectedBatchId, setSelectedBatchId] = useState("");
   const [creatingRegistration, setCreatingRegistration] = useState(false);
 
   useEffect(() => {
@@ -67,45 +64,23 @@ const Courses = () => {
     }
 
     setSelectedCourse(course);
-    setSelectedBatchId("");
     setIsRegisterModalOpen(true);
-
-    try {
-      setLoadingBatches(true);
-      const response = await apiClient.get(
-        `/batches?status=OPEN&courseId=${course?._id}`,
-      );
-      if (response.status === "success") {
-        setBatches(response.data || []);
-      } else {
-        setBatches([]);
-      }
-    } catch (e) {
-      console.error("Error loading batches:", e);
-      setBatches([]);
-      showToast(e?.message || "Không thể tải danh sách lớp đang mở", "error");
-    } finally {
-      setLoadingBatches(false);
-    }
   };
 
   const handleCreateRegistration = async () => {
-    if (!selectedBatchId) {
-      showToast("Vui lòng chọn lớp (batch) để đăng ký", "error");
-      return;
-    }
-
     try {
       setCreatingRegistration(true);
       const response = await apiClient.post("/registrations", {
-        batchId: selectedBatchId,
+        courseId: selectedCourse?._id,
         registerMethod: "ONLINE",
       });
 
       if (response.status === "success") {
         showToast("Đăng ký khóa học thành công", "success");
         setIsRegisterModalOpen(false);
-        navigate("/portal/enrollment");
+        navigate("/portal/payments", {
+          state: { registration: response.data },
+        });
       } else {
         showToast(response.message || "Đăng ký thất bại", "error");
       }
@@ -242,7 +217,7 @@ const Courses = () => {
                     className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
                     onClick={() => openRegisterModal(course)}
                   >
-                    Chọn khóa
+                    Đăng ký
                   </button>
                   <button
                     className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
@@ -260,7 +235,7 @@ const Courses = () => {
       <Modal
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
-        title="Chọn lớp để đăng ký"
+        title="Xác nhận đăng ký khóa học"
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -273,7 +248,6 @@ const Courses = () => {
             <Button
               onClick={handleCreateRegistration}
               loading={creatingRegistration}
-              disabled={loadingBatches}
             >
               Xác nhận đăng ký
             </Button>
@@ -294,36 +268,9 @@ const Courses = () => {
             </p>
           </div>
 
-          <Select
-            label="Chọn lớp (batch) đang mở"
-            value={selectedBatchId}
-            onChange={(e) => setSelectedBatchId(e.target.value)}
-            disabled={loadingBatches}
-            placeholder={
-              loadingBatches ? "Đang tải danh sách lớp..." : "Chọn lớp"
-            }
-            options={(batches || []).map((b) => {
-              const locationLabel = b?.location || "";
-              const startLabel = b?.startDate
-                ? new Date(b.startDate).toLocaleDateString("vi-VN")
-                : "";
-              const label = [locationLabel, startLabel]
-                .filter(Boolean)
-                .join(" · ");
-              return {
-                value: b?._id,
-                label: label || b?._id || "Batch",
-              };
-            })}
-            helperText="Chỉ hiển thị các lớp có trạng thái OPEN."
-          />
-
-          {!loadingBatches && batches.length === 0 && (
-            <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
-              Hiện chưa có lớp (batch) nào đang mở cho khóa học này. Vui lòng
-              chọn khóa khác hoặc liên hệ tư vấn.
-            </div>
-          )}
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-700">
+            Sau khi xác nhận, bạn sẽ được chuyển sang trang thanh toán học phí.
+          </div>
         </div>
       </Modal>
     </div>

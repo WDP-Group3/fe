@@ -29,6 +29,12 @@ const DocumentApproval = () => {
     onConfirm: async () => {},
   });
 
+  const [notifyDialog, setNotifyDialog] = useState({
+    isOpen: false,
+    doc: null,
+    message: '',
+  });
+
   const loadDocs = async () => {
     try {
       setLoading(true);
@@ -100,12 +106,51 @@ const DocumentApproval = () => {
     });
   };
 
+  const handleSendNotification = (doc) => {
+    setNotifyDialog({
+      isOpen: true,
+      doc,
+      message: '',
+    });
+  };
+
+  const submitNotification = async () => {
+    if (!notifyDialog?.doc) return;
+    const message = notifyDialog.message.trim();
+    if (!message) {
+      showToast('Vui lòng nhập nội dung thông báo', 'error');
+      return;
+    }
+
+    try {
+      const studentId = notifyDialog.doc?.studentId?._id || notifyDialog.doc?.registrationId?.studentId?._id;
+      if (!studentId) {
+        showToast('Không tìm thấy học viên để gửi thông báo', 'error');
+        return;
+      }
+
+      await apiClient.post('/notifications', {
+        type: 'OTHER',
+        title: 'Nhắc bổ sung hồ sơ',
+        message,
+        expirationDays: 7,
+        userId: studentId,
+      });
+
+      showToast('Đã gửi thông báo cho học viên', 'success');
+      setNotifyDialog({ isOpen: false, doc: null, message: '' });
+    } catch (error) {
+      showToast(error?.message || 'Gửi thông báo thất bại', 'error');
+    }
+  };
+
   const rows = useMemo(() => {
     return (docs || []).map((d, idx) => {
       const reg = d.registrationId || {};
       const student = d.studentId || reg.studentId || {};
       const batch = reg.batchId || {};
       const course = batch.courseId || {};
+      const consultant = d.consultantId || {};
 
       const statusInfo = mapDocStatus(d.status);
 
@@ -119,6 +164,9 @@ const DocumentApproval = () => {
         contact: [student.phone, student.email].filter(Boolean).join(' · ') || '—',
         batch: batchText,
         method: reg.registerMethod === 'CONSULTANT' ? 'Sale' : 'Admin',
+        consultant: consultant.fullName
+          ? `${consultant.fullName}${consultant.email ? ` · ${consultant.email}` : ''}`
+          : (d.consultantEmail ? d.consultantEmail : '—'),
         cccd: d.cccdNumber || '—',
         status: <StatusBadge status={statusInfo.badge} label={statusInfo.label} />,
         files: (
@@ -141,19 +189,26 @@ const DocumentApproval = () => {
             {!d.cccdImage && !d.healthCertificate && !d.photo ? <span className="text-xs text-slate-500">—</span> : null}
           </div>
         ),
-        action: (
-          <div className="flex gap-2">
+        action: user?.role === 'CONSULTANT' ? (
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => handleUpdateStatus(d, 'APPROVED')} disabled={d.status === 'APPROVED'}>
               Duyệt
             </Button>
-            <Button size="sm" variant="danger" onClick={() => handleUpdateStatus(d, 'REJECTED')} disabled={d.status === 'REJECTED'}>
-              Từ chối
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => handleSoftDelete(d)}>
-              Xóa ảo
+            {d.status !== 'APPROVED' ? (
+              <Button size="sm" variant="danger" onClick={() => handleUpdateStatus(d, 'REJECTED')} disabled={d.status === 'REJECTED'}>
+                Từ chối
+              </Button>
+            ) : null}
+            {d.status !== 'APPROVED' ? (
+              <Button size="sm" variant="outline" onClick={() => handleSoftDelete(d)}>
+                Xóa ảo
+              </Button>
+            ) : null}
+            <Button size="sm" variant="ghost" onClick={() => handleSendNotification(d)}>
+              Gửi thông báo
             </Button>
           </div>
-        ),
+        ) : null,
       };
     });
   }, [docs]);
@@ -163,6 +218,7 @@ const DocumentApproval = () => {
     { key: 'contact', title: 'Liên hệ', dataIndex: 'contact' },
     { key: 'batch', title: 'Khóa/Lớp', dataIndex: 'batch' },
     { key: 'method', title: 'Phụ trách', dataIndex: 'method' },
+    { key: 'consultant', title: 'Tư vấn viên', dataIndex: 'consultant' },
     { key: 'cccd', title: 'Số CCCD', dataIndex: 'cccd' },
     { key: 'files', title: 'Giấy tờ', dataIndex: 'files' },
     { key: 'status', title: 'Trạng thái', dataIndex: 'status' },
@@ -213,6 +269,28 @@ const DocumentApproval = () => {
         type={confirmDialog.type}
         confirmText={confirmDialog.confirmText}
         cancelText={confirmDialog.cancelText}
+      />
+
+      <ConfirmDialog
+        isOpen={notifyDialog.isOpen}
+        onClose={() => setNotifyDialog({ isOpen: false, doc: null, message: '' })}
+        onConfirm={submitNotification}
+        title="Gửi thông báo cho học viên"
+        message={
+          <div className="space-y-2 text-sm">
+            <p className="text-slate-600">Nội dung sẽ được gửi tới học viên để bổ sung/đính chính hồ sơ.</p>
+            <textarea
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Ví dụ: Ảnh CCCD bị mờ, vui lòng chụp lại rõ thông tin..."
+              value={notifyDialog.message}
+              onChange={(e) => setNotifyDialog((prev) => ({ ...prev, message: e.target.value }))}
+            />
+          </div>
+        }
+        type="default"
+        confirmText="Gửi thông báo"
+        cancelText="Hủy"
       />
     </div>
   );
