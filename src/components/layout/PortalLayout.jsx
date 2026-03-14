@@ -29,6 +29,7 @@ const getNavItems = (userRole) => {
     { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
+    { label: 'Lương của tôi', to: '/portal/salary', roles: ['INSTRUCTOR', 'CONSULTANT'] },
     // { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Lương của tôi', to: '/portal/my-salary', roles: ['INSTRUCTOR', 'CONSULTANT'] },
