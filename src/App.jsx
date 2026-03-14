@@ -39,6 +39,7 @@ import AdminBlogs from './pages/admin/AdminBlogs';
 import DocumentApproval from './pages/DocumentApproval';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
+import AdminLearningLocations from './pages/admin/AdminLearningLocations';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -141,6 +142,7 @@ function App() {
                 <Route path="leads" element={<Leads />} />
                 <Route path="blogs" element={<AdminBlogs />} />
                 <Route path="system-holidays" element={<AdminSystemHolidays />} />
+                <Route path="learning-locations" element={<AdminLearningLocations />} />
               </Route>
             </Route>
 

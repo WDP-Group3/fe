@@ -43,6 +43,17 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
     }
   };
 
+  // Màu sắc theo trạng thái:
+  // - Trống: TRẮNG + viền dashed xám
+  // - Nghỉ trưa: XÁM NHẠT
+  // - Nghỉ lễ: TÍM ĐẬM
+  // - Báo bận (thầy bận): XÁM ĐẬM
+  // - Hoàn thành (đã điểm danh): XANH LÁ ĐẬM
+  // - Vắng mặt: ĐỎ ĐẬM
+  // - Đã hủy: XÁM NHẠT
+  // - Chờ đặt (BOOKED): XANH DƯƠNG NHẠT
+  // - Quá hạn: XÁM NHẠT
+
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
       <table className="w-full min-w-[850px] border-collapse text-sm">
@@ -73,17 +84,17 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
 
                 // Xử lý ca nghỉ trưa
                 if (slot.isBreak) {
-                  cellClass += " bg-gray-100 cursor-not-allowed";
+                  cellClass += " bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex flex-col items-center justify-center h-full">
-                      <span className="text-gray-500 font-bold text-[10px] uppercase">Nghỉ trưa</span>
-                      <span className="text-gray-400 text-[9px]">12:00 - 13:00</span>
+                      <span className="text-slate-400 font-bold text-[10px] uppercase">Nghỉ trưa</span>
+                      <span className="text-slate-300 text-[9px]">12:00 - 13:00</span>
                     </div>
                   );
                 } else if (data) {
                   if (data.category === 'HOLIDAY') {
-                    // Ngày nghỉ lễ - XANH DƯƠNG ĐẬM + KHÓA
-                    cellClass += " bg-blue-600 cursor-not-allowed";
+                    // Ngày nghỉ lễ - TÍM đậm
+                    cellClass += " bg-purple-600 cursor-not-allowed";
                     content = (
                       <div className="flex flex-col items-center justify-center h-full px-1">
                         <span className="text-white font-extrabold text-[9px] uppercase tracking-tight">Nghỉ lễ</span>
@@ -91,52 +102,67 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                       </div>
                     );
                   } else if (data.category === 'BUSY') {
-                    // Giáo viên báo bận - CAM NHẠT + IN ĐẠM
-                    cellClass += " bg-orange-100 cursor-pointer";
+                    // Giáo viên báo bận - XÁM ĐẬM (thầy bận)
+                    cellClass += " bg-slate-500 cursor-not-allowed";
                     content = (
                       <div className="flex flex-col items-center justify-center h-full">
-                        <span className="text-orange-700 font-extrabold text-[10px] uppercase tracking-tighter">BÁO BẬN</span>
+                        <span className="text-white font-extrabold text-[10px] uppercase tracking-tighter">Bận</span>
                       </div>
                     );
                   } else if (data.status === 'COMPLETED') {
-                    // Điểm danh có mặt - XANH LÁ NHẠT
-                    cellClass += " bg-green-100 cursor-pointer";
+                    // Điểm danh có mặt - XANH LÁ ĐẬM (thành công)
+                    cellClass += " bg-emerald-500 cursor-pointer";
                     content = (
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-green-200 text-green-700">Đã hoàn thành</span>
-                        <span className="text-green-800 font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-white/20 text-white">Hoàn thành</span>
+                        <span className="text-white font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
                       </div>
                     );
                   } else if (data.status === 'ABSENT') {
-                    // Điểm danh vắng - ĐỎ NHẠT
-                    cellClass += " bg-red-100 cursor-pointer";
+                    // Điểm danh vắng - ĐỎ ĐẬM (thất bại)
+                    cellClass += " bg-red-500 cursor-pointer";
                     content = (
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-red-200 text-red-700">Vắng mặt</span>
-                        <span className="text-red-800 font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-white/20 text-white">Vắng</span>
+                        <span className="text-white font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                      </div>
+                    );
+                  } else if (data.status === 'CANCELLED') {
+                    // Đã hủy - XÁM NHẠT
+                    cellClass += " bg-slate-300 cursor-not-allowed";
+                    content = (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <span className="text-white font-extrabold text-[10px] uppercase tracking-tighter">Đã hủy</span>
                       </div>
                     );
                   } else {
-                    const typeLabels = { 'THEORY': 'bg-purple-100 text-purple-600', 'MOCK_TEST': 'bg-orange-100 text-orange-600', 'PRACTICE': 'bg-indigo-100 text-indigo-600' };
-                    cellClass += ` ${data.type === 'THEORY' ? 'bg-purple-50' : 'bg-indigo-50'} cursor-pointer`;
+                    // Trạng thái chờ (BOOKED) - XANH DƯƠNG NHẠT (chờ xử lý)
+                    const typeColors = {
+                      'THEORY': { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-200', labelBg: 'bg-violet-200' },
+                      'MOCK_TEST': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200', labelBg: 'bg-amber-200' },
+                      'PRACTICE': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', labelBg: 'bg-blue-200' }
+                    };
+                    const colors = typeColors[data.type] || typeColors.PRACTICE;
+                    cellClass += ` ${colors.bg} cursor-pointer border ${colors.border}`;
                     content = (
                       <div className="flex flex-col items-center gap-1">
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${typeLabels[data.type] || typeLabels.PRACTICE}`}>{data.type || 'PRACTICE'}</span>
-                        <span className="text-indigo-700 font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${colors.labelBg} ${colors.text}`}>{data.type || 'PRACTICE'}</span>
+                        <span className={`font-bold text-[12px] truncate w-full ${colors.text}`}>{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
                         {userRole === 'INSTRUCTOR' && (
-                          <span className={`text-[10px] font-bold ${data.status === 'COMPLETED' ? 'text-emerald-600' : (data.status === 'ABSENT' ? 'text-red-500' : 'text-amber-600')}`}>
-                            {data.status === 'COMPLETED' ? '✓ Đã dạy' : (data.status === 'ABSENT' ? '✕ Vắng' : 'Chờ dạy')}
+                          <span className="text-[10px] font-bold text-amber-600">
+                            Chờ dạy
                           </span>
                         )}
                       </div>
                     );
                   }
                 } else if (isPast) {
-                  // Ca quá hạn - CAM NHẠT + IN ĐẠM
-                  cellClass += " bg-orange-50 opacity-60 cursor-not-allowed";
-                  content = <span className="text-orange-600 font-bold text-[11px] italic">Quá hạn</span>;
+                  // Ca quá hạn - XÁM NHẠT
+                  cellClass += " bg-slate-100 cursor-not-allowed";
+                  content = <span className="text-slate-400 font-bold text-[11px] italic">Quá hạn</span>;
                 } else {
-                  cellClass += " hover:bg-blue-50 cursor-pointer border-dashed";
+                  // Ca trống - TRẮNG với viền dashed
+                  cellClass += " bg-white hover:bg-blue-50 cursor-pointer border-dashed border-slate-300";
                 }
 
                 return <td key={dayIndex} className={cellClass} onClick={() => handleSlotClickWrapper(cellDate, slot.id, data)}>{content}</td>;
