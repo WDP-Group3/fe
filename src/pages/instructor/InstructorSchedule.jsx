@@ -34,6 +34,14 @@ const InstructorSchedule = () => {
   // [MỚI] Thông tin nghỉ phép khẩn cấp
   const [emergencyLeaveInfo, setEmergencyLeaveInfo] = useState({ usedCount: 0, remainingCount: 2, maxPerMonth: 2, currentMonth: '' });
   
+  // [MỚI] Thông tin tổng thời gian dạy theo tháng
+  const [monthlyStats, setMonthlyStats] = useState({
+    currentMonth: '',
+    totalHoursThisMonth: 0,
+    totalSessionsThisMonth: 0,
+    monthlyHistory: []
+  });
+  
   // [NEW] Modal chi tiết học viên
   const [studentDetailModal, setStudentDetailModal] = useState({ isOpen: false, data: null });
   
@@ -50,7 +58,7 @@ const InstructorSchedule = () => {
   });
 
   useEffect(() => { fetchSchedule(); }, [currentMonday]);
-  useEffect(() => { fetchEmergencyLeaveInfo(); }, []);
+  useEffect(() => { fetchEmergencyLeaveInfo(); fetchMonthlyStats(); }, []);
 
   const fetchEmergencyLeaveInfo = async () => {
     try {
@@ -60,6 +68,18 @@ const InstructorSchedule = () => {
       }
     } catch (error) { 
       console.error('Error fetching emergency leave info:', error); 
+    }
+  };
+
+  // [MỚI] Lấy thông tin tổng thời gian dạy theo tháng
+  const fetchMonthlyStats = async () => {
+    try {
+      const res = await apiClient.get('/schedule/instructor/monthly-stats');
+      if (res.status === 'success') {
+        setMonthlyStats(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly stats:', error);
     }
   };
 
@@ -203,6 +223,7 @@ const InstructorSchedule = () => {
       });
       showToast('Cập nhật điểm danh thành công', 'success'); 
       fetchSchedule();
+      fetchMonthlyStats();
       setStudentDetailModal({ isOpen: false, data: null });
     } catch (e) { showToast(e.message, 'error'); }
   };
@@ -244,6 +265,44 @@ const InstructorSchedule = () => {
         <p className="text-xs text-amber-600 mt-2">
           ⚠️ Lưu ý: Báo bận vượt deadline (sau thứ 6, 18:00) sẽ tính là nghỉ phép khẩn cấp. Tối đa 2 lần/tháng.
         </p>
+      </div>
+
+      {/* [MỚI] Thống kê tổng thời gian dạy theo tháng */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">📊</div>
+            <div>
+              <h3 className="font-bold text-indigo-800">Thống kê thời gian dạy</h3>
+              <p className="text-sm text-indigo-700">Tháng {monthlyStats.currentMonth}</p>
+            </div>
+          </div>
+          <div className="flex gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-indigo-600">{monthlyStats.totalHoursThisMonth}</div>
+              <div className="text-xs text-indigo-600">giờ dạy</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-indigo-600">{monthlyStats.totalSessionsThisMonth}</div>
+              <div className="text-xs text-indigo-600">ca dạy</div>
+            </div>
+          </div>
+        </div>
+        {/* Lịch sử các tháng */}
+        {monthlyStats.monthlyHistory && monthlyStats.monthlyHistory.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-indigo-200">
+            <p className="text-xs font-bold text-indigo-600 mb-2">Lịch sử các tháng:</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {monthlyStats.monthlyHistory.map((month, idx) => (
+                <div key={idx} className="flex-shrink-0 bg-white rounded-lg border border-indigo-100 px-3 py-2 min-w-[80px] text-center">
+                  <div className="text-xs text-slate-500">{month.month}</div>
+                  <div className="font-bold text-indigo-600">{month.hours}h</div>
+                  <div className="text-[10px] text-slate-400">{month.sessions} ca</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-3xl border shadow-sm">

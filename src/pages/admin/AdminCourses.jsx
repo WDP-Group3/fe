@@ -66,6 +66,7 @@ const AdminCourses = () => {
     feePayments: [],
     status: "Active",
     maxStudents: 50,
+    requiredPracticeHours: 0, // Số giờ thực hành bắt buộc (mặc định 0 = không giới hạn)
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -177,6 +178,7 @@ const AdminCourses = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const locationStr = typeof formData.location === 'string' ? formData.location : (Array.isArray(formData.location) ? formData.location.join(', ') : '');
       const payload = {
         ...formData,
         estimatedCost: Number(formData.estimatedCost),
@@ -184,11 +186,12 @@ const AdminCourses = () => {
         estimatedDuration: formData.estimatedDuration
           ? Number(formData.estimatedDuration)
           : undefined,
-        location: formData.location
+        requiredPracticeHours: Number(formData.requiredPracticeHours) || 0,
+        location: locationStr
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        feePayments: formData.feePayments.map((p) => ({
+        feePayments: (formData.feePayments || []).map((p) => ({
           name: p.name,
           amount: Number(p.amount),
           note: p.note,
@@ -235,6 +238,7 @@ const AdminCourses = () => {
           }))
         : [],
       maxStudents: course.maxStudents || 50,
+      requiredPracticeHours: course.requiredPracticeHours || 0,
     });
 
     await loadCourseBatches(course._id);
@@ -599,6 +603,7 @@ const AdminCourses = () => {
                   {editingCourse ? "Sửa khoá học" : "Thêm khoá học mới"}
                 </h3>
                 <form
+                  id="course-form"
                   onSubmit={handleSubmit}
                   className="flex-1 overflow-y-auto p-4 space-y-4 pb-24"
                 >
@@ -726,6 +731,29 @@ const AdminCourses = () => {
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                         placeholder="VD: 3"
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Số giờ thực hành bắt buộc
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.requiredPracticeHours}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            requiredPracticeHours: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="VD: 10 giờ (0 = không giới hạn)"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Số giờ thực hành mà học viên cần hoàn thành để hoàn thành khóa học
+                      </p>
                     </div>
                   </div>
 
@@ -1049,6 +1077,11 @@ const AdminCourses = () => {
                     <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
                       Tối đa: {course.maxStudents || 50} học viên
                     </span>
+                    {course.requiredPracticeHours > 0 && (
+                      <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                        {course.requiredPracticeHours} giờ thực hành
+                      </span>
+                    )}
                   </div>
                   <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto pr-1">
                     {course.feePayments && course.feePayments.length > 0 ? (
