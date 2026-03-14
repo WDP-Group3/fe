@@ -39,8 +39,7 @@ import AdminBlogs from './pages/admin/AdminBlogs';
 import DocumentApproval from './pages/DocumentApproval';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
-import AdminSalary from './pages/admin/AdminSalary';
-import MySalary from './pages/MySalary';
+import AdminLearningLocations from './pages/admin/AdminLearningLocations';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -122,7 +121,6 @@ function App() {
                 <Route path="profile" element={<Profile />} />
                 <Route path="student-dashboard" element={<StudentDashboard />} />
                 <Route path="profile/:id" element={<Profile />} />
-                <Route path="my-salary" element={<MySalary />} />
               </Route>
             </Route>
 
@@ -144,7 +142,7 @@ function App() {
                 <Route path="leads" element={<Leads />} />
                 <Route path="blogs" element={<AdminBlogs />} />
                 <Route path="system-holidays" element={<AdminSystemHolidays />} />
-                <Route path="salary" element={<AdminSalary />} />
+                <Route path="learning-locations" element={<AdminLearningLocations />} />
               </Route>
             </Route>
 

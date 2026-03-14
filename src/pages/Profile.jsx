@@ -79,6 +79,7 @@ const Profile = () => {
           assignedStudents: userData.assignedStudents || [],
           licenseNumber: userData.licenseNumber || null,
           isActive: userData.status === 'ACTIVE',
+          workingLocation: userData.workingLocation || '',
         };
         setProfileUser(profile);
         setFormData(profile);
@@ -520,7 +521,12 @@ const Profile = () => {
                 <p className="text-sm font-medium text-slate-500">Số bằng lái</p>
                 <p className="mt-1 text-slate-900">{profileUser?.licenseNumber || '-'}</p>
               </div>
+              <div>
+                <p className="text-sm font-medium text-slate-500">Địa điểm dạy hiện tại</p>
+                <p className="mt-1 text-slate-900">{profileUser?.workingLocation || '-'}</p>
+              </div>
             </Grid>
+            
           </Card>
         )}
 
@@ -546,6 +552,7 @@ const Profile = () => {
           </Card>
         )}
       </Grid>
+
     </Container>
   );
 };

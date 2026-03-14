@@ -158,24 +158,24 @@ const LetterRequestManagement = () => {
     return (
         <div className="space-y-6">
             <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-                <SectionHeader
-                    title="Quản lý đơn từ học viên"
-                    description="Xem xét và phê duyệt các yêu cầu, đơn từ của học viên"
-                />
-                <div className="mt-6">
-                    {loading ? (
-                        <div className="flex justify-center py-8">
-                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-                        </div>
-                    ) : requests.length === 0 ? (
-                        <div className="py-12 text-center text-slate-500">
-                            <p>Chưa có yêu cầu nào cần xử lý</p>
-                        </div>
-                    ) : (
-                        <DataTable columns={columns} data={requests} />
-                    )}
+                    <SectionHeader
+                        title="Quản lý đơn từ học viên"
+                        description="Xem xét và phê duyệt các yêu cầu, đơn từ của học viên"
+                    />
+                    <div className="mt-6">
+                        {loading ? (
+                            <div className="flex justify-center py-8">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+                            </div>
+                        ) : requests.length === 0 ? (
+                            <div className="py-12 text-center text-slate-500">
+                                <p>Chưa có yêu cầu nào cần xử lý</p>
+                            </div>
+                        ) : (
+                            <DataTable columns={columns} data={requests} />
+                        )}
+                    </div>
                 </div>
-            </div>
 
             <ConfirmDialog
                 isOpen={confirmConfig.isOpen}
