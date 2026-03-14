@@ -151,39 +151,13 @@ const apiClient = {
     const responseData = await response.json();
 
     if (response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        setTimeout(() => { window.location.href = '/login'; }, 2000);
-      }
-      throw new Error(responseData.message || 'Token hết hạn.');
-    }
+      console.error('❌ 401 Unauthorized - Token invalid or expired');
+      console.error('Response data:', responseData);
 
-    if (!response.ok) {
-      throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
-    }
-
-    return responseData;
-  },
-
-  // --- BỔ SUNG PHƯƠNG THỨC PATCH ĐỂ FIX LỖI "PATCH IS NOT A FUNCTION" ---
-  patch: async (url, data, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'PATCH',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-      ...options,
-    });
-
-    const responseData = await response.json();
-
-    if (response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
-      // Chỉ redirect nếu không phải đang ở trang login/register
       if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        // Delay redirect để có thời gian hiển thị error message
         setTimeout(() => {
           window.location.href = '/login';
         }, 2000);
@@ -202,41 +176,6 @@ const apiClient = {
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'DELETE',
       headers: getHeaders(),
-      ...options,
-    });
-
-    const responseData = await response.json();
-
-    if (response.status === 401) {
-      console.error('❌ 401 Unauthorized - Token invalid or expired');
-      console.error('Response data:', responseData);
-
-      // Clear auth data
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-
-      // Chỉ redirect nếu không phải đang ở trang login/register
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        // Delay redirect để có thời gian hiển thị error message
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2000); // Tăng từ 100ms lên 2000ms để user có thời gian đọc error
-      }
-      throw new Error(responseData.message || 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.');
-    }
-
-    if (!response.ok) {
-      throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
-    }
-
-    return responseData;
-  },
-
-  patch: async (url, data, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'PATCH',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
       ...options,
     });
 

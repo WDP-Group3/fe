@@ -40,6 +40,9 @@ import DocumentApproval from './pages/DocumentApproval';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
 import AdminLearningLocations from './pages/admin/AdminLearningLocations';
+import AdminPayments from './pages/admin/AdminPayments';
+import AdminSalary from './pages/admin/AdminSalary';
+import Salary from './pages/Salary';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -120,6 +123,7 @@ function App() {
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="student-dashboard" element={<StudentDashboard />} />
+                <Route path="salary" element={<Salary />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
@@ -135,7 +139,7 @@ function App() {
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />
                 <Route path="courses" element={<AdminCourses />} />
-                <Route path="payments" element={<Payments />} />
+                <Route path="payments" element={<AdminPayments />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="feedbacks" element={<AdminFeedbacks />} />
                 <Route path="reports" element={<Reports />} />
@@ -143,6 +147,7 @@ function App() {
                 <Route path="blogs" element={<AdminBlogs />} />
                 <Route path="system-holidays" element={<AdminSystemHolidays />} />
                 <Route path="learning-locations" element={<AdminLearningLocations />} />
+                <Route path="salary" element={<AdminSalary />} />
               </Route>
             </Route>
 
