@@ -1,9 +1,16 @@
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import { formatCurrency } from '../utils/formatters';
+import useApi from '../hooks/useApi';
 
 const PaymentQr = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { fetchApi } = useApi();
+  const [status, setStatus] = useState('pending');
+  const [countdown, setCountdown] = useState(30);
+
   const state = location.state || {};
 
   const {
@@ -17,6 +24,42 @@ const PaymentQr = () => {
     scheduleAmount,
     scheduleNote,
   } = state;
+
+  // Polling kiểm tra trạng thái thanh toán
+  useEffect(() => {
+    if (!transactionId) return;
+
+    const checkStatus = async () => {
+      const response = await fetchApi(`/api/payments/transaction-status/${transactionId}`, 'GET');
+      if (response?.status === 'success' && response?.data?.paymentStatus === 'completed') {
+        setStatus('completed');
+        // Redirect về trang học phí sau 2 giây
+        setTimeout(() => {
+          navigate('/portal/payments', { replace: true });
+        }, 2000);
+      }
+    };
+
+    // Kiểm tra ngay lập tức
+    checkStatus();
+
+    // Poll mỗi 5 giây
+    const interval = setInterval(checkStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [transactionId, fetchApi, navigate]);
+
+  // Countdown hiển thị
+  useEffect(() => {
+    if (status === 'completed') return;
+    if (countdown <= 0) return;
+
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown, status]);
 
   if (!paymentUrl) {
     return (
@@ -37,8 +80,19 @@ const PaymentQr = () => {
 
   return (
     <div className="space-y-6">
+      {/* Status Banner */}
+      {status === 'completed' && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-center">
+          <p className="text-lg font-semibold text-green-700">✓ Thanh toán thành công!</p>
+          <p className="text-sm text-green-600">Đang chuyển về trang học phí...</p>
+        </div>
+      )}
+
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-        <SectionHeader title="QR chuyển khoản học phí" description="Quét mã để thanh toán đúng nội dung" />
+        <SectionHeader
+          title="QR chuyển khoản học phí"
+          description={status === 'completed' ? 'Đã thanh toán' : 'Quét mã để thanh toán đúng nội dung'}
+        />
 
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -51,6 +105,11 @@ const PaymentQr = () => {
 
           <div className="space-y-4 text-sm">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              {status !== 'completed' && (
+                <p className="mb-2 text-xs text-slate-500">
+                  Tự động kiểm tra sau {countdown}s...
+                </p>
+              )}
               <p className="text-xs font-semibold text-slate-500">Nội dung chuyển khoản (bắt buộc đúng)</p>
               <p className="mt-2 inline-flex rounded-lg bg-white px-3 py-2 font-semibold text-indigo-700">
                 {transferContent}
