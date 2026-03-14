@@ -32,6 +32,7 @@ const getNavItems = (userRole) => {
     { label: 'Lương của tôi', to: '/portal/salary', roles: ['INSTRUCTOR', 'CONSULTANT'] },
     // { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR'] },
     { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
+    { label: 'Lương của tôi', to: '/portal/my-salary', roles: ['INSTRUCTOR', 'CONSULTANT'] },
   ];
 
   if (!userRole) return [];
