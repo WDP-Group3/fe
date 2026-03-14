@@ -18,9 +18,9 @@ const PUBLIC_NAV_ITEMS = [
 const getNavItems = (userRole) => {
   const allItems = [
     { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
-    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
-    { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['STUDENT', 'CONSULTANT'] },
-    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT', 'CONSULTANT'] },
+    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'STUDENT'] },
+    { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['STUDENT'] },
+    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'STUDENT'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['STUDENT', 'GUEST'] },
     { label: 'Bài viết', to: '/blogs', roles: ['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST'] },
     { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT'] },
