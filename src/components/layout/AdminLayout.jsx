@@ -16,7 +16,8 @@ const navItems = [
     { label: 'Ứng viên', to: '/admin/leads', icon: '👤' },
     { label: 'Duyệt đơn', to: '/admin/letter', icon: '📝' },
     { label: 'Bài viết', to: '/admin/blogs', icon: '✍️' },
-    { label: 'Lịch nghỉ', to: '/admin/system-holidays', icon: '📅' }
+    { label: 'Lịch nghỉ', to: '/admin/system-holidays', icon: '📅' },
+    { label: 'Lương', to: '/admin/salary', icon: '💰' }
 ];
 
 const AdminLayout = () => {
