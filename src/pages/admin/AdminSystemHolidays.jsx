@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from '../../services/axios';
 import { useToast } from '../../context/ToastContext';
+import Pagination from '../../components/common/Pagination';
 
 const AdminSystemHolidays = () => {
   const { showToast } = useToast();
@@ -9,6 +10,8 @@ const AdminSystemHolidays = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
   const [formData, setFormData] = useState({
     title: '',
     startDate: '',
@@ -20,6 +23,9 @@ const AdminSystemHolidays = () => {
 
   useEffect(() => {
     fetchHolidays();
+  }, [currentPage]);
+
+  useEffect(() => {
     fetchLocations();
   }, []);
 
@@ -36,9 +42,12 @@ const AdminSystemHolidays = () => {
   const fetchHolidays = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/system-holidays');
-      // Backend trả về { status: 'success', data: [...] }, axios interceptor trả về res.data nên cần .data
-      setHolidays(res?.data?.data || res?.data || []);
+      const res = await axios.get(`/system-holidays?page=${currentPage}&limit=10`);
+      // Backend trả về { status: 'success', data: [...], pagination: {...} }
+      setHolidays(res?.data?.data || []);
+      if (res?.data?.pagination) {
+        setPagination(res.data.pagination);
+      }
     } catch (error) {
       console.error('Lỗi khi tải lịch nghỉ:', error);
       showToast('Lỗi khi tải lịch nghỉ', 'error');
@@ -189,6 +198,15 @@ const AdminSystemHolidays = () => {
         </table>
         {holidays.length === 0 && (
           <div className="text-center py-8 text-gray-500">Chưa có lịch nghỉ nào</div>
+        )}
+        {pagination.totalPages > 1 && (
+          <div className="p-4 border-t">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         )}
       </div>
 

@@ -4,12 +4,16 @@ import { SectionHeader } from "../../components/ui";
 import apiClient from "../../services/apiClient";
 import { TYPE_TITLES_Notification } from "../../constants";
 import { useToast } from "../../context/ToastContext";
+import Pagination from "../../components/common/Pagination";
 const AdminNotifications = () => {
   const { user } = useAuthContext();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("");
   const { showToast } = useToast();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
 
   // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -27,18 +31,21 @@ const AdminNotifications = () => {
 
   useEffect(() => {
     loadNotifications();
-  }, [filterType]);
+  }, [filterType, currentPage]);
 
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const query = filterType ? `?type=${filterType}` : "";
-      const response = await apiClient.get(`/notifications${query}`);
+      const query = filterType ? `?type=${filterType}&` : "?";
+      const response = await apiClient.get(`/notifications${query}page=${currentPage}&limit=10`);
       if (response.status === "success") {
         setNotifications(response.data);
+        if (response.pagination) {
+          setPagination(response.pagination);
+        }
       }
     } catch (err) {
-      console.error("Error loading notifications:", err);
+      throw new Error("Không thể tải thông báo: " + (err.response?.data?.message || "Lỗi hệ thống"));
     } finally {
       setLoading(false);
     }
@@ -74,7 +81,6 @@ const AdminNotifications = () => {
         await apiClient.delete(`/notifications/${id}`);
         loadNotifications();
       } catch (error) {
-        console.error(error);
         showToast("Xóa thất bại");
       }
     }
@@ -91,11 +97,14 @@ const AdminNotifications = () => {
       setShowCreateModal(false);
       loadNotifications();
     } catch (error) {
-      console.error(error);
-      showToast(
-        "Lưu thất bại: " + (error.response?.data?.message || "Lỗi hệ thống"),
+      throw new Error(
+        "Không thể lưu thông báo: " +
+          (error.response?.data?.message || "Lỗi hệ thống"),
       );
     }
+    showToast(
+      "Lưu thất bại: " + (error.response?.data?.message || "Lỗi hệ thống"),
+    );
   };
 
   const openDetail = (notif) => {
@@ -219,6 +228,16 @@ const AdminNotifications = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        
+        {!loading && notifications.length > 0 && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

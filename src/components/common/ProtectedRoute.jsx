@@ -17,7 +17,7 @@ const ProtectedRoute = ({ requiredRole, allowedRoles, redirectTo }) => {
     return <Navigate to="/login" replace />;
   }
 
-  const role = user?.role || "GUEST";
+  const role = user?.role || "USER";
 
   // Hàm lấy đường dẫn mặc định theo role
   const getDefaultPath = (userRole) => {

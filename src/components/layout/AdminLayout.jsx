@@ -5,7 +5,7 @@ import { Dropdown } from '../ui';
 import { Avatar } from '../common';
 
 const navItems = [
-    { label: 'Tổng quan', to: '/admin', icon: '📊' },
+    { label: 'Tổng quan', to: '/admin/reports', icon: '📊' },
     { label: 'Duyệt hồ sơ', to: '/admin/documents', icon: '✅' },
     { label: 'Người dùng', to: '/admin/users', icon: '👥' },
     { label: 'Khóa học', to: '/admin/courses', icon: '📚' },
@@ -13,7 +13,6 @@ const navItems = [
     { label: 'Lương', to: '/admin/salary', icon: '💰' },
     { label: 'Thông báo', to: '/admin/notifications', icon: '📢' },
     { label: 'Đánh giá', to: '/admin/feedbacks', icon: '⭐' },
-    { label: 'Báo cáo', to: '/admin/reports', icon: '📈' },
     { label: 'Ứng viên', to: '/admin/leads', icon: '👤' },
     { label: 'Duyệt đơn', to: '/admin/letter', icon: '📝' },
     { label: 'Bài viết', to: '/admin/blogs', icon: '✍️' },
@@ -45,7 +44,7 @@ const AdminLayout = () => {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white font-bold shadow-md">
                         AD
                     </div>
-                    <span className="text-lg font-bold">Admin Panel</span>
+                    <span className="text-lg font-bold">Quản trị hệ thống</span>
                 </div>
 
                 <nav className="p-4 space-y-1">

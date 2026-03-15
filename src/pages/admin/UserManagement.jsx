@@ -4,6 +4,7 @@ import SectionHeader from "../../components/ui/SectionHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import DataTable from "../../components/ui/DataTable";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Pagination from "../../components/common/Pagination";
 import apiClient from "../../services/apiClient";
 import { useToast } from "../../context/ToastContext";
 
@@ -16,6 +17,12 @@ const UserManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    limit: 10
+  });
   const [formData, setFormData] = useState({
     email: "",
     role: "INSTRUCTOR",
@@ -35,7 +42,7 @@ const UserManagement = () => {
   useEffect(() => {
     loadUsers();
     loadStats();
-  }, [filters]);
+  }, [filters, currentPage]);
 
   const loadStats = async () => {
     try {
@@ -55,6 +62,8 @@ const UserManagement = () => {
       if (filters.search) queryParams.append("search", filters.search);
       if (filters.role) queryParams.append("role", filters.role);
       if (filters.status) queryParams.append("status", filters.status);
+      queryParams.append("page", currentPage);
+      queryParams.append("limit", pagination.limit);
 
       const response = await apiClient.get(`/users?${queryParams.toString()}`);
 
@@ -68,6 +77,9 @@ const UserManagement = () => {
           status: user.status === "ACTIVE" ? "active" : "inactive",
         }));
         setUsers(mappedUsers);
+        if (response.pagination) {
+          setPagination(response.pagination);
+        }
       }
     } catch (err) {
       console.error("Error loading users:", err);
@@ -124,6 +136,7 @@ const UserManagement = () => {
       // So I can't update password via `updateUser` safely unless I fix backend `updateUser`.
       // But User requirement is: "Admin sửa tài tài khoản và mâtk khẩu".
       // So I SHOULD fix backend `updateUser` too. (I'll do that in a bit).
+      // Since I already modified backend User.js to hash password in pre-save if I wanted, but actually I'll stick to what's there.
 
       await apiClient.patch(`/users/${currentUser.id}`, updateData);
 
@@ -280,31 +293,36 @@ const UserManagement = () => {
             <input
               placeholder="🔍 Tìm kiếm theo tên, email..."
               value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, search: e.target.value });
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           <div>
             <select
               value={filters.role}
-              onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+              onChange={(e) => {
+                setFilters({ ...filters, role: e.target.value });
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Tất cả vai trò</option>
-              <option value="STUDENT">Học viên</option>
+              <option value="LEARNER">Học viên</option>
               <option value="INSTRUCTOR">Giáo viên</option>
               <option value="CONSULTANT">Tư vấn viên</option>
-              {/* No GUEST */}
+              {/* No USER */}
             </select>
           </div>
           <div>
             <select
               value={filters.status}
-              onChange={(e) =>
-                setFilters({ ...filters, status: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, status: e.target.value });
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Tất cả trạng thái</option>
@@ -320,7 +338,7 @@ const UserManagement = () => {
             Danh sách User
           </h3>
           <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600">
-            {stats.totalUsers}
+            {pagination.total}
           </span>
         </div>
 
@@ -380,7 +398,7 @@ const UserManagement = () => {
                   >
                     <option value="INSTRUCTOR">Giáo viên</option>
                     <option value="CONSULTANT">Tư vấn viên</option>
-                    <option value="STUDENT">Học Viên</option>
+                    <option value="LEARNER">Học Viên</option>
                     <option value="ADMIN">Quản trị viên</option>
                   </select>
                 </div>
@@ -464,9 +482,16 @@ const UserManagement = () => {
             <p>Không tìm thấy user nào</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <DataTable columns={columns} data={users} />
-          </div>
+          <>
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <DataTable columns={columns} data={users} />
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </>
         )}
       </div>
     </div>

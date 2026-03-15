@@ -19,7 +19,7 @@ const Payments = () => {
   const [expandedSchedules, setExpandedSchedules] = useState({});
 
 
-  const [studentExtendForm, setStudentExtendForm] = useState({
+  const [LEARNERExtendForm, setLEARNERExtendForm] = useState({
     registrationId: '',
     scheduleIndex: 0,
     extendedDays: 7,
@@ -60,7 +60,7 @@ const Payments = () => {
   const incomingRegistrationIdRef = useRef('');
 
   const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
-  const isStudent = user?.role === 'STUDENT';
+  const isLEARNER = user?.role === 'LEARNER';
 
   useEffect(() => {
     loadData();
@@ -77,7 +77,7 @@ const Payments = () => {
   }, [location.state]);
 
   useEffect(() => {
-    if (!isStudent) return undefined;
+    if (!isLEARNER) return undefined;
 
     if (pendingPollRef.current) {
       clearInterval(pendingPollRef.current);
@@ -103,7 +103,7 @@ const Payments = () => {
         pendingPollRef.current = null;
       }
     };
-  }, [isStudent, transactions]);
+  }, [isLEARNER, transactions]);
 
   useEffect(() => {
     return () => {
@@ -135,7 +135,7 @@ const Payments = () => {
 
         const incomingRegistrationId = location.state?.registration?._id || location.state?.registration?.registrationId || '';
         const defaultRegId = incomingRegistrationId || info?.items?.[0]?.registrationId || '';
-        setStudentExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
+        setLEARNERExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
         setAdminDueDateForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
 
         if (incomingRegistrationId) {
@@ -163,9 +163,9 @@ const Payments = () => {
   };
 
 
-  const handleStudentExtend = async (e) => {
+  const handleLEARNERExtend = async (e) => {
     e.preventDefault();
-    if (!studentExtendForm.registrationId) {
+    if (!LEARNERExtendForm.registrationId) {
       alert('Vui lòng chọn hồ sơ cần gia hạn');
       return;
     }
@@ -173,10 +173,10 @@ const Payments = () => {
     try {
       setDueDateSubmitting(true);
       await apiClient.post('/payments/extend-due-date', {
-        registrationId: studentExtendForm.registrationId,
-        scheduleIndex: Number(studentExtendForm.scheduleIndex),
-        extendedDays: Number(studentExtendForm.extendedDays),
-        reason: studentExtendForm.reason,
+        registrationId: LEARNERExtendForm.registrationId,
+        scheduleIndex: Number(LEARNERExtendForm.scheduleIndex),
+        extendedDays: Number(LEARNERExtendForm.extendedDays),
+        reason: LEARNERExtendForm.reason,
       });
       await loadData();
       alert('Đã gia hạn hạn thanh toán thành công');
@@ -455,7 +455,7 @@ const Payments = () => {
   ];
 
   const scheduleColumns = [
-    { key: 'studentName', title: 'Học viên', dataIndex: 'studentName', render: (val) => val || '—' },
+    { key: 'learnerName', title: 'Học viên', dataIndex: 'learnerName', render: (val) => val || '—' },
     { key: 'courseName', title: 'Khoá học', dataIndex: 'courseName' },
     { key: 'totalFee', title: 'Tổng phí', dataIndex: 'totalFee', render: (val) => formatCurrency(val) },
     { key: 'paidAmount', title: 'Đã đóng', dataIndex: 'paidAmount', render: (val) => formatCurrency(val) },
@@ -551,7 +551,7 @@ const Payments = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-semibold text-slate-500">Học viên</p>
-                          <p className="text-sm font-semibold text-slate-900">{item.studentName || '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900">{item.learnerName || '—'}</p>
                         </div>
                       </div>
 
@@ -600,7 +600,7 @@ const Payments = () => {
                                         type="button"
                                         onClick={() => {
                                           setNotifyForm({
-                                            userId: item.studentId,
+                                            userId: item.learnerId,
                                             registrationId: item.registrationId,
                                             scheduleIndex: idx,
                                             message: `Nhắc đóng ${scheduleItem?.name || `Đợt ${idx + 1}`} cho khóa ${item.courseName}. Còn thiếu ${formatCurrency(remainingForInstallment)}.`,
@@ -626,7 +626,7 @@ const Payments = () => {
                               value={notifyForm.registrationId === item.registrationId ? notifyForm.message : ''}
                               onChange={(e) => setNotifyForm((prev) => ({
                                 ...prev,
-                                userId: item.studentId,
+                                userId: item.learnerId,
                                 registrationId: item.registrationId,
                                 message: e.target.value,
                               }))}
@@ -650,7 +650,7 @@ const Payments = () => {
         )}
       </div>
 
-      {isStudent && (
+      {isLEARNER && (
         <>
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Thanh toán qua QR" description="Chọn khóa học và đợt đóng phí cố định" />
@@ -772,11 +772,11 @@ const Payments = () => {
 
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Gia hạn hạn thanh toán" description="Học viên có thể xin gia hạn hạn đóng phí" />
-            <form onSubmit={handleStudentExtend} className="grid gap-3 md:grid-cols-2">
+            <form onSubmit={handleLEARNERExtend} className="grid gap-3 md:grid-cols-2">
             <select
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.registrationId}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
+              value={LEARNERExtendForm.registrationId}
+              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
               required
             >
               <option value="">-- Chọn khóa học --</option>
@@ -791,8 +791,8 @@ const Payments = () => {
               min="1"
               max="30"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.extendedDays}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
+              value={LEARNERExtendForm.extendedDays}
+              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
               placeholder="Số ngày gia hạn"
               required
             />
@@ -800,14 +800,14 @@ const Payments = () => {
               type="number"
               min="0"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.scheduleIndex}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
+              value={LEARNERExtendForm.scheduleIndex}
+              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
               placeholder="Index đợt cần gia hạn (0,1,2...)"
             />
             <input
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.reason}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
+              value={LEARNERExtendForm.reason}
+              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
               placeholder="Lý do gia hạn"
             />
             <button
@@ -836,7 +836,7 @@ const Payments = () => {
                 <option value="">-- Chọn khóa học --</option>
                 {(tuitionInfo?.items || []).map((item) => (
                   <option key={item.registrationId} value={item.registrationId}>
-                    {item.studentName ? `${item.studentName} - ` : ''}[{item.courseCode || 'N/A'}] {item.courseName}
+                    {item.learnerName ? `${item.learnerName} - ` : ''}[{item.courseCode || 'N/A'}] {item.courseName}
                   </option>
                 ))}
               </select>

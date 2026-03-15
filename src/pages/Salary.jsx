@@ -160,7 +160,7 @@ const Salary = () => {
                         <p className="font-medium text-slate-800">
                           {new Date(item.date).toLocaleDateString('vi-VN')} - Ca {item.timeSlot}
                         </p>
-                        <p className="text-xs text-slate-500">{item.studentName}</p>
+                        <p className="text-xs text-slate-500">{item.learnerName}</p>
                       </div>
                       <span className="font-semibold text-slate-900">{fmt(item.amount)}</span>
                     </div>
@@ -182,7 +182,7 @@ const Salary = () => {
                       <div>
                         <p className="font-medium text-slate-800">{item.courseName}</p>
                         <p className="text-xs text-slate-500">
-                          {item.studentName} · {new Date(item.registrationDate).toLocaleDateString('vi-VN')}
+                          {item.learnerName} · {new Date(item.registrationDate).toLocaleDateString('vi-VN')}
                         </p>
                       </div>
                       <span className="font-semibold text-indigo-700">{fmt(item.commissionAmount)}</span>

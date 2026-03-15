@@ -4,6 +4,7 @@ import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import apiClient from '../../services/apiClient';
 import { formatCurrency } from '../../utils/formatters';
+import Pagination from '../../components/common/Pagination';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) => formatCurrency(n || 0);
@@ -25,6 +26,9 @@ const AdminPayments = () => {
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
   const [transactions, setTransactions] = useState([]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
 
   // Filters
   const [filters, setFilters] = useState({
@@ -53,7 +57,7 @@ const AdminPayments = () => {
   // Load initial data
   useEffect(() => {
     loadData();
-  }, []);
+  }, [filters.courseId, filters.status, filters.dateFrom, filters.dateTo, currentPage]);
 
   const loadData = async () => {
     try {
@@ -85,6 +89,9 @@ const AdminPayments = () => {
         items: tuitionItems,
         summary: tuitionSummary,
       });
+      if (tuitionSummary.pagination) {
+        setPagination(tuitionSummary.pagination);
+      }
       setCourses(coursesRes?.data?.data || []);
       setBatches(batchesRes?.data?.data || []);
       setTransactions(transactionsRes?.data || []);
@@ -128,63 +135,17 @@ const AdminPayments = () => {
     };
   }, [tuitionData, transactions]);
 
-  // Filtered data
-  const filteredItems = useMemo(() => {
-    let items = [...(tuitionData.items || [])];
-
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      items = items.filter(i =>
-        (i.studentName || '').toLowerCase().includes(s) ||
-        (i.courseName || '').toLowerCase().includes(s) ||
-        (i.phone || '').includes(s)
-      );
-    }
-
-    if (filters.courseId) {
-      items = items.filter(i => i.courseId === filters.courseId);
-    }
-
-    if (filters.batchId) {
-      items = items.filter(i => i.batchId === filters.batchId);
-    }
-
-    if (filters.status) {
-      switch (filters.status) {
-        case 'paid':
-          items = items.filter(i => i.remaining === 0);
-          break;
-        case 'partial':
-          items = items.filter(i => i.remaining > 0 && i.paidAmount > 0);
-          break;
-        case 'unpaid':
-          items = items.filter(i => i.paidAmount === 0);
-          break;
-        case 'overdue':
-          items = items.filter(i => i.isOverdue);
-          break;
-      }
-    }
-
-    if (filters.dateFrom) {
-      items = items.filter(i => i.dueDate && new Date(i.dueDate) >= new Date(filters.dateFrom));
-    }
-
-    if (filters.dateTo) {
-      items = items.filter(i => i.dueDate && new Date(i.dueDate) <= new Date(filters.dateTo));
-    }
-
-    return items;
-  }, [tuitionData, filters]);
+  // Filtered data is now handled by server
+  const filteredItems = tuitionData.items;
 
   // Table columns
   const columns = [
     {
-      key: 'studentName',
+      key: 'learnerName',
       title: 'Học viên',
       render: (_, row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.studentName || '—'}</p>
+          <p className="font-medium text-slate-900">{row.learnerName || '—'}</p>
           <p className="text-xs text-slate-500">{row.phone || ''}</p>
         </div>
       ),
@@ -325,7 +286,7 @@ const AdminPayments = () => {
         type: 'PAYMENT_REMINDER',
         title: 'Nhắc đóng học phí',
         message: notifyForm.message.trim() || `Học viên {name} có học phí cần thanh toán: ${fmt(selectedItem.remaining)}`,
-        userId: selectedItem.studentId?._id || selectedItem.studentId,
+        userId: selectedItem.learnerId?._id || selectedItem.learnerId,
         expirationDays: 7,
       });
       await loadData();
@@ -426,7 +387,7 @@ const AdminPayments = () => {
               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
             <button
-              onClick={loadData}
+              onClick={() => { setCurrentPage(1); loadData(); }}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
               Tìm
@@ -473,7 +434,10 @@ const AdminPayments = () => {
           />
 
           <button
-            onClick={() => setFilters({ courseId: '', batchId: '', status: '', search: '', dateFrom: '', dateTo: '' })}
+            onClick={() => {
+              setFilters({ courseId: '', batchId: '', status: '', search: '', dateFrom: '', dateTo: '' });
+              setCurrentPage(1);
+            }}
             className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200"
           >
             Xóa lọc
@@ -488,7 +452,18 @@ const AdminPayments = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
           </div>
         ) : (
-          <DataTable columns={columns} data={filteredItems} />
+          <>
+            <DataTable columns={columns} data={filteredItems} />
+            {pagination.totalPages > 1 && (
+              <div className="px-4 py-3 border-t border-slate-100">
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -498,7 +473,7 @@ const AdminPayments = () => {
           <div className="w-full max-w-md rounded-2xl bg-white p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Đặt hạn thanh toán</h3>
             <p className="text-sm text-slate-600 mb-4">
-              {selectedItem.studentName} - {selectedItem.courseName}
+              {selectedItem.learnerName} - {selectedItem.courseName}
             </p>
             <form onSubmit={handleUpdateDueDate} className="space-y-4">
               <div>
@@ -578,7 +553,7 @@ const AdminPayments = () => {
           <div className="w-full max-w-md rounded-2xl bg-white p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Gửi nhắc nhở</h3>
             <p className="text-sm text-slate-600 mb-4">
-              Gửi đến: {selectedItem.studentName} ({selectedItem.email || selectedItem.studentId?.email || '—'})
+              Gửi đến: {selectedItem.learnerName} ({selectedItem.email || selectedItem.learnerId?.email || '—'})
             </p>
             <form onSubmit={handleSendNotification} className="space-y-4">
               <div>

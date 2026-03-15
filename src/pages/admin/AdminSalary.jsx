@@ -3,6 +3,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import DataTable from '../../components/ui/DataTable';
 import apiClient from '../../services/apiClient';
 import { formatCurrency } from '../../utils/formatters';
+import Pagination from '../../components/common/Pagination';
 
 const fmt = (n) => formatCurrency(n || 0);
 
@@ -19,6 +20,9 @@ const AdminSalary = () => {
   const [salaryData, setSalaryData] = useState([]);
   const [config, setConfig] = useState(null);
   const [courses, setCourses] = useState([]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
 
   // Filters
   const [filters, setFilters] = useState({
@@ -54,7 +58,7 @@ const AdminSalary = () => {
 
   useEffect(() => {
     loadData();
-  }, [filters.month, filters.year, filters.role, filters.search, filters.courseId]);
+  }, [filters.month, filters.year, filters.role, filters.search, filters.courseId, currentPage]);
 
   const loadData = async () => {
     try {
@@ -64,7 +68,9 @@ const AdminSalary = () => {
         year: filters.year,
         role: filters.role || '',
         search: filters.search || '',
-        courseId: filters.courseId || ''
+        courseId: filters.courseId || '',
+        page: currentPage,
+        limit: 10
       });
 
       const [summaryRes, configRes, coursesRes] = await Promise.all([
@@ -74,6 +80,12 @@ const AdminSalary = () => {
       ]);
 
       setSalaryData(summaryRes?.data?.data?.users || []);
+      if (summaryRes?.data?.data?.pagination) {
+        setPagination({
+          total: summaryRes.data.data.pagination.total,
+          totalPages: summaryRes.data.data.pagination.pages
+        });
+      }
       setConfig(configRes?.data?.data || null);
       setCourses(coursesRes?.data?.data || []);
     } catch (error) {
@@ -444,7 +456,18 @@ const AdminSalary = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
           </div>
         ) : (
-          <DataTable columns={columns} data={salaryData} />
+          <>
+            <DataTable columns={columns} data={salaryData} />
+            {pagination.totalPages > 1 && (
+              <div className="px-4 py-3 border-t border-slate-100">
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -572,7 +595,7 @@ const AdminSalary = () => {
                     <div className="space-y-1 max-h-48 overflow-y-auto">
                       {detailData.teachingDetails.map((t, idx) => (
                         <div key={idx} className="flex justify-between text-sm p-2 bg-slate-50 rounded">
-                          <span>{new Date(t.date).toLocaleDateString('vi-VN')} - Ca {t.timeSlot} - {t.studentName}</span>
+                          <span>{new Date(t.date).toLocaleDateString('vi-VN')} - Ca {t.timeSlot} - {t.learnerName}</span>
                           <span className="font-medium">{fmt(t.amount)}</span>
                         </div>
                       ))}
@@ -587,7 +610,7 @@ const AdminSalary = () => {
                     <div className="space-y-1 max-h-48 overflow-y-auto">
                       {detailData.commissionDetails.map((c, idx) => (
                         <div key={idx} className="flex justify-between text-sm p-2 bg-indigo-50 rounded">
-                          <span>{c.courseName} - {c.studentName}</span>
+                          <span>{c.courseName} - {c.learnerName}</span>
                           <span className="font-medium text-indigo-600">{fmt(c.commission)}</span>
                         </div>
                       ))}

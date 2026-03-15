@@ -9,16 +9,16 @@ const ExamResult = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthContext();
-  const isGuest = id === 'guest';
+  const isUSER = id === 'USER';
   const examsRoute = user ? '/portal/exams' : '/exams';
   const examTakingRoute = user ? '/portal/exam-taking' : '/exam-taking';
-  const [result, setResult] = useState(isGuest ? location.state : null);
-  const [loading, setLoading] = useState(!isGuest);
+  const [result, setResult] = useState(isUSER ? location.state : null);
+  const [loading, setLoading] = useState(!isUSER);
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   useEffect(() => {
-    if (!isGuest) loadResult();
+    if (!isUSER) loadResult();
   }, [id]);
 
   const loadResult = async () => {
@@ -132,7 +132,7 @@ const ExamResult = () => {
                 Hoàn thành lúc: {formatDate(result.createdAt)}
               </p>
             )}
-            {isGuest && (
+            {isUSER && (
               <p className="mt-4 text-sm text-indigo-600 font-medium">
                 💡 Đăng nhập để lưu lịch sử thi và ôn luyện câu sai!
               </p>

@@ -129,7 +129,7 @@ const Schedule = () => {
     setLoadingSessions(true);
     try {
       // Lấy toàn bộ lịch, sau đó sẽ filter ở Frontend
-      const res = await apiClient.get(`/bookings${user?.id ? `?studentId=${user.id}` : ''}`);
+      const res = await apiClient.get(`/bookings${user?.id ? `?learnerId=${user.id}` : ''}`);
       if (res.status === 'success') setMySessions(res.data);
     } finally { setLoadingSessions(false); }
   };
@@ -266,7 +266,7 @@ const Schedule = () => {
   const handleFeedback = async () => {
     try {
       await apiClient.patch(`/bookings/${feedbackModal.bookingId}/feedback`, {
-        rating: feedbackModal.rating, studentFeedback: feedbackModal.comment
+        rating: feedbackModal.rating, learnerFeedback: feedbackModal.comment
       });
       showToast('Cảm ơn bạn đã đánh giá!', 'success');
       setFeedbackModal({ ...feedbackModal, isOpen: false });
@@ -414,7 +414,7 @@ const Schedule = () => {
                 <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() + 7))))}>Tuần sau</Button>
               </div>
             </div>
-            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="STUDENT" onSlotClick={handleSlotClick} />}
+            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="LEARNER" onSlotClick={handleSlotClick} />}
           </div>
         )}
       </div>

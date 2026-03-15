@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import DataTable from '../../components/ui/DataTable';
 import apiClient from '../../services/apiClient';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Pagination from '../../components/common/Pagination';
 
 const LetterRequestManagement = () => {
     const { showToast } = useToast();
@@ -19,17 +20,22 @@ const LetterRequestManagement = () => {
         message: '',
         variant: 'success'
     });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
 
     useEffect(() => {
         loadRequests();
-    }, []);
+    }, [currentPage]);
 
     const loadRequests = async () => {
         try {
             setLoading(true);
-            const response = await apiClient.get('/requests');
+            const response = await apiClient.get(`/requests?page=${currentPage}&limit=10`);
             if (response.status === 'success') {
                 setRequests(response.data);
+                if (response.pagination) {
+                    setPagination(response.pagination);
+                }
             }
         } catch (err) {
             console.error('Error loading requests:', err);
@@ -104,7 +110,7 @@ const LetterRequestManagement = () => {
             title: 'Chi tiết/Hẹn nộp',
             render: (_, record) => {
                 if (record.type === 'LATE_PAYMENT') return record.expectedPayDate ? new Date(record.expectedPayDate).toLocaleDateString('vi-VN') : '-';
-                if (record.type === 'OFFLINE_PAYMENT') return `Nộp: ${new Date(record.paymentDate).toLocaleDateString('vi-VN')} | HV: ${record.studentName} | Khóa: ${record.courseName}`;
+                if (record.type === 'OFFLINE_PAYMENT') return `Nộp: ${new Date(record.paymentDate).toLocaleDateString('vi-VN')} | HV: ${record.learnerName} | Khóa: ${record.courseName}`;
                 return '-';
             }
         },
@@ -172,7 +178,18 @@ const LetterRequestManagement = () => {
                                 <p>Chưa có yêu cầu nào cần xử lý</p>
                             </div>
                         ) : (
-                            <DataTable columns={columns} data={requests} />
+                            <>
+                                <DataTable columns={columns} data={requests} />
+                                {pagination.totalPages > 1 && (
+                                    <div className="mt-4 px-4 py-3 border-t border-slate-100">
+                                        <Pagination 
+                                            currentPage={currentPage}
+                                            totalPages={pagination.totalPages}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
