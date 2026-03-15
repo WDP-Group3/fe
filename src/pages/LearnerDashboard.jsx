@@ -4,7 +4,7 @@ import apiClient from '../services/apiClient';
 import { SectionHeader, StatCard } from '../components/ui';
 import { formatCurrency } from '../utils/formatters';
 
-const StudentDashboard = () => {
+const LEARNERDashboard = () => {
   const { user } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState([]);
@@ -13,7 +13,7 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      if (user?.role !== 'STUDENT') {
+      if (user?.role !== 'LEARNER') {
         setLoading(false);
         return;
       }
@@ -38,7 +38,7 @@ const StudentDashboard = () => {
           setTransactions(transactionRes.data || []);
         }
       } catch (error) {
-        console.error('Load student dashboard data error:', error);
+        console.error('Load LEARNER dashboard data error:', error);
       } finally {
         setLoading(false);
       }
@@ -56,7 +56,7 @@ const StudentDashboard = () => {
     return { totalCourses, studyingCourses, completedCourses, totalPaid };
   }, [registrations, payments]);
 
-  if (user?.role !== 'STUDENT') {
+  if (user?.role !== 'LEARNER') {
     return (
       <div className="rounded-3xl border border-slate-100 bg-white p-6 text-sm text-slate-600 shadow-sm">
         Trang này dành cho học viên.
@@ -68,7 +68,7 @@ const StudentDashboard = () => {
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
         <SectionHeader
-          title="Student Dashboard"
+          title="LEARNER Dashboard"
           description="Theo dõi khóa học đã tham gia và lịch sử thanh toán của bạn"
         />
 
@@ -133,4 +133,4 @@ const StudentDashboard = () => {
   );
 };
 
-export default StudentDashboard;
+export default LEARNERDashboard;

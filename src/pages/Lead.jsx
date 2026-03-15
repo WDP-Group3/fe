@@ -5,6 +5,7 @@ import DataTable from '../components/ui/DataTable';
 import apiClient from '../services/apiClient';
 import { Button } from '../components/ui';
 import { useAuthContext } from '../context/AuthContext';
+import Pagination from '../components/common/Pagination';
 
 const Leads = () => {
     const { user: currentUser } = useAuthContext();
@@ -16,15 +17,12 @@ const Leads = () => {
     // Pagination and Search states
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [pagination, setPagination] = useState({
+    const [ pagination, setPagination] = useState({
         total: 0,
         totalPages: 0,
         limit: 10
     });
 
-    useEffect(() => {
-        console.log(123);
-    }, []);
     useEffect(() => {
         // Chỉ load danh sách consultants nếu là ADMIN hoặc các role có quyền gán
         if (currentUser?.role === 'ADMIN') {
@@ -262,45 +260,11 @@ const Leads = () => {
                                 </div>
                             )}
 
-                            {/* Pagination Controls */}
-                            {pagination.totalPages > 1 && (
-                                <div className="mt-6 flex items-center justify-end gap-2">
-                                    <button
-                                        disabled={currentPage === 1}
-                                        onClick={() => setCurrentPage(p => p - 1)}
-                                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 disabled:opacity-50"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-
-                                    <div className="flex gap-1">
-                                        {[...Array(pagination.totalPages)].map((_, i) => (
-                                            <button
-                                                key={i + 1}
-                                                onClick={() => setCurrentPage(i + 1)}
-                                                className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold transition-all ${currentPage === i + 1
-                                                    ? 'bg-indigo-600 text-white shadow-md'
-                                                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                                                    }`}
-                                            >
-                                                {i + 1}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <button
-                                        disabled={currentPage === pagination.totalPages}
-                                        onClick={() => setCurrentPage(p => p + 1)}
-                                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 disabled:opacity-50"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            )}
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={pagination.totalPages}
+                                onPageChange={setCurrentPage}
+                            />
                         </>
                     )}
                 </div>

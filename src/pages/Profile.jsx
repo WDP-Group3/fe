@@ -35,8 +35,8 @@ const Profile = () => {
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [studentDocument, setStudentDocument] = useState(null);
-  const [loadingStudentDocument, setLoadingStudentDocument] = useState(false);
+  const [learnerDocument, setlearnerDocument] = useState(null);
+  const [loadinglearnerDocument, setLoadinglearnerDocument] = useState(false);
 
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !id || id === currentUser?.id;
@@ -74,9 +74,9 @@ const Profile = () => {
           gender: userData.gender || '',
           avatar: userData.avatar || null,
           createdAt: userData.createdAt || '',
-          studentCode: userData.studentCode || '',
+          learnerCode: userData.learnerCode || '',
           enrollmentStatus: userData.enrollmentStatus || '',
-          assignedStudents: userData.assignedStudents || [],
+          assignedlearners: userData.assignedlearners || [],
           licenseNumber: userData.licenseNumber || null,
           isActive: userData.status === 'ACTIVE',
           workingLocation: userData.workingLocation || '',
@@ -111,22 +111,22 @@ const Profile = () => {
   const canView = profileUser ? canViewProfile(currentUser, profileUser) : false;
 
   useEffect(() => {
-    const loadStudentDocument = async () => {
-      if (!profileUser || profileUser.role !== 'STUDENT' || !isOwnProfile) return;
+    const loadlearnerDocument = async () => {
+      if (!profileUser || profileUser.role !== 'LEARNER' || !isOwnProfile) return;
       try {
-        setLoadingStudentDocument(true);
+        setLoadinglearnerDocument(true);
         const response = await apiClient.get('/documents/me');
         if (response.status === 'success') {
-          setStudentDocument(response.data || null);
+          setlearnerDocument(response.data || null);
         }
       } catch (err) {
-        console.error('Load student document error:', err);
+        console.error('Load LEARNER document error:', err);
       } finally {
-        setLoadingStudentDocument(false);
+        setLoadinglearnerDocument(false);
       }
     };
 
-    loadStudentDocument();
+    loadlearnerDocument();
   }, [profileUser, isOwnProfile]);
 
   // Handle form change
@@ -454,13 +454,13 @@ const Profile = () => {
         </Card>
 
         {/* Role-specific Information */}
-        {profileUser?.role === 'STUDENT' && (
+        {profileUser?.role === 'LEARNER' && (
           <>
             <Card title="Thông tin học viên">
               <Grid cols={2} gap={4}>
                 <div>
                   <p className="text-sm font-medium text-slate-500">Mã học viên</p>
-                  <p className="mt-1 text-slate-900">{profileUser?.studentCode || '-'}</p>
+                  <p className="mt-1 text-slate-900">{profileUser?.learnerCode || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-500">Trạng thái đăng ký</p>
@@ -470,40 +470,40 @@ const Profile = () => {
             </Card>
 
             <Card title="Hồ sơ cá nhân đã nộp">
-              {loadingStudentDocument ? (
+              {loadinglearnerDocument ? (
                 <p className="text-sm text-slate-500">Đang tải hồ sơ...</p>
-              ) : !studentDocument ? (
+              ) : !learnerDocument ? (
                 <p className="text-sm text-slate-500">Chưa có hồ sơ cá nhân.</p>
               ) : (
                 <Grid cols={2} gap={4}>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Số CMND/CCCD</p>
-                    <p className="mt-1 text-slate-900">{studentDocument?.cccdNumber || '-'}</p>
+                    <p className="mt-1 text-slate-900">{learnerDocument?.cccdNumber || '-'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Trạng thái duyệt</p>
-                    <p className="mt-1 text-slate-900">{studentDocument?.status || '-'}</p>
+                    <p className="mt-1 text-slate-900">{learnerDocument?.status || '-'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Ảnh CCCD</p>
-                    {studentDocument?.cccdImage ? (
-                      <a href={studentDocument.cccdImage} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                    {learnerDocument?.cccdImage ? (
+                      <a href={learnerDocument.cccdImage} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
                         Xem file
                       </a>
                     ) : <p className="mt-1 text-slate-900">-</p>}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Giấy khám sức khỏe</p>
-                    {studentDocument?.healthCertificate ? (
-                      <a href={studentDocument.healthCertificate} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                    {learnerDocument?.healthCertificate ? (
+                      <a href={learnerDocument.healthCertificate} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
                         Xem file
                       </a>
                     ) : <p className="mt-1 text-slate-900">-</p>}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Ảnh 3x4</p>
-                    {studentDocument?.photo ? (
-                      <a href={studentDocument.photo} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                    {learnerDocument?.photo ? (
+                      <a href={learnerDocument.photo} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
                         Xem file
                       </a>
                     ) : <p className="mt-1 text-slate-900">-</p>}

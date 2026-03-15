@@ -58,14 +58,14 @@ const DocumentApproval = () => {
   }, [statusFilter]);
 
   const handleUpdateStatus = (doc, nextStatus) => {
-    const studentName = doc?.studentId?.fullName || doc?.registrationId?.studentId?.fullName || 'Học viên';
+    const learnerName = doc?.learnerId?.fullName || doc?.registrationId?.learnerId?.fullName || 'Học viên';
     const cccd = doc?.cccdNumber ? ` (CCCD: ${doc.cccdNumber})` : '';
     const isApprove = nextStatus === 'APPROVED';
 
     setConfirmDialog({
       isOpen: true,
       title: isApprove ? 'Duyệt hồ sơ' : 'Từ chối hồ sơ',
-      message: `${isApprove ? 'Duyệt' : 'Từ chối'} hồ sơ của "${studentName}"${cccd}?`,
+      message: `${isApprove ? 'Duyệt' : 'Từ chối'} hồ sơ của "${learnerName}"${cccd}?`,
       type: isApprove ? 'default' : 'danger',
       confirmText: isApprove ? 'Duyệt' : 'Từ chối',
       cancelText: 'Hủy',
@@ -83,13 +83,13 @@ const DocumentApproval = () => {
   };
 
   const handleSoftDelete = (doc) => {
-    const studentName = doc?.studentId?.fullName || doc?.registrationId?.studentId?.fullName || 'Học viên';
+    const learnerName = doc?.learnerId?.fullName || doc?.registrationId?.learnerId?.fullName || 'Học viên';
     const cccd = doc?.cccdNumber ? ` (CCCD: ${doc.cccdNumber})` : '';
 
     setConfirmDialog({
       isOpen: true,
       title: 'Xóa ảo hồ sơ',
-      message: `Xóa ảo hồ sơ của "${studentName}"${cccd}? Hồ sơ sẽ không hiển thị ở danh sách duyệt nữa.`,
+      message: `Xóa ảo hồ sơ của "${learnerName}"${cccd}? Hồ sơ sẽ không hiển thị ở danh sách duyệt nữa.`,
       type: 'warning',
       confirmText: 'Xóa ảo',
       cancelText: 'Hủy',
@@ -123,8 +123,8 @@ const DocumentApproval = () => {
     }
 
     try {
-      const studentId = notifyDialog.doc?.studentId?._id || notifyDialog.doc?.registrationId?.studentId?._id;
-      if (!studentId) {
+      const learnerId = notifyDialog.doc?.learnerId?._id || notifyDialog.doc?.registrationId?.learnerId?._id;
+      if (!learnerId) {
         showToast('Không tìm thấy học viên để gửi thông báo', 'error');
         return;
       }
@@ -134,7 +134,7 @@ const DocumentApproval = () => {
         title: 'Nhắc bổ sung hồ sơ',
         message,
         expirationDays: 7,
-        userId: studentId,
+        userId: learnerId,
       });
 
       showToast('Đã gửi thông báo cho học viên', 'success');
@@ -147,7 +147,7 @@ const DocumentApproval = () => {
   const rows = useMemo(() => {
     return (docs || []).map((d, idx) => {
       const reg = d.registrationId || {};
-      const student = d.studentId || reg.studentId || {};
+      const LEARNER = d.learnerId || reg.learnerId || {};
       const batch = reg.batchId || {};
       const course = batch.courseId || {};
       const consultant = d.consultantId || {};
@@ -160,8 +160,8 @@ const DocumentApproval = () => {
 
       return {
         key: d._id || idx,
-        student: student.fullName || '—',
-        contact: [student.phone, student.email].filter(Boolean).join(' · ') || '—',
+        LEARNER: LEARNER.fullName || '—',
+        contact: [LEARNER.phone, LEARNER.email].filter(Boolean).join(' · ') || '—',
         batch: batchText,
         method: reg.registerMethod === 'CONSULTANT' ? 'Sale' : 'Admin',
         consultant: consultant.fullName
@@ -214,7 +214,7 @@ const DocumentApproval = () => {
   }, [docs]);
 
   const columns = [
-    { key: 'student', title: 'Học viên', dataIndex: 'student' },
+    { key: 'LEARNER', title: 'Học viên', dataIndex: 'LEARNER' },
     { key: 'contact', title: 'Liên hệ', dataIndex: 'contact' },
     { key: 'batch', title: 'Khóa/Lớp', dataIndex: 'batch' },
     { key: 'method', title: 'Phụ trách', dataIndex: 'method' },

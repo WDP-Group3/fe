@@ -260,7 +260,7 @@ const Reports = () => {
                                                 <td className="py-3 font-medium text-slate-800">{c.name || '—'}</td>
                                                 <td className="py-3 text-slate-500">{c.code || '—'}</td>
                                                 <td className="py-3 text-right font-semibold text-indigo-600">{fmt(c.revenue)}</td>
-                                                <td className="py-3 text-right text-slate-700">{c.studentCount}</td>
+                                                <td className="py-3 text-right text-slate-700">{c.learnerCount}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -293,8 +293,8 @@ const Reports = () => {
                                                     {tx.paidAt ? new Date(tx.paidAt).toLocaleDateString('vi-VN') : '—'}
                                                 </td>
                                                 <td className="py-3">
-                                                    <p className="font-medium text-slate-800">{tx.studentName?.trim() || '—'}</p>
-                                                    <p className="text-xs text-slate-400">{tx.studentEmail || ''}</p>
+                                                    <p className="font-medium text-slate-800">{tx.learnerName?.trim() || '—'}</p>
+                                                    <p className="text-xs text-slate-400">{tx.LEARNEREmail || ''}</p>
                                                 </td>
                                                 <td className="py-3 text-slate-600">{tx.courseName || '—'}</td>
                                                 <td className="py-3 text-right font-semibold text-green-600">{fmt(tx.amount)}</td>

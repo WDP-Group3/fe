@@ -136,10 +136,10 @@ const ExamTaking = () => {
 
       const categoryName = examCategory ? (categoryMap[examCategory] || 'Ngẫu nhiên') : 'Ngẫu nhiên';
 
-      const studentId = user?.id || user?._id;
+      const learnerId = user?.id || user?._id;
 
       const submitData = {
-        studentId,
+        learnerId,
         questions: processedQuestions,
         duration,
         score,
@@ -149,10 +149,10 @@ const ExamTaking = () => {
         category: categoryName
       };
 
-      // Nếu là guest, không lưu vào DB, chuyển thẳng sang trang kết quả local
-      if (!studentId) {
+      // Nếu là USER, không lưu vào DB, chuyển thẳng sang trang kết quả local
+      if (!learnerId) {
         const resultRoute = user ? '/portal/exam-result' : '/exam-result';
-        navigate(`${resultRoute}/guest`, {
+        navigate(`${resultRoute}/USER`, {
           state: { score, correctAnswers: correctCount, totalQuestions, category: categoryName, wrongQuestionNumbers }
         });
         return;

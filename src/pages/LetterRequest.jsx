@@ -15,7 +15,7 @@ const LetterRequest = () => {
     const [reason, setReason] = useState('');
     const [expectedPayDate, setExpectedPayDate] = useState('');
     const [paymentDate, setPaymentDate] = useState('');
-    const [studentName, setStudentName] = useState('');
+    const [learnerName, setlearnerName] = useState('');
     const [courseName, setCourseName] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -51,7 +51,7 @@ const LetterRequest = () => {
         }
 
         if (type === 'OFFLINE_PAYMENT') {
-            if (!paymentDate || !studentName || !courseName) {
+            if (!paymentDate || !learnerName || !courseName) {
                 showToast('Vui lòng điền đầy đủ thông tin nộp tiền', 'error');
                 return;
             }
@@ -64,7 +64,7 @@ const LetterRequest = () => {
                 reason: type === 'LATE_PAYMENT' ? reason : (reason || 'Duyệt offline'),
                 expectedPayDate: type === 'LATE_PAYMENT' ? expectedPayDate : undefined,
                 paymentDate: type === 'OFFLINE_PAYMENT' ? paymentDate : undefined,
-                studentName: type === 'OFFLINE_PAYMENT' ? studentName : undefined,
+                learnerName: type === 'OFFLINE_PAYMENT' ? learnerName : undefined,
                 courseName: type === 'OFFLINE_PAYMENT' ? courseName : undefined,
                 status: user?.role === 'ADMIN' ? 'APPROVED' : 'PENDING'
             });
@@ -73,7 +73,7 @@ const LetterRequest = () => {
                 setReason('');
                 setExpectedPayDate('');
                 setPaymentDate('');
-                setStudentName('');
+                setlearnerName('');
                 setCourseName('');
                 loadRequests();
             }
@@ -121,7 +121,7 @@ const LetterRequest = () => {
             title: 'Chi tiết',
             render: (_, record) => {
                 if (record.type === 'LATE_PAYMENT') return `Hẹn nộp: ${new Date(record.expectedPayDate).toLocaleDateString('vi-VN')}`;
-                if (record.type === 'OFFLINE_PAYMENT') return `Nộp: ${new Date(record.paymentDate).toLocaleDateString('vi-VN')} - HV: ${record.studentName} - Khóa: ${record.courseName}`;
+                if (record.type === 'OFFLINE_PAYMENT') return `Nộp: ${new Date(record.paymentDate).toLocaleDateString('vi-VN')} - HV: ${record.learnerName} - Khóa: ${record.courseName}`;
                 return '-';
             }
         },
@@ -211,8 +211,8 @@ const LetterRequest = () => {
                                             type="text"
                                             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
                                             placeholder="Tên học viên..."
-                                            value={studentName}
-                                            onChange={(e) => setStudentName(e.target.value)}
+                                            value={learnerName}
+                                            onChange={(e) => setlearnerName(e.target.value)}
                                             disabled={submitting}
                                             required
                                         />

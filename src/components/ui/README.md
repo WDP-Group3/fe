@@ -42,7 +42,7 @@ import { Select } from '../components/ui';
 <Select
   label="Role"
   options={[
-    { value: 'STUDENT', label: 'Học viên' },
+    { value: 'LEARNER', label: 'Học viên' },
     { value: 'STAFF', label: 'Nhân viên' },
   ]}
   placeholder="Chọn vai trò"

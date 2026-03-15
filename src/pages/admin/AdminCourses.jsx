@@ -6,6 +6,7 @@ import apiClient from "../../services/apiClient";
 import { formatCurrency } from "../../utils/formatters";
 import config from "../../config";
 import { useToast } from "../../context/ToastContext";
+import Pagination from "../../components/common/Pagination";
 
 const AdminCourses = () => {
   const [activeTab, setActiveTab] = useState("courses"); // 'courses' or 'batches'
@@ -26,6 +27,13 @@ const AdminCourses = () => {
     search: "",
   });
 
+  // Pagination states
+  const [coursesPage, setCoursesPage] = useState(1);
+  const [coursesPagination, setCoursesPagination] = useState({ total: 0, totalPages: 0, limit: 10 });
+  
+  const [batchesPage, setBatchesPage] = useState(1);
+  const [batchesPagination, setBatchesPagination] = useState({ total: 0, totalPages: 0, limit: 10 });
+
   // Batch form state
   const [batchForm, setBatchForm] = useState({
     courseId: "",
@@ -34,18 +42,18 @@ const AdminCourses = () => {
     estimatedEndDate: "",
     location: "",
     examLocation: "",
-    maxStudents: 30,
+    maxlearners: 30,
     status: "OPEN",
   });
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningBatch, setAssigningBatch] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [learners, setlearners] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignForm, setAssignForm] = useState({
-    studentId: "",
+    learnerId: "",
     status: "PROCESSING",
     paymentPlanType: "INSTALLMENT",
   });
@@ -65,7 +73,7 @@ const AdminCourses = () => {
     note: "",
     feePayments: [],
     status: "Active",
-    maxStudents: 50,
+    maxlearners: 50,
     requiredPracticeHours: 0, // Số giờ thực hành bắt buộc (mặc định 0 = không giới hạn)
   };
 
@@ -75,19 +83,19 @@ const AdminCourses = () => {
 
   useEffect(() => {
     loadCourses();
-  }, []);
+  }, [coursesPage]);
 
   useEffect(() => {
     if (activeTab === "batches") {
       loadAllBatches();
     }
-  }, [activeTab, filters]);
+  }, [activeTab, filters, batchesPage]);
 
   const loadCourses = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get("/courses");
+      const response = await apiClient.get(`/courses?page=${coursesPage}&limit=${coursesPagination.limit}`);
       if (response.status === "success") {
         const mappedCourses = (response.data || []).map((course) => ({
           ...course,
@@ -98,6 +106,9 @@ const AdminCourses = () => {
             : course.location,
         }));
         setCourses(mappedCourses);
+        if (response.pagination) {
+          setCoursesPagination(response.pagination);
+        }
       }
     } catch (err) {
       console.error("Error loading courses:", err);
@@ -114,6 +125,8 @@ const AdminCourses = () => {
       if (filters.courseId) queryParams.push(`courseId=${filters.courseId}`);
       if (filters.status) queryParams.push(`status=${filters.status}`);
       if (filters.location) queryParams.push(`location=${encodeURIComponent(filters.location)}`);
+      queryParams.push(`page=${batchesPage}`);
+      queryParams.push(`limit=${batchesPagination.limit}`);
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
       const response = await apiClient.get(`/batches${queryString}`);
@@ -144,16 +157,19 @@ const AdminCourses = () => {
             }
           }
           
-          // studentCount is now provided by the getAllBatches API response
+          // learnerCount is now provided by the getAllBatches API response
           return { 
             ...batch, 
             courseInfo, 
-            studentCount: batch.studentCount || 0 
+            learnerCount: batch.learnerCount || 0 
           };
         })
       );
       
       setBatches(batchesWithCourse);
+      if (response.pagination) {
+        setBatchesPagination(response.pagination);
+      }
     } catch (err) {
       console.error("Error loading batches:", err);
       setError(err.message);
@@ -182,7 +198,7 @@ const AdminCourses = () => {
       const payload = {
         ...formData,
         estimatedCost: Number(formData.estimatedCost),
-        maxStudents: Number(formData.maxStudents) || 50,
+        maxlearners: Number(formData.maxlearners) || 50,
         estimatedDuration: formData.estimatedDuration
           ? Number(formData.estimatedDuration)
           : undefined,
@@ -237,7 +253,7 @@ const AdminCourses = () => {
             note: p.note || "",
           }))
         : [],
-      maxStudents: course.maxStudents || 50,
+      maxlearners: course.maxlearners || 50,
       requiredPracticeHours: course.requiredPracticeHours || 0,
     });
 
@@ -252,7 +268,7 @@ const AdminCourses = () => {
         ? course.location[0] || ""
         : course.location || "",
       examLocation: "",
-      maxStudents: 30,
+      maxlearners: 30,
       status: "OPEN",
     });
 
@@ -279,7 +295,7 @@ const AdminCourses = () => {
       const payload = {
         ...batchForm,
         courseId: batchForm.courseId || (editingBatch?.courseId?._id || editingBatch?.courseId),
-        maxStudents: Number(batchForm.maxStudents) || 30,
+        maxlearners: Number(batchForm.maxlearners) || 30,
       };
 
       if (editingBatch) {
@@ -298,7 +314,7 @@ const AdminCourses = () => {
         estimatedEndDate: "",
         location: "",
         examLocation: "",
-        maxStudents: 30,
+        maxlearners: 30,
         status: "OPEN",
       });
       loadAllBatches();
@@ -317,7 +333,7 @@ const AdminCourses = () => {
       estimatedEndDate: batch.estimatedEndDate ? batch.estimatedEndDate.split('T')[0] : "",
       location: batch.location || "",
       examLocation: batch.examLocation || "",
-      maxStudents: batch.maxStudents || 30,
+      maxlearners: batch.maxlearners || 30,
       status: batch.status || "OPEN",
     });
     setShowBatchModal(true);
@@ -341,7 +357,7 @@ const AdminCourses = () => {
       setShowAssignModal(true);
       setAssignLoading(true);
       setParticipantsLoading(true);
-      setAssignForm({ studentId: "", status: "PROCESSING", paymentPlanType: "INSTALLMENT" });
+      setAssignForm({ learnerId: "", status: "PROCESSING", paymentPlanType: "INSTALLMENT" });
 
       const courseId = batch.courseId?._id || batch.courseId;
       
@@ -350,11 +366,11 @@ const AdminCourses = () => {
         apiClient.get(`/registrations/batch/${batch._id}/participants`),
       ]);
 
-      const eligibleStudents = (pendingRegRes?.data || [])
-        .map(reg => reg.studentId)
-        .filter(student => student != null);
+      const eligiblelearners = (pendingRegRes?.data || [])
+        .map(reg => reg.learnerId)
+        .filter(LEARNER => LEARNER != null);
 
-      setStudents(eligibleStudents);
+      setlearners(eligiblelearners);
       setParticipants(participantRes?.data || []);
     } catch (openError) {
       console.error(openError);
@@ -365,9 +381,9 @@ const AdminCourses = () => {
     }
   };
 
-  const handleAssignStudent = async (e) => {
+  const handleAssignLEARNER = async (e) => {
     e.preventDefault();
-    if (!assignForm.studentId) {
+    if (!assignForm.learnerId) {
       showToast("Vui lòng chọn học viên", "error");
       return;
     }
@@ -375,7 +391,7 @@ const AdminCourses = () => {
     try {
       setAssignLoading(true);
       await apiClient.post("/registrations/assign", {
-        studentId: assignForm.studentId,
+        learnerId: assignForm.learnerId,
         batchId: assigningBatch._id,
         status: assignForm.status,
         paymentPlanType: assignForm.paymentPlanType,
@@ -386,7 +402,7 @@ const AdminCourses = () => {
       const participantRes = await apiClient.get(`/registrations/batch/${assigningBatch._id}/participants`);
       setParticipants(participantRes?.data || []);
       
-      loadAllBatches(); // Refresh to update student count
+      loadAllBatches(); // Refresh to update LEARNER count
     } catch (assignError) {
       console.error(assignError);
       showToast(assignError.message || "Gán học viên thất bại", "error");
@@ -413,7 +429,7 @@ const AdminCourses = () => {
         estimatedEndDate: batchForm.estimatedEndDate,
         location: batchForm.location,
         examLocation: batchForm.examLocation,
-        maxStudents: batchForm.maxStudents,
+        maxlearners: batchForm.maxlearners,
         status: batchForm.status,
       });
 
@@ -705,11 +721,11 @@ const AdminCourses = () => {
                       </label>
                       <input
                         type="number"
-                        value={formData.maxStudents}
+                        value={formData.maxlearners}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            maxStudents: parseInt(e.target.value) || 50,
+                            maxlearners: parseInt(e.target.value) || 50,
                           })
                         }
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
@@ -892,87 +908,96 @@ const AdminCourses = () => {
               <p>Chưa có khóa học nào</p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-              {courses.map((course) => (
-                <div
-                  key={course.id}
-                  className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <StatusBadge status="done" label={course.level || "Mở đăng ký"} />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(course)}
-                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
-                        title="Sửa"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(course._id)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-full"
-                        title="Xóa"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                      </button>
+            <>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+                {courses.map((course) => (
+                  <div
+                    key={course.id}
+                    className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <StatusBadge status="done" label={course.level || "Mở đăng ký"} />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(course)}
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
+                          title="Sửa"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(course._id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-full"
+                          title="Xóa"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 overflow-hidden rounded-xl bg-slate-100 w-full flex items-center justify-center">
+                      <img
+                        src={course.image}
+                        alt={course.name}
+                        className="w-50% h-48 object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                    </div>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                      {course.name}
+                    </p>
+                    {course.level && (
+                      <p className="text-sm text-indigo-600 font-medium">
+                        Hạng: {course.level}
+                      </p>
+                    )}
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-bold text-slate-900">
+                        {formatCurrency(course.estimatedCost)}
+                      </p>
+                      {course.feePayments && course.feePayments.length > 0 && (
+                        <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                          {course.feePayments.length} đợt đóng
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                        Tối đa: {course.maxlearners || 50} học viên
+                      </span>
+                      {course.requiredPracticeHours > 0 && (
+                        <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                          {course.requiredPracticeHours} giờ thực hành
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto pr-1">
+                      {course.feePayments && course.feePayments.length > 0 ? (
+                        course.feePayments.map((p, idx) => (
+                          <p key={idx}>
+                            • {p.name}: {formatCurrency(p.amount)}{" "}
+                            <span className="text-slate-500 text-xs">
+                              {p.note ? `(${p.note})` : ""}
+                            </span>
+                          </p>
+                        ))
+                      ) : (
+                        <p className="text-slate-500 italic text-xs">Phí nộp 1 lần</p>
+                      )}
                     </div>
                   </div>
-                  <div className="mt-3 overflow-hidden rounded-xl bg-slate-100 w-full flex items-center justify-center">
-                    <img
-                      src={course.image}
-                      alt={course.name}
-                      className="w-50% h-48 object-cover transition-transform duration-300 hover:scale-105"
-                    />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">
-                    {course.name}
-                  </p>
-                  {course.level && (
-                    <p className="text-sm text-indigo-600 font-medium">
-                      Hạng: {course.level}
-                    </p>
-                  )}
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-slate-900">
-                      {formatCurrency(course.estimatedCost)}
-                    </p>
-                    {course.feePayments && course.feePayments.length > 0 && (
-                      <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-                        {course.feePayments.length} đợt đóng
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1">
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                      Tối đa: {course.maxStudents || 50} học viên
-                    </span>
-                    {course.requiredPracticeHours > 0 && (
-                      <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                        {course.requiredPracticeHours} giờ thực hành
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 space-y-1 text-sm text-slate-700 h-20 overflow-y-auto pr-1">
-                    {course.feePayments && course.feePayments.length > 0 ? (
-                      course.feePayments.map((p, idx) => (
-                        <p key={idx}>
-                          • {p.name}: {formatCurrency(p.amount)}{" "}
-                          <span className="text-slate-500 text-xs">
-                            {p.note ? `(${p.note})` : ""}
-                          </span>
-                        </p>
-                      ))
-                    ) : (
-                      <p className="text-slate-500 italic text-xs">Phí nộp 1 lần</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <div className="mt-6">
+                <Pagination 
+                  currentPage={coursesPage}
+                  totalPages={coursesPagination.totalPages}
+                  onPageChange={setCoursesPage}
+                />
+              </div>
+            </>
           )}
         </>
       )}
@@ -993,7 +1018,7 @@ const AdminCourses = () => {
                     startDate: "",
                     estimatedEndDate: "",
                     location: "",
-                    maxStudents: 30,
+                    maxlearners: 30,
                     status: "OPEN",
                   });
                   setShowBatchModal(true);
@@ -1095,7 +1120,7 @@ const AdminCourses = () => {
                     startDate: "",
                     estimatedEndDate: "",
                     location: "",
-                    maxStudents: 30,
+                    maxlearners: 30,
                     status: "OPEN",
                   });
                   setShowBatchModal(true);
@@ -1149,11 +1174,11 @@ const AdminCourses = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          batch.studentCount >= (batch.maxStudents || 30)
+                          batch.learnerCount >= (batch.maxlearners || 30)
                             ? "bg-red-100 text-red-800"
                             : "bg-green-100 text-green-800"
                         }`}>
-                          {batch.studentCount || 0} / {batch.maxStudents || 30}
+                          {batch.learnerCount || 0} / {batch.maxlearners || 30}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -1210,6 +1235,13 @@ const AdminCourses = () => {
                   ))}
                 </tbody>
               </table>
+              <div className="px-6 py-4 border-t border-slate-200">
+                <Pagination 
+                  currentPage={batchesPage}
+                  totalPages={batchesPagination.totalPages}
+                  onPageChange={setBatchesPage}
+                />
+              </div>
             </div>
           )}
         </>
@@ -1307,8 +1339,8 @@ const AdminCourses = () => {
                 </label>
                 <input
                   type="number"
-                  value={batchForm.maxStudents}
-                  onChange={(e) => setBatchForm({ ...batchForm, maxStudents: parseInt(e.target.value) || 30 })}
+                  value={batchForm.maxlearners}
+                  onChange={(e) => setBatchForm({ ...batchForm, maxlearners: parseInt(e.target.value) || 30 })}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 />
               </div>
@@ -1348,7 +1380,7 @@ const AdminCourses = () => {
         </div>
       )}
 
-      {/* Assign Student Modal */}
+      {/* Assign LEARNER Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
@@ -1361,22 +1393,22 @@ const AdminCourses = () => {
               Khoá học: <span className="font-semibold">{assigningBatch?.courseInfo?.name || assigningBatch?.courseId?.name}</span>
             </p>
 
-            <form className="mt-4 space-y-4" onSubmit={handleAssignStudent}>
+            <form className="mt-4 space-y-4" onSubmit={handleAssignLEARNER}>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Học viên
                 </label>
                 <select
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={assignForm.studentId}
-                  onChange={(e) => setAssignForm((prev) => ({ ...prev, studentId: e.target.value }))}
+                  value={assignForm.learnerId}
+                  onChange={(e) => setAssignForm((prev) => ({ ...prev, learnerId: e.target.value }))}
                   required
                   disabled={assignLoading}
                 >
                   <option value="">-- Chọn học viên --</option>
-                  {students.map((student) => (
-                    <option key={student._id} value={student._id}>
-                      {student.fullName} - {student.phone}
+                  {learners.map((LEARNER) => (
+                    <option key={LEARNER._id} value={LEARNER._id}>
+                      {LEARNER.fullName} - {LEARNER.phone}
                     </option>
                   ))}
                 </select>
@@ -1425,7 +1457,7 @@ const AdminCourses = () => {
                   <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
                     {participants.map((p) => (
                       <div key={p._id} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
-                        <p className="font-semibold">{p?.studentId?.fullName || "—"} · {p?.studentId?.phone || "—"}</p>
+                        <p className="font-semibold">{p?.learnerId?.fullName || "—"} · {p?.learnerId?.phone || "—"}</p>
                         <p className="text-slate-500">{p?.status || "NEW"}</p>
                       </div>
                     ))}

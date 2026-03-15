@@ -30,14 +30,14 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import CourseDetail from './pages/CourseDetail';
-import CourseGuest from './pages/CourseGuest';
+import CourseUser from './pages/CourseUser';
 import Blogs from './pages/Blogs';
 import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
 import AdminBlogs from './pages/admin/AdminBlogs';
 import DocumentApproval from './pages/DocumentApproval';
-import StudentDashboard from './pages/StudentDashboard';
+import LearnerDashboard from './pages/LearnerDashboard';
 import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
 import AdminLearningLocations from './pages/admin/AdminLearningLocations';
 import AdminPayments from './pages/admin/AdminPayments';
@@ -68,7 +68,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
-            <Route path="/courses" element={<CourseGuest />} />
+            <Route path="/courses" element={<CourseUser />} />
             <Route path="/exams" element={<PortalLayout><Exams /></PortalLayout>} />
             <Route path="/exam-taking" element={<ExamTaking />} />
             <Route path="/exam-result/:id" element={<ExamResult />} />
@@ -81,7 +81,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST']}
+                  allowedRoles={['ADMIN', 'LEARNER', 'INSTRUCTOR', 'CONSULTANT', 'USER']}
                 />
               }
             >
@@ -122,7 +122,7 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="student-dashboard" element={<StudentDashboard />} />
+                <Route path="learner-dashboard" element={<LearnerDashboard />} />
                 <Route path="salary" element={<Salary />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>

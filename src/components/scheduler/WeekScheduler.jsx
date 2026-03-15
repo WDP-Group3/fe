@@ -17,7 +17,7 @@ const SLOTS = [
   { id: 10, label: 'Ca 10 (17:00 - 18:00)', startHour: 17, isBreak: false },
 ];
 
-const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = 'STUDENT' }) => {
+const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = 'LEARNER' }) => {
   const getSlotData = (dayIndex, slotId) => {
     // Skip if it's a break slot
     if (slotId === 'BREAK') return null;
@@ -115,7 +115,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                     content = (
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-white/20 text-white">Hoàn thành</span>
-                        <span className="text-white font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                        <span className="text-white font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.learnerId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
                       </div>
                     );
                   } else if (data.status === 'ABSENT') {
@@ -124,7 +124,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                     content = (
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-white/20 text-white">Vắng</span>
-                        <span className="text-white font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                        <span className="text-white font-bold text-[12px] truncate w-full">{userRole === 'INSTRUCTOR' ? (data.learnerId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
                       </div>
                     );
                   } else if (data.status === 'CANCELLED') {
@@ -147,7 +147,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                     content = (
                       <div className="flex flex-col items-center gap-1">
                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${colors.labelBg} ${colors.text}`}>{data.type || 'PRACTICE'}</span>
-                        <span className={`font-bold text-[12px] truncate w-full ${colors.text}`}>{userRole === 'INSTRUCTOR' ? (data.studentId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
+                        <span className={`font-bold text-[12px] truncate w-full ${colors.text}`}>{userRole === 'INSTRUCTOR' ? (data.learnerId?.fullName || "Học viên") : (data.isMyBooking ? "Của bạn" : "Đã đặt")}</span>
                         {userRole === 'INSTRUCTOR' && (
                           <span className="text-[10px] font-bold text-amber-600">
                             Chờ dạy

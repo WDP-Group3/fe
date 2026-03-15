@@ -5,6 +5,7 @@ import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
+import Pagination from '../../components/common/Pagination';
 
 const AdminLearningLocations = () => {
   const { showToast } = useToast();
@@ -22,9 +23,14 @@ const AdminLearningLocations = () => {
   const [instructorRows, setInstructorRows] = useState([]);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, name: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
 
   useEffect(() => {
     loadList();
+  }, [currentPage]);
+
+  useEffect(() => {
     loadCourses();
     loadInstructors();
   }, []);
@@ -32,8 +38,13 @@ const AdminLearningLocations = () => {
   const loadList = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/learning-locations');
-      if (res.status === 'success') setList(res.data || []);
+      const res = await apiClient.get(`/learning-locations?page=${currentPage}&limit=10`);
+      if (res.status === 'success') {
+        setList(res.data || []);
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
+      }
     } catch (err) {
       showToast('Không tải được danh sách địa điểm học', 'error');
     } finally {
@@ -221,6 +232,15 @@ const AdminLearningLocations = () => {
               )}
             </tbody>
           </table>
+          {pagination.totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-slate-100">
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </div>
       )}
 

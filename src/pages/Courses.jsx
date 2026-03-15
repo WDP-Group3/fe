@@ -58,7 +58,7 @@ const Courses = () => {
       return;
     }
 
-    if (user?.role !== "STUDENT") {
+    if (user?.role !== "LEARNER") {
       showToast("Chỉ tài khoản Học viên mới có thể đăng ký khóa học", "error");
       return;
     }

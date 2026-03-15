@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
 import { SectionHeader } from '../../components/ui';
 import apiClient from '../../services/apiClient';
+import Pagination from '../../components/common/Pagination';
 
 const AdminFeedbacks = () => {
     const { user } = useAuthContext();
@@ -13,13 +14,16 @@ const AdminFeedbacks = () => {
     // Statistics
     const [statistics, setStatistics] = useState(null);
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
+
     // Modal State
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedFeedback, setSelectedFeedback] = useState(null);
 
     useEffect(() => {
         loadFeedbacks();
-    }, [filterInstructor, filterMinRating]);
+    }, [filterInstructor, filterMinRating, currentPage]);
 
     const loadFeedbacks = async () => {
         try {
@@ -27,12 +31,16 @@ const AdminFeedbacks = () => {
             let query = '';
             if (filterInstructor) query += `instructorId=${filterInstructor}&`;
             if (filterMinRating) query += `minRating=${filterMinRating}&`;
-            if (query) query = '?' + query.slice(0, -1); // Remove last &
+            query += `page=${currentPage}&limit=10`;
+            query = '?' + query;
             
             const response = await apiClient.get(`/bookings/feedbacks${query}`);
             if (response.status === 'success') {
                 setFeedbacks(response.data);
                 setStatistics(response.statistics);
+                if (response.pagination) {
+                    setPagination(response.pagination);
+                }
             }
         } catch (err) {
             console.error('Error loading feedbacks:', err);
@@ -175,59 +183,70 @@ const AdminFeedbacks = () => {
                 ) : feedbacks.length === 0 ? (
                     <div className="p-8 text-center text-gray-500">Chưa có đánh giá nào</div>
                 ) : (
-                    <table className="w-full">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">STT</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Học viên</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Giáo viên</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Ngày học</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Đánh giá</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Ngày đánh giá</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {feedbacks.map((feedback, index) => (
-                                <tr key={feedback._id} className="border-t hover:bg-gray-50">
-                                    <td className="px-4 py-3 text-sm">{index + 1}</td>
-                                    <td className="px-4 py-3 text-sm">
-                                        <div className="font-medium">{feedback.studentId?.fullName || 'N/A'}</div>
-                                        <div className="text-xs text-gray-500">{feedback.studentId?.email || ''}</div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm">
-                                        {feedback.instructorId?.fullName || 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm">
-                                        <div>{new Date(feedback.date).toLocaleDateString('vi-VN')}</div>
-                                        <div className="text-xs text-gray-500">
-                                            {SLOT_LABELS[String(feedback.timeSlot)] || `Ca ${feedback.timeSlot}`}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm">
-                                        <span className={`font-bold ${
-                                            feedback.rating >= 4 ? 'text-green-600' : 
-                                            feedback.rating >= 3 ? 'text-yellow-600' : 'text-red-600'
-                                        }`}>
-                                            {getRatingStars(feedback.rating)}
-                                        </span>
-                                        <div className="text-xs text-gray-500">({feedback.rating}/5)</div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-gray-600">
-                                        {formatDate(feedback.feedbackDate)}
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <button
-                                            onClick={() => handleViewDetail(feedback)}
-                                            className="text-blue-500 hover:text-blue-700 text-sm font-medium"
-                                        >
-                                            Xem chi tiết
-                                        </button>
-                                    </td>
+                    <>
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">STT</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Học viên</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Giáo viên</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Ngày học</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Đánh giá</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Ngày đánh giá</th>
+                                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600">Thao tác</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {feedbacks.map((feedback, index) => (
+                                    <tr key={feedback._id} className="border-t hover:bg-gray-50">
+                                        <td className="px-4 py-3 text-sm">
+                                            {(currentPage - 1) * 10 + index + 1}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            <div className="font-medium">{feedback.learnerId?.fullName || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500">{feedback.learnerId?.email || ''}</div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            {feedback.instructorId?.fullName || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            <div>{new Date(feedback.date).toLocaleDateString('vi-VN')}</div>
+                                            <div className="text-xs text-gray-500">
+                                                {SLOT_LABELS[String(feedback.timeSlot)] || `Ca ${feedback.timeSlot}`}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            <span className={`font-bold ${
+                                                feedback.rating >= 4 ? 'text-green-600' : 
+                                                feedback.rating >= 3 ? 'text-yellow-600' : 'text-red-600'
+                                            }`}>
+                                                {getRatingStars(feedback.rating)}
+                                            </span>
+                                            <div className="text-xs text-gray-500">({feedback.rating}/5)</div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                            {formatDate(feedback.feedbackDate)}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button
+                                                onClick={() => handleViewDetail(feedback)}
+                                                className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div className="px-4 py-3 border-t border-gray-100">
+                            <Pagination 
+                                currentPage={currentPage}
+                                totalPages={pagination.totalPages}
+                                onPageChange={setCurrentPage}
+                            />
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -240,15 +259,15 @@ const AdminFeedbacks = () => {
                         <div className="space-y-3">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Học viên:</span>
-                                <span className="font-medium">{selectedFeedback.studentId?.fullName || 'N/A'}</span>
+                                <span className="font-medium">{selectedFeedback.learnerId?.fullName || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Email HV:</span>
-                                <span className="font-medium">{selectedFeedback.studentId?.email || 'N/A'}</span>
+                                <span className="font-medium">{selectedFeedback.learnerId?.email || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-600">SĐT HV:</span>
-                                <span className="font-medium">{selectedFeedback.studentId?.phone || 'N/A'}</span>
+                                <span className="font-medium">{selectedFeedback.learnerId?.phone || 'N/A'}</span>
                             </div>
                             <hr />
                             <div className="flex justify-between">
@@ -273,7 +292,7 @@ const AdminFeedbacks = () => {
                             <div>
                                 <span className="text-gray-600 block mb-1">Phản hồi:</span>
                                 <div className="bg-gray-50 p-3 rounded border text-sm">
-                                    {selectedFeedback.studentFeedback || 'Không có phản hồi'}
+                                    {selectedFeedback.learnerFeedback || 'Không có phản hồi'}
                                 </div>
                             </div>
                             <div className="flex justify-between text-sm text-gray-500">

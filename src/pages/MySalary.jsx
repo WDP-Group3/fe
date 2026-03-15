@@ -245,7 +245,7 @@ const MySalary = () => {
                             {new Date(d.date).toLocaleDateString('vi-VN')}
                           </td>
                           <td className="px-3 py-2">Ca {d.timeSlot}</td>
-                          <td className="px-3 py-2">{d.studentName}</td>
+                          <td className="px-3 py-2">{d.learnerName}</td>
                           <td className="px-3 py-2 text-right">{d.hours}</td>
                           <td className="px-3 py-2 text-right">{fmt(d.amount)}</td>
                         </tr>
@@ -274,7 +274,7 @@ const MySalary = () => {
                       {salaryData.commissionDetails.map((d, idx) => (
                         <tr key={idx} className="border-t border-slate-100">
                           <td className="px-3 py-2">{d.courseCode}</td>
-                          <td className="px-3 py-2">{d.studentName}</td>
+                          <td className="px-3 py-2">{d.learnerName}</td>
                           <td className="px-3 py-2">
                             {new Date(d.registrationDate).toLocaleDateString('vi-VN')}
                           </td>
