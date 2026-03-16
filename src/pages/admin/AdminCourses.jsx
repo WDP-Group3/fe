@@ -368,7 +368,7 @@ const AdminCourses = () => {
 
       const eligiblelearners = (pendingRegRes?.data || [])
         .map(reg => reg.learnerId)
-        .filter(LEARNER => LEARNER != null);
+        .filter(learner => learner != null);
 
       setlearners(eligiblelearners);
       setParticipants(participantRes?.data || []);
@@ -381,7 +381,7 @@ const AdminCourses = () => {
     }
   };
 
-  const handleAssignLEARNER = async (e) => {
+  const handleAssignlearner = async (e) => {
     e.preventDefault();
     if (!assignForm.learnerId) {
       showToast("Vui lòng chọn học viên", "error");
@@ -402,7 +402,7 @@ const AdminCourses = () => {
       const participantRes = await apiClient.get(`/registrations/batch/${assigningBatch._id}/participants`);
       setParticipants(participantRes?.data || []);
       
-      loadAllBatches(); // Refresh to update LEARNER count
+      loadAllBatches(); // Refresh to update learner count
     } catch (assignError) {
       console.error(assignError);
       showToast(assignError.message || "Gán học viên thất bại", "error");
@@ -1380,7 +1380,7 @@ const AdminCourses = () => {
         </div>
       )}
 
-      {/* Assign LEARNER Modal */}
+      {/* Assign learner Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
@@ -1393,7 +1393,7 @@ const AdminCourses = () => {
               Khoá học: <span className="font-semibold">{assigningBatch?.courseInfo?.name || assigningBatch?.courseId?.name}</span>
             </p>
 
-            <form className="mt-4 space-y-4" onSubmit={handleAssignLEARNER}>
+            <form className="mt-4 space-y-4" onSubmit={handleAssignlearner}>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Học viên
@@ -1406,9 +1406,9 @@ const AdminCourses = () => {
                   disabled={assignLoading}
                 >
                   <option value="">-- Chọn học viên --</option>
-                  {learners.map((LEARNER) => (
-                    <option key={LEARNER._id} value={LEARNER._id}>
-                      {LEARNER.fullName} - {LEARNER.phone}
+                  {learners.map((learner) => (
+                    <option key={learner._id} value={learner._id}>
+                      {learner.fullName} - {learner.phone}
                     </option>
                   ))}
                 </select>

@@ -17,7 +17,7 @@ const SLOTS = [
   { id: 10, label: 'Ca 10 (17:00 - 18:00)', startHour: 17, isBreak: false },
 ];
 
-const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = 'LEARNER' }) => {
+const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = 'learner' }) => {
   const getSlotData = (dayIndex, slotId) => {
     // Skip if it's a break slot
     if (slotId === 'BREAK') return null;

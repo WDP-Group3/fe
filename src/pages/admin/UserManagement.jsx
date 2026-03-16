@@ -39,6 +39,16 @@ const UserManagement = () => {
     type: "default",
   });
 
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+  const [offlineUser, setOfflineUser] = useState(null);
+  const [offlineRegistrations, setOfflineRegistrations] = useState([]);
+  const [loadingOfflineRegs, setLoadingOfflineRegs] = useState(false);
+  const [offlineForm, setOfflineForm] = useState({
+    registrationId: "",
+    feePlanId: ""
+  });
+  const [submittingOffline, setSubmittingOffline] = useState(false);
+
   useEffect(() => {
     loadUsers();
     loadStats();
@@ -150,6 +160,43 @@ const UserManagement = () => {
     }
   };
 
+  const openOfflinePaymentModal = async (user) => {
+    setOfflineUser(user);
+    setOfflineForm({ registrationId: "", feePlanId: "" });
+    setShowOfflineModal(true);
+    setLoadingOfflineRegs(true);
+    setOfflineRegistrations([]); // reset
+    try {
+      const resp = await apiClient.get(`/registrations?learnerId=${user.id}`);
+      if (resp.status === "success") {
+        setOfflineRegistrations(resp.data || []);
+      }
+    } catch (e) {
+      showToast("Lỗi khi tải danh sách khóa học", "error");
+    } finally {
+      setLoadingOfflineRegs(false);
+    }
+  };
+
+  const submitOfflinePayment = async (e) => {
+    e.preventDefault();
+    if (!offlineForm.registrationId || !offlineForm.feePlanId) {
+       return showToast("Vui lòng chọn khóa học và đợt nộp", "error");
+    }
+    try {
+      setSubmittingOffline(true);
+      await apiClient.patch(`/registrations/${offlineForm.registrationId}/offline-payment`, {
+        feePlanId: offlineForm.feePlanId
+      });
+      showToast("Xác nhận nộp tiền offline thành công", "success");
+      setShowOfflineModal(false);
+    } catch(err) {
+      showToast(err.message || "Xác nhận thất bại", "error");
+    } finally {
+      setSubmittingOffline(false);
+    }
+  };
+
   const openEditModal = (user) => {
     setCurrentUser(user);
     setFormData({
@@ -245,6 +292,14 @@ const UserManagement = () => {
           >
             Sửa
           </button>
+          {record.role === "learner" && record.status === "active" && (
+            <button
+               onClick={() => openOfflinePaymentModal(record)}
+               className="rounded-md bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-600 hover:bg-amber-100 transition-colors"
+            >
+               Nộp offline
+            </button>
+          )}
           {record.status === "active" ? (
             <button
               onClick={() => handleLock(record)}
@@ -310,7 +365,7 @@ const UserManagement = () => {
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Tất cả vai trò</option>
-              <option value="LEARNER">Học viên</option>
+              <option value="learner">Học viên</option>
               <option value="INSTRUCTOR">Giáo viên</option>
               <option value="CONSULTANT">Tư vấn viên</option>
               {/* No USER */}
@@ -398,7 +453,7 @@ const UserManagement = () => {
                   >
                     <option value="INSTRUCTOR">Giáo viên</option>
                     <option value="CONSULTANT">Tư vấn viên</option>
-                    <option value="LEARNER">Học Viên</option>
+                    <option value="learner">Học Viên</option>
                     <option value="ADMIN">Quản trị viên</option>
                   </select>
                 </div>
@@ -455,6 +510,81 @@ const UserManagement = () => {
                     className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
                   >
                     Lưu
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Offline Payment Modal */}
+        {showOfflineModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="mb-4 text-xl font-bold text-slate-900">
+                Nộp Tiền Offline
+              </h3>
+              <div className="mb-4 text-sm text-slate-600">
+                Học viên: <span className="font-semibold text-slate-900">{offlineUser?.name}</span>
+              </div>
+              <form onSubmit={submitOfflinePayment} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Khóa học</label>
+                  <select
+                    required
+                    value={offlineForm.registrationId}
+                    onChange={(e) => setOfflineForm({ registrationId: e.target.value, feePlanId: "" })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={submittingOffline || loadingOfflineRegs}
+                  >
+                    <option value="">
+                       {loadingOfflineRegs ? 'Đang tải...' : offlineRegistrations.length === 0 ? 'Không có khóa học nào' : '-- Chọn khóa học --'}
+                    </option>
+                    {offlineRegistrations.map((reg) => {
+                       const course = reg.batchId?.courseId || reg.courseId;
+                       if (!course) return null;
+                       return (
+                         <option key={reg._id} value={reg._id}>
+                           {course.code ? `[${course.code}] ` : ''}{course.name}
+                         </option>
+                       );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Đợt nộp</label>
+                  <select
+                    required
+                    value={offlineForm.feePlanId}
+                    onChange={(e) => setOfflineForm({ ...offlineForm, feePlanId: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={submittingOffline || !offlineForm.registrationId}
+                  >
+                    <option value="">
+                       {!offlineForm.registrationId ? 'Chọn khóa học trước' : '-- Chọn đợt nộp --'}
+                    </option>
+                    {offlineRegistrations.find(r => r._id === offlineForm.registrationId)?.feePlanSnapshot?.filter(f => !f.paymented).map((fp, idx) => (
+                       <option key={fp._id || idx} value={fp._id || fp.name}>
+                          {fp.name} - {fp.amount ? `${fp.amount.toLocaleString('vi-VN')}đ` : '0đ'}
+                       </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowOfflineModal(false)}
+                    className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm disabled:bg-indigo-400"
+                    disabled={submittingOffline}
+                  >
+                    {submittingOffline ? 'Đang xử lý...' : 'Xác nhận nộp'}
                   </button>
                 </div>
               </form>

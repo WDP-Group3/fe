@@ -97,7 +97,7 @@ export const ROUTES = {
 // User Roles
 export const USER_ROLES = {
   USER: 'USER',
-  LEARNER: 'LEARNER',
+  learner: 'learner',
   STAFF: 'STAFF',
   SALE: 'SALE',
   INSTRUCTOR: 'INSTRUCTOR',

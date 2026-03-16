@@ -8,10 +8,10 @@ const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 let mockUsers = [
   {
     id: '1',
-    email: 'LEARNER@example.com',
+    email: 'learner@example.com',
     name: 'Nguyễn Văn A',
     phone: '0912345678',
-    role: USER_ROLES.LEARNER,
+    role: USER_ROLES.learner,
     avatar: null,
   },
   {
@@ -68,7 +68,7 @@ export const mockApi = {
     const newUser = {
       id: String(mockUsers.length + 1),
       ...userData,
-      role: userData.role || USER_ROLES.LEARNER,
+      role: userData.role || USER_ROLES.learner,
     };
     mockUsers.push(newUser);
     return { success: true, user: newUser };

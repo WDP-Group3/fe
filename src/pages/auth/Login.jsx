@@ -6,10 +6,12 @@ import { Button, Input } from "../../components/ui";
 import { Container, Card } from "../../components/common";
 import PortalLayout from "../../components/layout/PortalLayout";
 import config from "../../config";
+import { GoogleLogin } from '@react-oauth/google';
+import axiosInstance from "../../services/axios";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, loading } = useAuthContext();
+  const { login, loading, loginWithGoogle } = useAuthContext();
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     email: "",
@@ -35,19 +37,14 @@ const Login = () => {
       const { user } = await login(formData);
       showToast("Đăng nhập thành công", "success");
 
-      if (user?.role === 'ADMIN') {
+      if (user?.role === "ADMIN") {
         navigate("/admin");
       } else {
         navigate("/portal");
       }
     } catch (error) {
-      // Hiển thị lỗi chi tiết
       const errorMessage = error.message || "Đăng nhập thất bại";
-      // Phân tích lỗi để hiển thị ở đúng field
-      if (
-        errorMessage.includes("Email") &&
-        !errorMessage.includes("mật khẩu")
-      ) {
+      if (errorMessage.includes("Email") && !errorMessage.includes("mật khẩu")) {
         setErrors({ email: errorMessage, password: "" });
       } else if (
         errorMessage.includes("mật khẩu") ||
@@ -57,10 +54,39 @@ const Login = () => {
       } else {
         setErrors({ email: "", password: errorMessage });
       }
-      showToast(errorMessage, "error", 5000); // Tăng thời gian hiển thị lỗi lên 5 giây
+      showToast(errorMessage, "error", 5000);
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const response = await axiosInstance.post('/auth/google', {
+        token: credentialResponse.credential,
+      });
+
+      showToast("Đăng nhập bằng Google thành công!", "success");
+
+      const mappedUser = {
+        id: response.user._id || response.user.id,
+        email: response.user.email,
+        name: response.user.fullName || response.user.name,
+        role: response.user.role,
+        phone: response.user.phone,
+        avatar: response.user.avatar || null,
+      };
+
+      loginWithGoogle(response.token, mappedUser);
+
+      if (mappedUser?.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/portal");
+      }
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      showToast(error.message || "Đăng nhập bằng Google thất bại", "error", 5000);
+    }
+  };
 
   return (
     <PortalLayout>
@@ -68,7 +94,7 @@ const Login = () => {
         <Container size="sm">
           <Card className="shadow-xl">
             <div className="text-center mb-8">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white text-2xl font-bold shadow-lg mb-4">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-sky-500 text-white text-2xl font-bold shadow-lg mb-4">
                 DC
               </div>
               <h1 className="text-3xl font-bold text-slate-900 mb-2">
@@ -76,6 +102,7 @@ const Login = () => {
               </h1>
               <p className="text-slate-600">Chào mừng trở lại {config.appName}</p>
             </div>
+
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
@@ -89,18 +116,8 @@ const Login = () => {
                 error={errors.email}
                 required
                 leftIcon={
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-                    />
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                   </svg>
                 }
               />
@@ -117,18 +134,8 @@ const Login = () => {
                 required
                 showPasswordToggle
                 leftIcon={
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 }
               />
@@ -161,6 +168,27 @@ const Login = () => {
                 Đăng nhập
               </Button>
             </form>
+
+
+            {/* Divider */}
+            <div className="relative mb-4 mt-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-3 text-slate-400 font-medium">
+                  Hoặc đăng nhập với Google
+                </span>
+              </div>
+            </div>
+
+            {/* Nút đăng nhập bằng Google */}
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                message.error('Đăng nhập Google thất bại');
+              }}
+            />
 
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-600">

@@ -58,7 +58,7 @@ export const notifications = [
 ];
 
 export const users = [
-  { name: 'Lê Văn Nam', role: 'LEARNER', assignedTo: 'Staff Hoa', status: 'active' },
+  { name: 'Lê Văn Nam', role: 'learner', assignedTo: 'Staff Hoa', status: 'active' },
   { name: 'Trần Thị Hoa', role: 'Staff', assignedTo: 'Team Q1', status: 'active' },
   { name: 'Nguyễn Minh Trí', role: 'Instructor', assignedTo: 'Bãi tập Thủ Đức', status: 'active' },
 ];
@@ -72,8 +72,8 @@ export const adminMetrics = {
 };
 
 export const docs = [
-  { name: 'CMND/CCCD', status: 'done', owner: 'LEARNER' },
-  { name: 'Khám sức khoẻ', status: 'doing', owner: 'LEARNER' },
+  { name: 'CMND/CCCD', status: 'done', owner: 'learner' },
+  { name: 'Khám sức khoẻ', status: 'doing', owner: 'learner' },
   { name: 'Đơn xin dự thi', status: 'idle', owner: 'Staff' },
 ];
 

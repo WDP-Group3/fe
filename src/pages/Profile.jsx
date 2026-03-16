@@ -112,7 +112,7 @@ const Profile = () => {
 
   useEffect(() => {
     const loadlearnerDocument = async () => {
-      if (!profileUser || profileUser.role !== 'LEARNER' || !isOwnProfile) return;
+      if (!profileUser || profileUser.role !== 'learner' || !isOwnProfile) return;
       try {
         setLoadinglearnerDocument(true);
         const response = await apiClient.get('/documents/me');
@@ -120,7 +120,7 @@ const Profile = () => {
           setlearnerDocument(response.data || null);
         }
       } catch (err) {
-        console.error('Load LEARNER document error:', err);
+        console.error('Load learner document error:', err);
       } finally {
         setLoadinglearnerDocument(false);
       }
@@ -454,7 +454,7 @@ const Profile = () => {
         </Card>
 
         {/* Role-specific Information */}
-        {profileUser?.role === 'LEARNER' && (
+        {profileUser?.role === 'learner' && (
           <>
             <Card title="Thông tin học viên">
               <Grid cols={2} gap={4}>
