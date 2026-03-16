@@ -27,8 +27,30 @@ const LetterRequest = () => {
     const [sessionInfo, setSessionInfo] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
+    // LATE_PAYMENT: Registrations của student (có batch + course + feePlanSnapshot)
+    const [myRegistrations, setMyRegistrations] = useState([]);
+    const [feePayments, setFeePayments] = useState([]);
+    const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+
+    // OFFLINE_PAYMENT: dành cho consultant/admin
+    const [offlineStudents, setOfflineStudents] = useState([]);          // danh sách học viên
+    const [offlineStudentId, setOfflineStudentId] = useState('');         // học viên đang chọn
+    const [offlineStudentRegs, setOfflineStudentRegs] = useState([]);     // registrations của học viên
+    const [offlineSelectedRegId, setOfflineSelectedRegId] = useState(''); // registration (khóa/batch) đang chọn
+    const [offlineFeePayments, setOfflineFeePayments] = useState([]);     // đợt nộp của registration đó
+    const [offlinePaymentBatch, setOfflinePaymentBatch] = useState('');   // đợt nộp đang chọn
+    const [loadingOfflineStudents, setLoadingOfflineStudents] = useState(false);
+    const [loadingOfflineRegs, setLoadingOfflineRegs] = useState(false);
+
+    // Role helpers - khai báo sớm để dùng trong useEffect
+    const isStudent = user?.role === 'STUDENT';
+    const isInstructor = user?.role === 'INSTRUCTOR';
+    const isConsultantOrAdmin = user?.role === 'CONSULTANT' || user?.role === 'ADMIN';
+
     useEffect(() => {
         loadRequests();
+        if (isStudent) loadMyRegistrations();
+        if (isConsultantOrAdmin) loadOfflineStudents();
     }, []);
 
     const loadRequests = async () => {
@@ -46,6 +68,80 @@ const LetterRequest = () => {
         }
     };
 
+    const loadMyRegistrations = async () => {
+        try {
+            setLoadingRegistrations(true);
+            // GET /registrations tự filter theo studentId khi user là STUDENT
+            const response = await axios.get('/registrations');
+            if (response.status === 'success') {
+                // Chỉ lấy những registration có batch + course hợp lệ
+                const valid = (response.data || []).filter(
+                    (r) => r.batchId?.courseId && r.status !== 'CANCELLED'
+                );
+                setMyRegistrations(valid);
+            }
+        } catch (err) {
+            console.error('Error loading registrations:', err);
+        } finally {
+            setLoadingRegistrations(false);
+        }
+    };
+
+    // LATE_PAYMENT: Khi chọn khóa học (registrationId), lấy feePlanSnapshot tương ứng
+    const handleCourseChange = (registrationId) => {
+        setBatchCourse(registrationId);
+        setPaymentBatch('');
+        const reg = myRegistrations.find((r) => r._id === registrationId);
+        setFeePayments(reg?.feePlanSnapshot || []);
+    };
+
+    // OFFLINE_PAYMENT: load danh sách học viên
+    const loadOfflineStudents = async () => {
+        try {
+            setLoadingOfflineStudents(true);
+            const response = await axios.get('/users?role=STUDENT&status=ACTIVE');
+            if (response.status === 'success') {
+                setOfflineStudents(response.data || []);
+            }
+        } catch (err) {
+            console.error('Error loading students:', err);
+        } finally {
+            setLoadingOfflineStudents(false);
+        }
+    };
+
+    // OFFLINE_PAYMENT: khi chọn học viên → load registrations của họ
+    const handleOfflineStudentChange = async (studentId) => {
+        setOfflineStudentId(studentId);
+        setOfflineSelectedRegId('');
+        setOfflineFeePayments([]);
+        setOfflinePaymentBatch('');
+        setOfflineStudentRegs([]);
+        if (!studentId) return;
+        try {
+            setLoadingOfflineRegs(true);
+            const response = await axios.get(`/registrations?studentId=${studentId}`);
+            if (response.status === 'success') {
+                const valid = (response.data || []).filter(
+                    (r) => r.batchId?.courseId && r.status !== 'CANCELLED'
+                );
+                setOfflineStudentRegs(valid);
+            }
+        } catch (err) {
+            console.error('Error loading student registrations:', err);
+        } finally {
+            setLoadingOfflineRegs(false);
+        }
+    };
+
+    // OFFLINE_PAYMENT: khi chọn khóa học → load đợt nộp từ feePlanSnapshot
+    const handleOfflineRegChange = (regId) => {
+        setOfflineSelectedRegId(regId);
+        setOfflinePaymentBatch('');
+        const reg = offlineStudentRegs.find((r) => r._id === regId);
+        setOfflineFeePayments(reg?.feePlanSnapshot || []);
+    };
+
     const resetForm = () => {
         setReason('');
         setExpectedPayDate('');
@@ -55,6 +151,13 @@ const LetterRequest = () => {
         setPaymentBatch('');
         setBatchCourse('');
         setSessionInfo('');
+        setFeePayments([]);
+        // Reset offline payment fields
+        setOfflineStudentId('');
+        setOfflineSelectedRegId('');
+        setOfflineFeePayments([]);
+        setOfflinePaymentBatch('');
+        setOfflineStudentRegs([]);
     };
 
     const handleSubmit = async (e) => {
@@ -63,15 +166,15 @@ const LetterRequest = () => {
         if (type === 'LATE_PAYMENT') {
             if (!reason.trim()) { showToast('Vui lòng nhập lý do', 'error'); return; }
             if (!expectedPayDate) { showToast('Vui lòng chọn ngày dự kiến nộp', 'error'); return; }
-            if (!paymentBatch.trim()) { showToast('Vui lòng nhập đợt nộp', 'error'); return; }
-            if (!batchCourse.trim()) { showToast('Vui lòng nhập khóa học', 'error'); return; }
+            if (!batchCourse) { showToast('Vui lòng chọn khóa học', 'error'); return; }
+            if (!paymentBatch) { showToast('Vui lòng chọn đợt nộp', 'error'); return; }
         }
 
         if (type === 'OFFLINE_PAYMENT') {
-            if (!paymentDate || !studentName || !courseName) {
-                showToast('Vui lòng điền đầy đủ thông tin nộp tiền', 'error');
-                return;
-            }
+            if (!paymentDate) { showToast('Vui lòng chọn ngày nộp tiền', 'error'); return; }
+            if (!offlineStudentId) { showToast('Vui lòng chọn học viên', 'error'); return; }
+            if (!offlineSelectedRegId) { showToast('Vui lòng chọn khóa học', 'error'); return; }
+            if (!offlinePaymentBatch) { showToast('Vui lòng chọn đợt nộp', 'error'); return; }
         }
 
         if (type === 'CANCEL_SESSION') {
@@ -95,12 +198,26 @@ const LetterRequest = () => {
             if (type === 'LATE_PAYMENT') {
                 payload.expectedPayDate = expectedPayDate;
                 payload.paymentBatch = paymentBatch;
-                payload.batchCourse = batchCourse;
+                // Resolve tên khóa học từ registration đã chọn
+                const selectedReg = myRegistrations.find((r) => r._id === batchCourse);
+                const course = selectedReg?.batchId?.courseId;
+                payload.batchCourse = course
+                    ? `[${course.code}] ${course.name}`
+                    : batchCourse;
             }
             if (type === 'OFFLINE_PAYMENT') {
                 payload.paymentDate = paymentDate;
-                payload.studentName = studentName;
-                payload.courseName = courseName;
+                // Resolve tên từ các state đã chọn
+                const selectedStudent = offlineStudents.find((s) => s._id === offlineStudentId);
+                const selectedReg = offlineStudentRegs.find((r) => r._id === offlineSelectedRegId);
+                const selectedCourse = selectedReg?.batchId?.courseId;
+                payload.studentName = selectedStudent
+                    ? `${selectedStudent.fullName} (${selectedStudent.phone})`
+                    : offlineStudentId;
+                payload.courseName = selectedCourse
+                    ? `[${selectedCourse.code}] ${selectedCourse.name}`
+                    : offlineSelectedRegId;
+                payload.paymentBatch = offlinePaymentBatch;
             }
             if (type === 'CANCEL_SESSION') {
                 payload.sessionInfo = sessionInfo;
@@ -126,9 +243,7 @@ const LetterRequest = () => {
     maxDate.setMonth(maxDate.getMonth() + 1);
     const maxDateString = maxDate.toISOString().split('T')[0];
 
-    const isStudent = user?.role === 'STUDENT';
-    const isInstructor = user?.role === 'INSTRUCTOR';
-    const isConsultantOrAdmin = user?.role === 'CONSULTANT' || user?.role === 'ADMIN';
+
 
     const columns = [
         {
@@ -235,26 +350,45 @@ const LetterRequest = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700">Đợt nộp</label>
-                                    <input
-                                        type="text"
-                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                                        placeholder="VD: Đợt 1, Đợt 2..."
-                                        value={paymentBatch}
-                                        onChange={(e) => setPaymentBatch(e.target.value)}
-                                        disabled={submitting}
-                                    />
+                                    <label className="text-sm font-medium text-slate-700">Khóa học</label>
+                                    <select
+                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                        value={batchCourse}
+                                        onChange={(e) => handleCourseChange(e.target.value)}
+                                        disabled={submitting || loadingRegistrations}
+                                    >
+                                        <option value="">
+                                            {loadingRegistrations ? 'Đang tải...' : myRegistrations.length === 0 ? 'Không có khóa học đang học' : '-- Chọn khóa học --'}
+                                        </option>
+                                        {myRegistrations.map((reg) => {
+                                            const course = reg.batchId?.courseId;
+                                            if (!course) return null;
+                                            return (
+                                                <option key={reg._id} value={reg._id}>
+                                                    {course.code ? `[${course.code}] ` : ''}{course.name}
+                                                    {reg.batchId?.location ? ` – ${reg.batchId.location}` : ''}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700">Khóa học</label>
-                                    <input
-                                        type="text"
-                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                                        placeholder="Tên khóa học đang theo học..."
-                                        value={batchCourse}
-                                        onChange={(e) => setBatchCourse(e.target.value)}
-                                        disabled={submitting}
-                                    />
+                                    <label className="text-sm font-medium text-slate-700">Đợt nộp</label>
+                                    <select
+                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                        value={paymentBatch}
+                                        onChange={(e) => setPaymentBatch(e.target.value)}
+                                        disabled={submitting || !batchCourse}
+                                    >
+                                        <option value="">
+                                            {!batchCourse ? 'Chọn khóa học trước' : feePayments.length === 0 ? 'Không có đợt nộp' : '-- Chọn đợt nộp --'}
+                                        </option>
+                                        {feePayments.map((fp, idx) => (
+                                            <option key={fp._id || idx} value={fp.name || `Đợt ${idx + 1}`}>
+                                                {fp.name || `Đợt ${idx + 1}`}{fp.amount ? ` – ${fp.amount.toLocaleString('vi-VN')}đ` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-slate-700">Thời gian sẽ nộp</label>
@@ -301,27 +435,62 @@ const LetterRequest = () => {
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-slate-700">Học viên nộp</label>
-                                        <input
-                                            type="text"
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                                            placeholder="Tên học viên..."
-                                            value={studentName}
-                                            onChange={(e) => setStudentName(e.target.value)}
-                                            disabled={submitting}
-                                            required
-                                        />
+                                        <select
+                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                            value={offlineStudentId}
+                                            onChange={(e) => handleOfflineStudentChange(e.target.value)}
+                                            disabled={submitting || loadingOfflineStudents}
+                                        >
+                                            <option value="">
+                                                {loadingOfflineStudents ? 'Đang tải...' : offlineStudents.length === 0 ? 'Không có học viên' : '-- Chọn học viên --'}
+                                            </option>
+                                            {offlineStudents.map((s) => (
+                                                <option key={s._id} value={s._id}>
+                                                    {s.fullName} – {s.phone}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-slate-700">Nộp cho khóa học</label>
-                                        <input
-                                            type="text"
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                                            placeholder="Tên khóa học..."
-                                            value={courseName}
-                                            onChange={(e) => setCourseName(e.target.value)}
-                                            disabled={submitting}
-                                            required
-                                        />
+                                        <select
+                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                            value={offlineSelectedRegId}
+                                            onChange={(e) => handleOfflineRegChange(e.target.value)}
+                                            disabled={submitting || !offlineStudentId || loadingOfflineRegs}
+                                        >
+                                            <option value="">
+                                                {!offlineStudentId ? 'Chọn học viên trước' : loadingOfflineRegs ? 'Đang tải...' : offlineStudentRegs.length === 0 ? 'Học viên chưa đăng ký khóa nào' : '-- Chọn khóa học --'}
+                                            </option>
+                                            {offlineStudentRegs.map((reg) => {
+                                                const course = reg.batchId?.courseId;
+                                                if (!course) return null;
+                                                return (
+                                                    <option key={reg._id} value={reg._id}>
+                                                        {course.code ? `[${course.code}] ` : ''}{course.name}
+                                                        {reg.batchId?.location ? ` – ${reg.batchId.location}` : ''}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700">Đợt nộp</label>
+                                        <select
+                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                            value={offlinePaymentBatch}
+                                            onChange={(e) => setOfflinePaymentBatch(e.target.value)}
+                                            disabled={submitting || !offlineSelectedRegId}
+                                        >
+                                            <option value="">
+                                                {!offlineSelectedRegId ? 'Chọn khóa học trước' : offlineFeePayments.length === 0 ? 'Không có đợt nộp' : '-- Chọn đợt nộp --'}
+                                            </option>
+                                            {offlineFeePayments.map((fp, idx) => (
+                                                <option key={fp._id || idx} value={fp.name || `Đợt ${idx + 1}`}>
+                                                    {fp.name || `Đợt ${idx + 1}`}{fp.amount ? ` – ${fp.amount.toLocaleString('vi-VN')}đ` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </>
                             )}
