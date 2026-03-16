@@ -8,10 +8,10 @@ const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 let mockUsers = [
   {
     id: '1',
-    email: 'student@example.com',
+    email: 'learner@example.com',
     name: 'Nguyễn Văn A',
     phone: '0912345678',
-    role: USER_ROLES.STUDENT,
+    role: USER_ROLES.learner,
     avatar: null,
   },
   {
@@ -68,7 +68,7 @@ export const mockApi = {
     const newUser = {
       id: String(mockUsers.length + 1),
       ...userData,
-      role: userData.role || USER_ROLES.STUDENT,
+      role: userData.role || USER_ROLES.learner,
     };
     mockUsers.push(newUser);
     return { success: true, user: newUser };
@@ -113,7 +113,7 @@ export const mockApi = {
   // Enrollment
   async getEnrollments(userId) {
     await delay(500);
-    return mockEnrollments.filter(e => !userId || e.studentId === userId);
+    return mockEnrollments.filter(e => !userId || e.learnerId === userId);
   },
 
   async createEnrollment(data) {

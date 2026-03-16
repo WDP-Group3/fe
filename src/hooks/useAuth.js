@@ -75,7 +75,7 @@ const useAuth = () => {
         email: userData.email,
         phone: userData.phone,
         password: userData.password,
-        role: userData.role || 'STUDENT',
+        role: userData.role || 'learner',
       });
       if (response.status === 'success') {
         // Optionally auto-login after registration

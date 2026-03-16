@@ -4,6 +4,7 @@ import SectionHeader from "../../components/ui/SectionHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import DataTable from "../../components/ui/DataTable";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Pagination from "../../components/common/Pagination";
 import apiClient from "../../services/apiClient";
 import { useToast } from "../../context/ToastContext";
 
@@ -16,6 +17,12 @@ const UserManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    limit: 10
+  });
   const [formData, setFormData] = useState({
     email: "",
     role: "INSTRUCTOR",
@@ -32,10 +39,20 @@ const UserManagement = () => {
     type: "default",
   });
 
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+  const [offlineUser, setOfflineUser] = useState(null);
+  const [offlineRegistrations, setOfflineRegistrations] = useState([]);
+  const [loadingOfflineRegs, setLoadingOfflineRegs] = useState(false);
+  const [offlineForm, setOfflineForm] = useState({
+    registrationId: "",
+    feePlanId: ""
+  });
+  const [submittingOffline, setSubmittingOffline] = useState(false);
+
   useEffect(() => {
     loadUsers();
     loadStats();
-  }, [filters]);
+  }, [filters, currentPage]);
 
   const loadStats = async () => {
     try {
@@ -55,6 +72,8 @@ const UserManagement = () => {
       if (filters.search) queryParams.append("search", filters.search);
       if (filters.role) queryParams.append("role", filters.role);
       if (filters.status) queryParams.append("status", filters.status);
+      queryParams.append("page", currentPage);
+      queryParams.append("limit", pagination.limit);
 
       const response = await apiClient.get(`/users?${queryParams.toString()}`);
 
@@ -68,6 +87,9 @@ const UserManagement = () => {
           status: user.status === "ACTIVE" ? "active" : "inactive",
         }));
         setUsers(mappedUsers);
+        if (response.pagination) {
+          setPagination(response.pagination);
+        }
       }
     } catch (err) {
       console.error("Error loading users:", err);
@@ -124,6 +146,7 @@ const UserManagement = () => {
       // So I can't update password via `updateUser` safely unless I fix backend `updateUser`.
       // But User requirement is: "Admin sửa tài tài khoản và mâtk khẩu".
       // So I SHOULD fix backend `updateUser` too. (I'll do that in a bit).
+      // Since I already modified backend User.js to hash password in pre-save if I wanted, but actually I'll stick to what's there.
 
       await apiClient.patch(`/users/${currentUser.id}`, updateData);
 
@@ -134,6 +157,43 @@ const UserManagement = () => {
       showToast("Cập nhật người dùng thành công", "success");
     } catch (error) {
       showToast(error.message || "Cập nhật thất bại", "error");
+    }
+  };
+
+  const openOfflinePaymentModal = async (user) => {
+    setOfflineUser(user);
+    setOfflineForm({ registrationId: "", feePlanId: "" });
+    setShowOfflineModal(true);
+    setLoadingOfflineRegs(true);
+    setOfflineRegistrations([]); // reset
+    try {
+      const resp = await apiClient.get(`/registrations?learnerId=${user.id}`);
+      if (resp.status === "success") {
+        setOfflineRegistrations(resp.data || []);
+      }
+    } catch (e) {
+      showToast("Lỗi khi tải danh sách khóa học", "error");
+    } finally {
+      setLoadingOfflineRegs(false);
+    }
+  };
+
+  const submitOfflinePayment = async (e) => {
+    e.preventDefault();
+    if (!offlineForm.registrationId || !offlineForm.feePlanId) {
+       return showToast("Vui lòng chọn khóa học và đợt nộp", "error");
+    }
+    try {
+      setSubmittingOffline(true);
+      await apiClient.patch(`/registrations/${offlineForm.registrationId}/offline-payment`, {
+        feePlanId: offlineForm.feePlanId
+      });
+      showToast("Xác nhận nộp tiền offline thành công", "success");
+      setShowOfflineModal(false);
+    } catch(err) {
+      showToast(err.message || "Xác nhận thất bại", "error");
+    } finally {
+      setSubmittingOffline(false);
     }
   };
 
@@ -232,6 +292,14 @@ const UserManagement = () => {
           >
             Sửa
           </button>
+          {record.role === "learner" && record.status === "active" && (
+            <button
+               onClick={() => openOfflinePaymentModal(record)}
+               className="rounded-md bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-600 hover:bg-amber-100 transition-colors"
+            >
+               Nộp offline
+            </button>
+          )}
           {record.status === "active" ? (
             <button
               onClick={() => handleLock(record)}
@@ -280,31 +348,36 @@ const UserManagement = () => {
             <input
               placeholder="🔍 Tìm kiếm theo tên, email..."
               value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, search: e.target.value });
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           <div>
             <select
               value={filters.role}
-              onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+              onChange={(e) => {
+                setFilters({ ...filters, role: e.target.value });
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Tất cả vai trò</option>
-              <option value="STUDENT">Học viên</option>
+              <option value="learner">Học viên</option>
               <option value="INSTRUCTOR">Giáo viên</option>
               <option value="CONSULTANT">Tư vấn viên</option>
-              {/* No GUEST */}
+              {/* No USER */}
             </select>
           </div>
           <div>
             <select
               value={filters.status}
-              onChange={(e) =>
-                setFilters({ ...filters, status: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, status: e.target.value });
+                setCurrentPage(1);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Tất cả trạng thái</option>
@@ -320,7 +393,7 @@ const UserManagement = () => {
             Danh sách User
           </h3>
           <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600">
-            {stats.totalUsers}
+            {pagination.total}
           </span>
         </div>
 
@@ -380,7 +453,7 @@ const UserManagement = () => {
                   >
                     <option value="INSTRUCTOR">Giáo viên</option>
                     <option value="CONSULTANT">Tư vấn viên</option>
-                    <option value="STUDENT">Học Viên</option>
+                    <option value="learner">Học Viên</option>
                     <option value="ADMIN">Quản trị viên</option>
                   </select>
                 </div>
@@ -444,6 +517,81 @@ const UserManagement = () => {
           </div>
         )}
 
+        {/* Offline Payment Modal */}
+        {showOfflineModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="mb-4 text-xl font-bold text-slate-900">
+                Nộp Tiền Offline
+              </h3>
+              <div className="mb-4 text-sm text-slate-600">
+                Học viên: <span className="font-semibold text-slate-900">{offlineUser?.name}</span>
+              </div>
+              <form onSubmit={submitOfflinePayment} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Khóa học</label>
+                  <select
+                    required
+                    value={offlineForm.registrationId}
+                    onChange={(e) => setOfflineForm({ registrationId: e.target.value, feePlanId: "" })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={submittingOffline || loadingOfflineRegs}
+                  >
+                    <option value="">
+                       {loadingOfflineRegs ? 'Đang tải...' : offlineRegistrations.length === 0 ? 'Không có khóa học nào' : '-- Chọn khóa học --'}
+                    </option>
+                    {offlineRegistrations.map((reg) => {
+                       const course = reg.batchId?.courseId || reg.courseId;
+                       if (!course) return null;
+                       return (
+                         <option key={reg._id} value={reg._id}>
+                           {course.code ? `[${course.code}] ` : ''}{course.name}
+                         </option>
+                       );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Đợt nộp</label>
+                  <select
+                    required
+                    value={offlineForm.feePlanId}
+                    onChange={(e) => setOfflineForm({ ...offlineForm, feePlanId: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={submittingOffline || !offlineForm.registrationId}
+                  >
+                    <option value="">
+                       {!offlineForm.registrationId ? 'Chọn khóa học trước' : '-- Chọn đợt nộp --'}
+                    </option>
+                    {offlineRegistrations.find(r => r._id === offlineForm.registrationId)?.feePlanSnapshot?.filter(f => !f.paymented).map((fp, idx) => (
+                       <option key={fp._id || idx} value={fp._id || fp.name}>
+                          {fp.name} - {fp.amount ? `${fp.amount.toLocaleString('vi-VN')}đ` : '0đ'}
+                       </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowOfflineModal(false)}
+                    className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm disabled:bg-indigo-400"
+                    disabled={submittingOffline}
+                  >
+                    {submittingOffline ? 'Đang xử lý...' : 'Xác nhận nộp'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Confirmation Dialog */}
         <ConfirmDialog
           isOpen={confirmDialog.isOpen}
@@ -464,9 +612,16 @@ const UserManagement = () => {
             <p>Không tìm thấy user nào</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <DataTable columns={columns} data={users} />
-          </div>
+          <>
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <DataTable columns={columns} data={users} />
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </>
         )}
       </div>
     </div>

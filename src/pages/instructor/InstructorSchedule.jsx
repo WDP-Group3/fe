@@ -34,8 +34,16 @@ const InstructorSchedule = () => {
   // [MỚI] Thông tin nghỉ phép khẩn cấp
   const [emergencyLeaveInfo, setEmergencyLeaveInfo] = useState({ usedCount: 0, remainingCount: 2, maxPerMonth: 2, currentMonth: '' });
   
+  // [MỚI] Thông tin tổng thời gian dạy theo tháng
+  const [monthlyStats, setMonthlyStats] = useState({
+    currentMonth: '',
+    totalHoursThisMonth: 0,
+    totalSessionsThisMonth: 0,
+    monthlyHistory: []
+  });
+  
   // [NEW] Modal chi tiết học viên
-  const [studentDetailModal, setStudentDetailModal] = useState({ isOpen: false, data: null });
+  const [learnerDetailModal, setlearnerDetailModal] = useState({ isOpen: false, data: null });
   
   // [MỚI] Modal chọn báo bận ca hay cả ngày
   const [confirmBusyModal, setConfirmBusyModal] = useState({ 
@@ -50,7 +58,7 @@ const InstructorSchedule = () => {
   });
 
   useEffect(() => { fetchSchedule(); }, [currentMonday]);
-  useEffect(() => { fetchEmergencyLeaveInfo(); }, []);
+  useEffect(() => { fetchEmergencyLeaveInfo(); fetchMonthlyStats(); }, []);
 
   const fetchEmergencyLeaveInfo = async () => {
     try {
@@ -60,6 +68,18 @@ const InstructorSchedule = () => {
       }
     } catch (error) { 
       console.error('Error fetching emergency leave info:', error); 
+    }
+  };
+
+  // [MỚI] Lấy thông tin tổng thời gian dạy theo tháng
+  const fetchMonthlyStats = async () => {
+    try {
+      const res = await apiClient.get('/schedule/instructor/monthly-stats');
+      if (res.status === 'success') {
+        setMonthlyStats(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly stats:', error);
     }
   };
 
@@ -104,7 +124,7 @@ const InstructorSchedule = () => {
 
     // --- LUỒNG 1: CÓ LỊCH HỌC -> MỞ MODAL CHI TIẾT HỌC VIÊN ---
     if ((existingData?.category === 'BOOKED' || existingData?.category === 'TEACHING')) {
-      setStudentDetailModal({ isOpen: true, data: existingData });
+      setlearnerDetailModal({ isOpen: true, data: existingData });
       return;
     }
 
@@ -183,7 +203,7 @@ const InstructorSchedule = () => {
 
   // HÀM XỬ LÝ ĐIỂM DANH (Được gọi từ Modal)
   const processAttendance = async (attendanceType) => {
-    const { data } = studentDetailModal;
+    const { data } = learnerDetailModal;
     if (!data) return;
 
     // Check giờ
@@ -203,7 +223,8 @@ const InstructorSchedule = () => {
       });
       showToast('Cập nhật điểm danh thành công', 'success'); 
       fetchSchedule();
-      setStudentDetailModal({ isOpen: false, data: null });
+      fetchMonthlyStats();
+      setlearnerDetailModal({ isOpen: false, data: null });
     } catch (e) { showToast(e.message, 'error'); }
   };
 
@@ -244,6 +265,44 @@ const InstructorSchedule = () => {
         <p className="text-xs text-amber-600 mt-2">
           ⚠️ Lưu ý: Báo bận vượt deadline (sau thứ 6, 18:00) sẽ tính là nghỉ phép khẩn cấp. Tối đa 2 lần/tháng.
         </p>
+      </div>
+
+      {/* [MỚI] Thống kê tổng thời gian dạy theo tháng */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">📊</div>
+            <div>
+              <h3 className="font-bold text-indigo-800">Thống kê thời gian dạy</h3>
+              <p className="text-sm text-indigo-700">Tháng {monthlyStats.currentMonth}</p>
+            </div>
+          </div>
+          <div className="flex gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-indigo-600">{monthlyStats.totalHoursThisMonth}</div>
+              <div className="text-xs text-indigo-600">giờ dạy</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-indigo-600">{monthlyStats.totalSessionsThisMonth}</div>
+              <div className="text-xs text-indigo-600">ca dạy</div>
+            </div>
+          </div>
+        </div>
+        {/* Lịch sử các tháng */}
+        {monthlyStats.monthlyHistory && monthlyStats.monthlyHistory.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-indigo-200">
+            <p className="text-xs font-bold text-indigo-600 mb-2">Lịch sử các tháng:</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {monthlyStats.monthlyHistory.map((month, idx) => (
+                <div key={idx} className="flex-shrink-0 bg-white rounded-lg border border-indigo-100 px-3 py-2 min-w-[80px] text-center">
+                  <div className="text-xs text-slate-500">{month.month}</div>
+                  <div className="font-bold text-indigo-600">{month.hours}h</div>
+                  <div className="text-[10px] text-slate-400">{month.sessions} ca</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
@@ -289,14 +348,14 @@ const InstructorSchedule = () => {
                     </div>
                     <div className="flex-1 border-l border-slate-100 pl-0 md:pl-4">
                       <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Học viên</p>
-                      <p className="font-semibold text-slate-800 text-sm">{item.studentId?.fullName || 'N/A'}</p>
-                      <p className="text-xs text-slate-500">{item.studentId?.phone}</p>
+                      <p className="font-semibold text-slate-800 text-sm">{item.learnerId?.fullName || 'N/A'}</p>
+                      <p className="text-xs text-slate-500">{item.learnerId?.phone}</p>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                       <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${item.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : item.status === 'ABSENT' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                         {item.status === 'COMPLETED' ? 'Đã dạy' : item.status === 'ABSENT' ? 'Vắng mặt' : 'Chờ dạy'}
                       </div>
-                      <Button size="sm" variant={item.status === 'BOOKED' ? 'primary' : 'ghost'} onClick={() => setStudentDetailModal({ isOpen: true, data: item })}>
+                      <Button size="sm" variant={item.status === 'BOOKED' ? 'primary' : 'ghost'} onClick={() => setlearnerDetailModal({ isOpen: true, data: item })}>
                         Chi tiết
                       </Button>
                     </div>
@@ -309,27 +368,27 @@ const InstructorSchedule = () => {
       </div>
 
       {/* [NEW] MODAL CHI TIẾT HỌC VIÊN + ĐIỂM DANH */}
-      <Modal isOpen={studentDetailModal.isOpen} onClose={() => setStudentDetailModal({ ...studentDetailModal, isOpen: false })} title="Thông tin học viên">
-        {studentDetailModal.data && (
+      <Modal isOpen={learnerDetailModal.isOpen} onClose={() => setlearnerDetailModal({ ...learnerDetailModal, isOpen: false })} title="Thông tin học viên">
+        {learnerDetailModal.data && (
            <div className="p-4 space-y-4">
               <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl">🎓</div>
                  <div>
                     <p className="text-sm text-slate-500 font-bold uppercase">Học viên</p>
-                    <p className="text-lg font-bold text-slate-800">{studentDetailModal.data.studentId?.fullName}</p>
-                    <p className="text-sm text-blue-600 font-medium">{studentDetailModal.data.studentId?.phone}</p>
+                    <p className="text-lg font-bold text-slate-800">{learnerDetailModal.data.learnerId?.fullName}</p>
+                    <p className="text-sm text-blue-600 font-medium">{learnerDetailModal.data.learnerId?.phone}</p>
                  </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white border rounded-lg p-3 text-center">
                     <p className="text-xs text-slate-400 font-bold uppercase">Thời gian</p>
-                    <p className="font-bold text-slate-800">{new Date(studentDetailModal.data.date).toLocaleDateString('vi-VN')} - Ca {studentDetailModal.data.timeSlot}</p>
+                    <p className="font-bold text-slate-800">{new Date(learnerDetailModal.data.date).toLocaleDateString('vi-VN')} - Ca {learnerDetailModal.data.timeSlot}</p>
                 </div>
                  <div className="bg-white border rounded-lg p-3 text-center">
                     <p className="text-xs text-slate-400 font-bold uppercase">Trạng thái</p>
-                    <p className={`font-bold ${studentDetailModal.data.status === 'COMPLETED' ? 'text-emerald-600' : studentDetailModal.data.status === 'ABSENT' ? 'text-red-600' : 'text-amber-600'}`}>
-                        {studentDetailModal.data.status === 'COMPLETED' ? 'ĐÃ DẠY' : studentDetailModal.data.status === 'ABSENT' ? 'VẮNG MẶT' : 'CHỜ DẠY'}
+                    <p className={`font-bold ${learnerDetailModal.data.status === 'COMPLETED' ? 'text-emerald-600' : learnerDetailModal.data.status === 'ABSENT' ? 'text-red-600' : 'text-amber-600'}`}>
+                        {learnerDetailModal.data.status === 'COMPLETED' ? 'ĐÃ DẠY' : learnerDetailModal.data.status === 'ABSENT' ? 'VẮNG MẶT' : 'CHỜ DẠY'}
                     </p>
                 </div>
               </div>

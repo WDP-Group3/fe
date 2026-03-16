@@ -1,31 +1,53 @@
 import { useState, useEffect } from 'react';
 import axios from '../../services/axios';
 import { useToast } from '../../context/ToastContext';
+import Pagination from '../../components/common/Pagination';
 
 const AdminSystemHolidays = () => {
   const { showToast } = useToast();
   const [holidays, setHolidays] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
   const [formData, setFormData] = useState({
     title: '',
     startDate: '',
     endDate: '',
-    description: ''
+    description: '',
+    location: '' // null = toàn hệ thống, có giá trị = theo khu vực
   });
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     fetchHolidays();
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchLocations();
   }, []);
+
+  const fetchLocations = async () => {
+    try {
+      const res = await axios.get('/users/locations');
+      const locs = res?.data?.data || res?.data || [];
+      setLocations(locs.map(l => ({ value: l, label: l })));
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách khu vực:', err);
+    }
+  };
 
   const fetchHolidays = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/system-holidays');
-      // Backend trả về { status: 'success', data: [...] }, axios interceptor trả về res.data nên cần .data
-      setHolidays(res?.data?.data || res?.data || []);
+      const res = await axios.get(`/system-holidays?page=${currentPage}&limit=10`);
+      // Backend trả về { status: 'success', data: [...], pagination: {...} }
+      setHolidays(res?.data?.data || []);
+      if (res?.data?.pagination) {
+        setPagination(res.data.pagination);
+      }
     } catch (error) {
       console.error('Lỗi khi tải lịch nghỉ:', error);
       showToast('Lỗi khi tải lịch nghỉ', 'error');
@@ -38,26 +60,33 @@ const AdminSystemHolidays = () => {
     e.preventDefault();
     setSubmitting(true);
     
-    // Hiển thị toast ngay để đảm bảo nó được gọi
+    // Chuẩn bị dữ liệu gửi lên
+    const payload = {
+      title: formData.title,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      description: formData.description,
+      location: formData.location || null // null = toàn hệ thống
+    };
+
     const successMessage = editingId 
-      ? 'Cập nhật lịch nghỉ thành công! Email thông báo đã được gửi đến giáo viên và học viên.'
-      : 'Thêm lịch nghỉ thành công! Email thông báo đã được gửi đến giáo viên và học viên.';
+      ? 'Cập nhật lịch nghỉ thành công! Email thông báo đã được gửi.'
+      : 'Thêm lịch nghỉ thành công! Email thông báo đã được gửi.';
     
     try {
       let response;
       if (editingId) {
-        response = await axios.put(`/system-holidays/${editingId}`, formData);
+        response = await axios.put(`/system-holidays/${editingId}`, payload);
         setHolidays((prev) => prev.map(h => h._id === editingId ? response?.data?.data || response?.data : h));
       } else {
-        response = await axios.post('/system-holidays', formData);
+        response = await axios.post('/system-holidays', payload);
         setHolidays((prev) => [response?.data?.data || response?.data, ...prev]);
       }
       
-      // Hiển thị toast SAU KHI API thành công
       showToast(successMessage, 'success');
       
       setShowModal(false);
-      setFormData({ title: '', startDate: '', endDate: '', description: '' });
+      setFormData({ title: '', startDate: '', endDate: '', description: '', location: '' });
       setEditingId(null);
     } catch (error) {
       console.error('Lỗi khi lưu:', error);
@@ -84,7 +113,8 @@ const AdminSystemHolidays = () => {
       title: holiday.title,
       startDate: holiday.startDate.split('T')[0],
       endDate: holiday.endDate.split('T')[0],
-      description: holiday.description || ''
+      description: holiday.description || '',
+      location: holiday.location || ''
     });
     setEditingId(holiday._id);
     setShowModal(true);
@@ -104,7 +134,7 @@ const AdminSystemHolidays = () => {
         <h1 className="text-2xl font-bold">Lịch nghỉ toàn hệ thống</h1>
         <button
           onClick={() => {
-            setFormData({ title: '', startDate: '', endDate: '', description: '' });
+            setFormData({ title: '', startDate: '', endDate: '', description: '', location: '' });
             setEditingId(null);
             setShowModal(true);
           }}
@@ -119,6 +149,7 @@ const AdminSystemHolidays = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên lịch nghỉ</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phạm vi</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày bắt đầu</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày kết thúc</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
@@ -129,6 +160,17 @@ const AdminSystemHolidays = () => {
             {holidays.map((holiday) => (
               <tr key={holiday._id}>
                 <td className="px-6 py-4 whitespace-nowrap font-medium">{holiday.title}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {holiday.location ? (
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700">
+                      {holiday.location}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600">
+                      Toàn hệ thống
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {new Date(holiday.startDate).toLocaleDateString('vi-VN')}
                 </td>
@@ -157,6 +199,15 @@ const AdminSystemHolidays = () => {
         {holidays.length === 0 && (
           <div className="text-center py-8 text-gray-500">Chưa có lịch nghỉ nào</div>
         )}
+        {pagination.totalPages > 1 && (
+          <div className="p-4 border-t">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modal */}
@@ -178,6 +229,26 @@ const AdminSystemHolidays = () => {
                   placeholder="Ví dụ: Nghỉ Tết Nguyên Đán"
                 />
               </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phạm vi áp dụng</label>
+                <select
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                >
+                  <option value="">Toàn hệ thống</option>
+                  {locations.map((loc) => (
+                    <option key={loc.value} value={loc.value}>
+                      {loc.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Để trống = áp dụng cho toàn hệ thống. Chọn khu vực = chỉ nghỉ ở khu vực đó.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>

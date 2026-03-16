@@ -19,9 +19,9 @@ const Exams = () => {
   const loadExamResults = async () => {
     try {
       setLoading(true);
-      const studentId = user?.id || user?._id;
-      if (studentId) {
-        const response = await axios.get(`/exam-results?studentId=${studentId}`);
+      const learnerId = user?.id || user?._id;
+      if (learnerId) {
+        const response = await axios.get(`/exam-results?learnerId=${learnerId}`);
         if (response.status === 'success') {
           setExamResults(response.data || []);
         }

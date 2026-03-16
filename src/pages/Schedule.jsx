@@ -19,6 +19,7 @@ const Schedule = () => {
   
   const [locations, setLocations] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
   
   const [instructors, setInstructors] = useState([]);
   const [selectedInstructor, setSelectedInstructor] = useState('');
@@ -28,6 +29,10 @@ const Schedule = () => {
   const [loading, setLoading] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [mySessions, setMySessions] = useState([]);
+
+  // [MỚI] Thông tin khóa học đã đăng ký và số giờ thực hành còn lại
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [courseProgress, setCourseProgress] = useState({}); // { courseId: { required: 10, completed: 5, remaining: 5 } }
 
   // [MỚI] Trạng thái mở đăng ký tuần sau
   const [bookingStatus, setBookingStatus] = useState({ isNextWeekOpen: false, message: '' });
@@ -44,19 +49,50 @@ const Schedule = () => {
     gmail: 'ntmh18062004@gmail.com',
   };
 
-  useEffect(() => { fetchLocations(); loadMySessions(); fetchBookingStatus(); }, []);
+  useEffect(() => { 
+    fetchLocations(); 
+    loadMySessions(); 
+    fetchBookingStatus();
+    fetchEnrolledCourses();
+  }, []);
 
   useEffect(() => {
     if (selectedLocation) {
-      fetchInstructorsByLocation(selectedLocation);
+      setSelectedCourse('');
       setSelectedInstructor('');
+      setInstructors([]);
       setInstructorSchedules([]);
     }
   }, [selectedLocation]);
 
   useEffect(() => {
+    if (selectedLocation && selectedCourse) {
+      fetchInstructorsByLocation(selectedLocation, selectedCourse);
+      setSelectedInstructor('');
+      setInstructorSchedules([]);
+    } else {
+      setInstructors([]);
+      setSelectedInstructor('');
+      setInstructorSchedules([]);
+    }
+  }, [selectedLocation, selectedCourse]);
+
+  useEffect(() => {
     if (selectedInstructor) fetchInstructorSchedule();
   }, [selectedInstructor, currentMonday]);
+
+  // [MỚI] Lấy danh sách khóa học đã đăng ký và tiến độ học tập
+  const fetchEnrolledCourses = async () => {
+    try {
+      const res = await apiClient.get('/registrations/my-courses');
+      if (res.status === 'success') {
+        setEnrolledCourses(res.data.courses || []);
+        setCourseProgress(res.data.progress || {});
+      }
+    } catch (error) {
+      console.error('Error fetching enrolled courses:', error);
+    }
+  };
 
   // API Calls
   const fetchLocations = async () => {
@@ -66,9 +102,11 @@ const Schedule = () => {
     } catch (error) { console.error(error); }
   };
 
-  const fetchInstructorsByLocation = async (loc) => {
+  const fetchInstructorsByLocation = async (loc, courseId) => {
     try {
-      const res = await apiClient.get(`/users/instructors?location=${loc}`);
+      const params = new URLSearchParams({ location: loc });
+      if (courseId) params.set('courseId', courseId);
+      const res = await apiClient.get(`/users/instructors?${params.toString()}`);
       if (res.status === 'success') setInstructors(res.data.map(u => ({ value: u._id, label: u.fullName })));
     } catch (error) { console.error(error); }
   };
@@ -91,7 +129,7 @@ const Schedule = () => {
     setLoadingSessions(true);
     try {
       // Lấy toàn bộ lịch, sau đó sẽ filter ở Frontend
-      const res = await apiClient.get(`/bookings${user?.id ? `?studentId=${user.id}` : ''}`);
+      const res = await apiClient.get(`/bookings${user?.id ? `?learnerId=${user.id}` : ''}`);
       if (res.status === 'success') setMySessions(res.data);
     } finally { setLoadingSessions(false); }
   };
@@ -149,12 +187,19 @@ const Schedule = () => {
       return;
     }
 
+    // [MỚI] Kiểm tra nếu đã đủ giờ học thì không cho đăng ký
+    const progress = courseProgress[selectedCourse] || {};
+    if (progress.remaining !== undefined && progress.remaining <= 0) {
+      showToast(`Bạn đã hoàn thành đủ ${progress.required} giờ thực hành cho khóa này. Không thể đăng ký thêm.`, 'warning');
+      return;
+    }
+
     if (data) {
       setDetailModal({ isOpen: true, data: data });
     } else {
       setConfirmBookingModal({ 
         isOpen: true, 
-        data: { date, slotId, instructorId: selectedInstructor },
+        data: { date, slotId, instructorId: selectedInstructor, courseId: selectedCourse },
         type: 'PRACTICE'
       });
     }
@@ -162,29 +207,56 @@ const Schedule = () => {
 
   const handleBooking = async () => {
     try {
-      const { date, slotId, instructorId } = confirmBookingModal.data;
+      const { date, slotId, instructorId, courseId } = confirmBookingModal.data;
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
 
       await apiClient.post('/bookings', { 
-        instructorId, date: dateString, timeSlot: slotId, type: confirmBookingModal.type 
+        instructorId, date: dateString, timeSlot: slotId, type: confirmBookingModal.type, courseId 
       });
       showToast('Đặt lịch thành công!', 'success');
       setConfirmBookingModal({ isOpen: false, data: null, type: 'PRACTICE' });
       fetchInstructorSchedule();
       loadMySessions();
+      fetchEnrolledCourses(); // Cập nhật lại tiến độ
     } catch (e) { showToast(e.message, 'error'); }
   };
 
-  const handleCancel = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn hủy lịch này?")) return;
+  const handleCancel = async (id, date, timeSlot) => {
+    // Check if cancellation is within 12 hours of the session
+    const sessionDateTime = new Date(date);
+    const SLOT_START_HOURS = { 
+      "1": 7, "2": 8.5, "3": 10, "4": 11.5, 
+      "5": 13, "6": 14.5, "7": 16, "8": 17.5, 
+      "9": 19, "10": 20.5 
+    };
+    const startHour = SLOT_START_HOURS[timeSlot] || 7;
+    sessionDateTime.setHours(Math.floor(startHour), (startHour % 1) * 60, 0, 0);
+    
+    const now = new Date();
+    const hoursUntilSession = (sessionDateTime - now) / (1000 * 60 * 60);
+    
+    // If less than 12 hours until session, show warning about losing the hour
+    if (hoursUntilSession > 0 && hoursUntilSession < 12) {
+      const confirmMessage = "⚠️ Cảnh báo: Bạn đang hủy ca học trong vòng 12 giờ trước giờ học.\n\nNếu hủy, bạn sẽ MẤT 1 giờ thực hành (không được hoàn lại).\n\nBạn có chắc chắn muốn hủy không?";
+      if (!window.confirm(confirmMessage)) return;
+    } else {
+      if (!window.confirm("Bạn có chắc chắn muốn hủy lịch này?")) return;
+    }
+    
     try {
       const response = await apiClient.put(`/bookings/${id}`, { status: 'CANCELLED' });
       if (response.status === 'success') {
-        showToast('Hủy lịch thành công', 'success');
+        // Check if this was a late cancellation (within 12 hours)
+        if (hoursUntilSession > 0 && hoursUntilSession < 12) {
+          showToast('Đã hủy lịch. Lưu ý: Bạn đã mất 1 giờ thực hành vì hủy trong vòng 12 giờ.', 'warning');
+        } else {
+          showToast('Hủy lịch thành công', 'success');
+        }
         loadMySessions();
+        fetchEnrolledCourses();
         if (selectedInstructor) fetchInstructorSchedule();
         setDetailModal({ isOpen: false, data: null });
       }
@@ -194,7 +266,7 @@ const Schedule = () => {
   const handleFeedback = async () => {
     try {
       await apiClient.patch(`/bookings/${feedbackModal.bookingId}/feedback`, {
-        rating: feedbackModal.rating, studentFeedback: feedbackModal.comment
+        rating: feedbackModal.rating, learnerFeedback: feedbackModal.comment
       });
       showToast('Cảm ơn bạn đã đánh giá!', 'success');
       setFeedbackModal({ ...feedbackModal, isOpen: false });
@@ -244,12 +316,89 @@ const Schedule = () => {
         </div>
       )}
 
+      {/* Chỉ hiện thời gian cần hoàn thành của từng khóa học viên đã đăng ký (1 card/khóa, giờ = ca đã điểm danh) */}
+      {enrolledCourses.length > 0 && (
+        <div className="bg-white p-6 rounded-3xl border shadow-sm">
+          <SectionHeader
+            title="Tiến độ học tập"
+            description="Số giờ cần hoàn thành theo khóa đã đăng ký. Giờ đã hoàn thành = tổng ca học đã được điểm danh."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {enrolledCourses.map((course) => {
+              const progress = courseProgress[course._id] || {};
+              const required = progress.required || 0;
+              const completed = progress.completed || 0;
+              const remaining = progress.remaining ?? Math.max(0, required - completed);
+              const percentage = required > 0 ? Math.round((completed / required) * 100) : 0;
+              const isCompleted = required > 0 && remaining === 0;
+
+              return (
+                <div key={course._id} className={`p-4 rounded-xl border ${isCompleted ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">{course.name || course.code}</h4>
+                      <p className="text-xs text-slate-500">{course.code}</p>
+                    </div>
+                    {isCompleted && (
+                      <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">
+                        Hoàn thành
+                      </span>
+                    )}
+                  </div>
+                  {required > 0 ? (
+                    <>
+                      <div className="mt-3">
+                        <p className="text-xs text-slate-600 mb-1">
+                          Cần hoàn thành: <strong>{required} giờ</strong>
+                        </p>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-slate-600">Đã điểm danh: <strong>{completed} giờ</strong></span>
+                          <span className="text-slate-500">{percentage}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                      {!isCompleted && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          Còn <strong className="text-indigo-600">{remaining} giờ</strong> có thể đăng ký học
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-2">Không giới hạn số giờ thực hành</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
-        <SectionHeader title="Đặt lịch học mới" description="Chọn khu vực và giáo viên phù hợp" />
+        <SectionHeader title="Đặt lịch học mới" description="Chọn khu vực → khóa học đã đăng ký → giáo viên dạy khóa đó tại khu vực đó" />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4 max-w-3xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4 max-w-4xl">
           <Select label="1. Chọn Khu Vực" options={locations} value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)} placeholder="-- Chọn khu vực --" />
-          <Select label="2. Chọn Giáo Viên" options={instructors} value={selectedInstructor} onChange={(e) => setSelectedInstructor(e.target.value)} disabled={!selectedLocation} placeholder={!selectedLocation ? "Vui lòng chọn khu vực trước" : "-- Chọn giáo viên --"} />
+          <Select 
+            label="2. Chọn Khóa Học" 
+            options={enrolledCourses.map(c => ({ value: c._id, label: c.name || c.code }))} 
+            value={selectedCourse} 
+            onChange={(e) => setSelectedCourse(e.target.value)} 
+            disabled={!selectedLocation || enrolledCourses.length === 0} 
+            placeholder={!selectedLocation ? "Vui lòng chọn khu vực trước" : enrolledCourses.length === 0 ? "Bạn chưa đăng ký khóa nào" : "-- Chọn khóa học --"} 
+          />
+          <Select 
+            label="3. Chọn Giáo Viên" 
+            options={instructors} 
+            value={selectedInstructor} 
+            onChange={(e) => setSelectedInstructor(e.target.value)} 
+            disabled={!selectedLocation || !selectedCourse} 
+            placeholder={!selectedLocation ? "Vui lòng chọn khu vực trước" : !selectedCourse ? "Vui lòng chọn khóa học trước" : "-- Chọn giáo viên --"} 
+          />
         </div>
 
         {selectedInstructor && (
@@ -265,7 +414,7 @@ const Schedule = () => {
                 <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() + 7))))}>Tuần sau</Button>
               </div>
             </div>
-            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="STUDENT" onSlotClick={handleSlotClick} />}
+            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="learner" onSlotClick={handleSlotClick} />}
           </div>
         )}
       </div>
@@ -310,7 +459,7 @@ const Schedule = () => {
                       <div className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'ABSENT' ? 'bg-red-100 text-red-700' : item.status === 'CANCELLED' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
                         {item.status === 'COMPLETED' ? 'Hoàn thành' : (item.status === 'ABSENT' ? 'Vắng' : (item.status === 'CANCELLED' ? 'Đã hủy' : 'Chờ học'))}
                       </div>
-                      {item.status === 'BOOKED' && <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => handleCancel(item._id)}>Hủy</Button>}
+                      {item.status === 'BOOKED' && <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => handleCancel(item._id, item.date, item.timeSlot)}>Hủy</Button>}
                       {item.status === 'COMPLETED' && !item.rating && <Button size="sm" className="bg-yellow-500 text-white border-none" onClick={() => setFeedbackModal({ isOpen: true, bookingId: item._id, rating: 5, comment: '' })}>Đánh giá</Button>}
                       {item.rating && <span className="text-yellow-500 font-bold">⭐ {item.rating}</span>}
                     </div>
@@ -391,7 +540,7 @@ const Schedule = () => {
                 </div>
              </div>
              {detailModal.data.status === 'BOOKED' && (
-                <Button className="w-full bg-red-50 text-red-600 hover:bg-red-100 border-red-200" variant="outline" onClick={() => { handleCancel(detailModal.data._id); setDetailModal({isOpen: false, data: null}); }}>Hủy lịch học này</Button>
+                <Button className="w-full bg-red-50 text-red-600 hover:bg-red-100 border-red-200" variant="outline" onClick={() => handleCancel(detailModal.data._id, detailModal.data.date, detailModal.data.timeSlot)}>Hủy lịch học này</Button>
              )}
           </div>
         )}

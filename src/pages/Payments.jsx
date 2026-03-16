@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
@@ -10,6 +10,7 @@ import { useAuthContext } from '../context/AuthContext';
 const Payments = () => {
   const { user } = useAuthContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const [payments, setPayments] = useState([]);
   const [tuitionInfo, setTuitionInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,7 @@ const Payments = () => {
   const [expandedSchedules, setExpandedSchedules] = useState({});
 
 
-  const [studentExtendForm, setStudentExtendForm] = useState({
+  const [learnerExtendForm, setlearnerExtendForm] = useState({
     registrationId: '',
     scheduleIndex: 0,
     extendedDays: 7,
@@ -55,16 +56,28 @@ const Payments = () => {
   const [transactions, setTransactions] = useState([]);
   const pollRef = useRef(null);
   const pendingPollRef = useRef(null);
+  const autoQrCreatedRef = useRef(false);
+  const incomingRegistrationIdRef = useRef('');
 
   const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
-  const isStudent = user?.role === 'STUDENT';
+  const islearner = user?.role === 'learner';
 
   useEffect(() => {
     loadData();
   }, []);
 
   useEffect(() => {
-    if (!isStudent) return undefined;
+    const incomingRegistration = location.state?.registration;
+    if (!incomingRegistration) return;
+
+    const incomingId = String(incomingRegistration._id || incomingRegistration.registrationId || '');
+    setSelectedRegistrationForQr(incomingId);
+    incomingRegistrationIdRef.current = incomingId;
+    autoQrCreatedRef.current = false;
+  }, [location.state]);
+
+  useEffect(() => {
+    if (!islearner) return undefined;
 
     if (pendingPollRef.current) {
       clearInterval(pendingPollRef.current);
@@ -90,7 +103,7 @@ const Payments = () => {
         pendingPollRef.current = null;
       }
     };
-  }, [isStudent, transactions]);
+  }, [islearner, transactions]);
 
   useEffect(() => {
     return () => {
@@ -120,10 +133,23 @@ const Payments = () => {
         const info = tuitionResponse.data;
         setTuitionInfo(info);
 
-        const defaultRegId = info?.items?.[0]?.registrationId || '';
-        setStudentExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
+        const incomingRegistrationId = location.state?.registration?._id || location.state?.registration?.registrationId || '';
+        const defaultRegId = incomingRegistrationId || info?.items?.[0]?.registrationId || '';
+        setlearnerExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
         setAdminDueDateForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
 
+        if (incomingRegistrationId) {
+          setSelectedRegistrationForQr(defaultRegId);
+
+          const target = (info?.items || []).find((item) => item.registrationId === defaultRegId);
+          if (target) {
+            const schedule = target.paymentSchedule || [];
+            if (schedule.length > 0) {
+              setSelectedScheduleIndex('0');
+              setQrForm((prev) => ({ ...prev, amount: String(schedule[0]?.amount || '') }));
+            }
+          }
+        }
       }
 
       if (transactionResponse.status === 'success') {
@@ -137,9 +163,9 @@ const Payments = () => {
   };
 
 
-  const handleStudentExtend = async (e) => {
+  const handlelearnerExtend = async (e) => {
     e.preventDefault();
-    if (!studentExtendForm.registrationId) {
+    if (!learnerExtendForm.registrationId) {
       alert('Vui lòng chọn hồ sơ cần gia hạn');
       return;
     }
@@ -147,10 +173,10 @@ const Payments = () => {
     try {
       setDueDateSubmitting(true);
       await apiClient.post('/payments/extend-due-date', {
-        registrationId: studentExtendForm.registrationId,
-        scheduleIndex: Number(studentExtendForm.scheduleIndex),
-        extendedDays: Number(studentExtendForm.extendedDays),
-        reason: studentExtendForm.reason,
+        registrationId: learnerExtendForm.registrationId,
+        scheduleIndex: Number(learnerExtendForm.scheduleIndex),
+        extendedDays: Number(learnerExtendForm.extendedDays),
+        reason: learnerExtendForm.reason,
       });
       await loadData();
       alert('Đã gia hạn hạn thanh toán thành công');
@@ -277,7 +303,7 @@ const Payments = () => {
           clearInterval(pollRef.current);
           pollRef.current = null;
           await loadData();
-          alert('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí.');
+          alert('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí và tự động gán lớp (nếu có lớp OPEN).');
         }
       } catch (e) {
         // ignore single polling errors
@@ -312,7 +338,7 @@ const Payments = () => {
       const response = await apiClient.post('/payments/create-qr', {
         vnp_Amount: Number(qrForm.amount),
         vnp_OrderInfo: `Thanh toan hoc phi ${new Date().toLocaleDateString('vi-VN')}`,
-        user: user?.id,
+        user: user?._id || user?.id,
         registrationId: selectedRegistrationForQr || undefined,
         scheduleIndex: selectedScheduleIndex !== '' ? Number(selectedScheduleIndex) : undefined,
       });
@@ -356,6 +382,31 @@ const Payments = () => {
       setCreatingQr(false);
     }
   };
+
+  // Auto-create QR for installment 1 when navigating from course registration
+  useEffect(() => {
+    const incomingId = incomingRegistrationIdRef.current;
+    if (!incomingId) return;
+    if (!tuitionInfo) return;
+    if (creatingQr) return;
+    if (autoQrCreatedRef.current) return;
+
+    // Must be installment 1 (index 0)
+    if (String(selectedRegistrationForQr || '') !== String(incomingId)) return;
+    if (String(selectedScheduleIndex) !== '0') return;
+    if (!qrForm.amount || Number(qrForm.amount) <= 0) return;
+
+    // Avoid creating another QR if we already have one in state
+    if (paymentQrUrl && currentTransactionId) {
+      autoQrCreatedRef.current = true;
+      return;
+    }
+
+    autoQrCreatedRef.current = true;
+    // simulate a form submit without needing the event object
+    handleCreateQr({ preventDefault: () => {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tuitionInfo, selectedRegistrationForQr, selectedScheduleIndex, qrForm.amount]);
 
   const handleConfirmTransaction = async (transactionId) => {
     try {
@@ -404,7 +455,7 @@ const Payments = () => {
   ];
 
   const scheduleColumns = [
-    { key: 'studentName', title: 'Học viên', dataIndex: 'studentName', render: (val) => val || '—' },
+    { key: 'learnerName', title: 'Học viên', dataIndex: 'learnerName', render: (val) => val || '—' },
     { key: 'courseName', title: 'Khoá học', dataIndex: 'courseName' },
     { key: 'totalFee', title: 'Tổng phí', dataIndex: 'totalFee', render: (val) => formatCurrency(val) },
     { key: 'paidAmount', title: 'Đã đóng', dataIndex: 'paidAmount', render: (val) => formatCurrency(val) },
@@ -500,7 +551,7 @@ const Payments = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-semibold text-slate-500">Học viên</p>
-                          <p className="text-sm font-semibold text-slate-900">{item.studentName || '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900">{item.learnerName || '—'}</p>
                         </div>
                       </div>
 
@@ -549,7 +600,7 @@ const Payments = () => {
                                         type="button"
                                         onClick={() => {
                                           setNotifyForm({
-                                            userId: item.studentId,
+                                            userId: item.learnerId,
                                             registrationId: item.registrationId,
                                             scheduleIndex: idx,
                                             message: `Nhắc đóng ${scheduleItem?.name || `Đợt ${idx + 1}`} cho khóa ${item.courseName}. Còn thiếu ${formatCurrency(remainingForInstallment)}.`,
@@ -575,7 +626,7 @@ const Payments = () => {
                               value={notifyForm.registrationId === item.registrationId ? notifyForm.message : ''}
                               onChange={(e) => setNotifyForm((prev) => ({
                                 ...prev,
-                                userId: item.studentId,
+                                userId: item.learnerId,
                                 registrationId: item.registrationId,
                                 message: e.target.value,
                               }))}
@@ -599,7 +650,7 @@ const Payments = () => {
         )}
       </div>
 
-      {isStudent && (
+      {islearner && (
         <>
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Thanh toán qua QR" description="Chọn khóa học và đợt đóng phí cố định" />
@@ -721,11 +772,11 @@ const Payments = () => {
 
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Gia hạn hạn thanh toán" description="Học viên có thể xin gia hạn hạn đóng phí" />
-            <form onSubmit={handleStudentExtend} className="grid gap-3 md:grid-cols-2">
+            <form onSubmit={handlelearnerExtend} className="grid gap-3 md:grid-cols-2">
             <select
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.registrationId}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
+              value={learnerExtendForm.registrationId}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
               required
             >
               <option value="">-- Chọn khóa học --</option>
@@ -740,8 +791,8 @@ const Payments = () => {
               min="1"
               max="30"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.extendedDays}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
+              value={learnerExtendForm.extendedDays}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
               placeholder="Số ngày gia hạn"
               required
             />
@@ -749,14 +800,14 @@ const Payments = () => {
               type="number"
               min="0"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.scheduleIndex}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
+              value={learnerExtendForm.scheduleIndex}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
               placeholder="Index đợt cần gia hạn (0,1,2...)"
             />
             <input
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={studentExtendForm.reason}
-              onChange={(e) => setStudentExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
+              value={learnerExtendForm.reason}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
               placeholder="Lý do gia hạn"
             />
             <button
@@ -785,7 +836,7 @@ const Payments = () => {
                 <option value="">-- Chọn khóa học --</option>
                 {(tuitionInfo?.items || []).map((item) => (
                   <option key={item.registrationId} value={item.registrationId}>
-                    {item.studentName ? `${item.studentName} - ` : ''}[{item.courseCode || 'N/A'}] {item.courseName}
+                    {item.learnerName ? `${item.learnerName} - ` : ''}[{item.courseCode || 'N/A'}] {item.courseName}
                   </option>
                 ))}
               </select>

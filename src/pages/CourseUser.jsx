@@ -6,7 +6,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import apiClient from '../services/apiClient';
 import { formatCurrency } from '../utils/formatters';
 
-const CourseGuest = () => {
+const CourseUSER = () => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -244,4 +244,4 @@ const CourseGuest = () => {
     );
 };
 
-export default CourseGuest;
+export default CourseUSER;

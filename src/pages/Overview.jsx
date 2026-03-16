@@ -40,7 +40,7 @@ const Overview = () => {
   ];
 
   // Icons for StatCards
-  const studentIcon = (
+  const learnerIcon = (
     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
@@ -89,9 +89,9 @@ const Overview = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard 
             title="Học viên đang học" 
-            value={adminMetrics.activeStudents} 
+            value={adminMetrics.activelearners} 
             delta="+12 tuần này"
-            icon={studentIcon}
+            icon={learnerIcon}
           />
           <StatCard 
             title="Hóa đơn chưa thanh toán" 

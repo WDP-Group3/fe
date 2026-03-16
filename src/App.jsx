@@ -30,15 +30,19 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import CourseDetail from './pages/CourseDetail';
-import CourseGuest from './pages/CourseGuest';
+import CourseUser from './pages/CourseUser';
 import Blogs from './pages/Blogs';
 import BlogDetails from './pages/BlogDetails';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import InstructorSchedule from './pages/instructor/InstructorSchedule';
 import AdminBlogs from './pages/admin/AdminBlogs';
 import DocumentApproval from './pages/DocumentApproval';
-import StudentDashboard from './pages/StudentDashboard';
+import LearnerDashboard from './pages/LearnerDashboard';
 import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
+import AdminLearningLocations from './pages/admin/AdminLearningLocations';
+import AdminPayments from './pages/admin/AdminPayments';
+import AdminSalary from './pages/admin/AdminSalary';
+import Salary from './pages/Salary';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -64,7 +68,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
-            <Route path="/courses" element={<CourseGuest />} />
+            <Route path="/courses" element={<CourseUser />} />
             <Route path="/exams" element={<PortalLayout><Exams /></PortalLayout>} />
             <Route path="/exam-taking" element={<ExamTaking />} />
             <Route path="/exam-result/:id" element={<ExamResult />} />
@@ -77,7 +81,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={['ADMIN', 'STUDENT', 'INSTRUCTOR', 'CONSULTANT', 'GUEST']}
+                  allowedRoles={['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER']}
                 />
               }
             >
@@ -118,7 +122,8 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="student-dashboard" element={<StudentDashboard />} />
+                <Route path="learner-dashboard" element={<LearnerDashboard />} />
+                <Route path="salary" element={<Salary />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
@@ -134,13 +139,15 @@ function App() {
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />
                 <Route path="courses" element={<AdminCourses />} />
-                <Route path="payments" element={<Payments />} />
+                <Route path="payments" element={<AdminPayments />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="feedbacks" element={<AdminFeedbacks />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leads" element={<Leads />} />
                 <Route path="blogs" element={<AdminBlogs />} />
                 <Route path="system-holidays" element={<AdminSystemHolidays />} />
+                <Route path="learning-locations" element={<AdminLearningLocations />} />
+                <Route path="salary" element={<AdminSalary />} />
               </Route>
             </Route>
 

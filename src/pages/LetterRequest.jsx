@@ -12,45 +12,29 @@ const LetterRequest = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [type, setType] = useState(() => {
-        if (user?.role === 'INSTRUCTOR') return 'CANCEL_SESSION';
-        return 'LATE_PAYMENT';
+        if (user?.role === 'learner') return 'LATE_PAYMENT';
+        return 'SUPPORT';
     });
     const [reason, setReason] = useState('');
     const [expectedPayDate, setExpectedPayDate] = useState('');
-    const [paymentDate, setPaymentDate] = useState('');
-    const [studentName, setStudentName] = useState('');
-    const [courseName, setCourseName] = useState('');
-    // LATE_PAYMENT extra fields (student)
+    // LATE_PAYMENT extra fields (learner)
     const [paymentBatch, setPaymentBatch] = useState('');
     const [batchCourse, setBatchCourse] = useState('');
-    // CANCEL_SESSION fields (instructor)
-    const [sessionInfo, setSessionInfo] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    // LATE_PAYMENT: Registrations của student (có batch + course + feePlanSnapshot)
+    // LATE_PAYMENT: Registrations của learner (có batch + course + feePlanSnapshot)
     const [myRegistrations, setMyRegistrations] = useState([]);
     const [feePayments, setFeePayments] = useState([]);
     const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
-    // OFFLINE_PAYMENT: dành cho consultant/admin
-    const [offlineStudents, setOfflineStudents] = useState([]);          // danh sách học viên
-    const [offlineStudentId, setOfflineStudentId] = useState('');         // học viên đang chọn
-    const [offlineStudentRegs, setOfflineStudentRegs] = useState([]);     // registrations của học viên
-    const [offlineSelectedRegId, setOfflineSelectedRegId] = useState(''); // registration (khóa/batch) đang chọn
-    const [offlineFeePayments, setOfflineFeePayments] = useState([]);     // đợt nộp của registration đó
-    const [offlinePaymentBatch, setOfflinePaymentBatch] = useState('');   // đợt nộp đang chọn
-    const [loadingOfflineStudents, setLoadingOfflineStudents] = useState(false);
-    const [loadingOfflineRegs, setLoadingOfflineRegs] = useState(false);
-
     // Role helpers - khai báo sớm để dùng trong useEffect
-    const isStudent = user?.role === 'STUDENT';
+    const isLearner = user?.role === 'learner';
     const isInstructor = user?.role === 'INSTRUCTOR';
     const isConsultantOrAdmin = user?.role === 'CONSULTANT' || user?.role === 'ADMIN';
 
     useEffect(() => {
         loadRequests();
-        if (isStudent) loadMyRegistrations();
-        if (isConsultantOrAdmin) loadOfflineStudents();
+        if (isLearner) loadMyRegistrations();
     }, []);
 
     const loadRequests = async () => {
@@ -71,12 +55,12 @@ const LetterRequest = () => {
     const loadMyRegistrations = async () => {
         try {
             setLoadingRegistrations(true);
-            // GET /registrations tự filter theo studentId khi user là STUDENT
+            // GET /registrations tự filter theo learnerId khi user là learner
             const response = await axios.get('/registrations');
             if (response.status === 'success') {
-                // Chỉ lấy những registration có batch + course hợp lệ
+                // Chỉ lấy những registration có (batch + course) hoặc (course) hợp lệ
                 const valid = (response.data || []).filter(
-                    (r) => r.batchId?.courseId && r.status !== 'CANCELLED'
+                    (r) => (r.batchId?.courseId || r.courseId) && r.status !== 'CANCELLED'
                 );
                 setMyRegistrations(valid);
             }
@@ -95,69 +79,12 @@ const LetterRequest = () => {
         setFeePayments(reg?.feePlanSnapshot || []);
     };
 
-    // OFFLINE_PAYMENT: load danh sách học viên
-    const loadOfflineStudents = async () => {
-        try {
-            setLoadingOfflineStudents(true);
-            const response = await axios.get('/users?role=STUDENT&status=ACTIVE');
-            if (response.status === 'success') {
-                setOfflineStudents(response.data || []);
-            }
-        } catch (err) {
-            console.error('Error loading students:', err);
-        } finally {
-            setLoadingOfflineStudents(false);
-        }
-    };
-
-    // OFFLINE_PAYMENT: khi chọn học viên → load registrations của họ
-    const handleOfflineStudentChange = async (studentId) => {
-        setOfflineStudentId(studentId);
-        setOfflineSelectedRegId('');
-        setOfflineFeePayments([]);
-        setOfflinePaymentBatch('');
-        setOfflineStudentRegs([]);
-        if (!studentId) return;
-        try {
-            setLoadingOfflineRegs(true);
-            const response = await axios.get(`/registrations?studentId=${studentId}`);
-            if (response.status === 'success') {
-                const valid = (response.data || []).filter(
-                    (r) => r.batchId?.courseId && r.status !== 'CANCELLED'
-                );
-                setOfflineStudentRegs(valid);
-            }
-        } catch (err) {
-            console.error('Error loading student registrations:', err);
-        } finally {
-            setLoadingOfflineRegs(false);
-        }
-    };
-
-    // OFFLINE_PAYMENT: khi chọn khóa học → load đợt nộp từ feePlanSnapshot
-    const handleOfflineRegChange = (regId) => {
-        setOfflineSelectedRegId(regId);
-        setOfflinePaymentBatch('');
-        const reg = offlineStudentRegs.find((r) => r._id === regId);
-        setOfflineFeePayments(reg?.feePlanSnapshot || []);
-    };
-
     const resetForm = () => {
         setReason('');
         setExpectedPayDate('');
-        setPaymentDate('');
-        setStudentName('');
-        setCourseName('');
         setPaymentBatch('');
         setBatchCourse('');
-        setSessionInfo('');
         setFeePayments([]);
-        // Reset offline payment fields
-        setOfflineStudentId('');
-        setOfflineSelectedRegId('');
-        setOfflineFeePayments([]);
-        setOfflinePaymentBatch('');
-        setOfflineStudentRegs([]);
     };
 
     const handleSubmit = async (e) => {
@@ -170,20 +97,13 @@ const LetterRequest = () => {
             if (!paymentBatch) { showToast('Vui lòng chọn đợt nộp', 'error'); return; }
         }
 
-        if (type === 'OFFLINE_PAYMENT') {
-            if (!paymentDate) { showToast('Vui lòng chọn ngày nộp tiền', 'error'); return; }
-            if (!offlineStudentId) { showToast('Vui lòng chọn học viên', 'error'); return; }
-            if (!offlineSelectedRegId) { showToast('Vui lòng chọn khóa học', 'error'); return; }
-            if (!offlinePaymentBatch) { showToast('Vui lòng chọn đợt nộp', 'error'); return; }
-        }
-
-        if (type === 'CANCEL_SESSION') {
-            if (!reason.trim()) { showToast('Vui lòng nhập lý do hủy dạy', 'error'); return; }
-            if (!sessionInfo.trim()) { showToast('Vui lòng nhập thông tin ca dạy', 'error'); return; }
-        }
-
-        if ((type === 'SUPPORT' || type === 'OTHER') && !reason.trim()) {
+        if (type === 'SUPPORT' && !reason.trim()) {
             showToast('Vui lòng nhập lý do', 'error');
+            return;
+        }
+
+        if (type === 'LATE_PAYMENT' && !expectedPayDate) {
+            showToast('Vui lòng chọn ngày dự kiến nộp', 'error');
             return;
         }
 
@@ -191,36 +111,20 @@ const LetterRequest = () => {
             setSubmitting(true);
             const payload = {
                 type,
-                reason: type === 'OFFLINE_PAYMENT' ? (reason || 'Duyệt offline') : reason,
+                reason,
                 status: user?.role === 'ADMIN' ? 'APPROVED' : 'PENDING',
             };
 
             if (type === 'LATE_PAYMENT') {
                 payload.expectedPayDate = expectedPayDate;
                 payload.paymentBatch = paymentBatch;
+                payload.registrationId = batchCourse;
                 // Resolve tên khóa học từ registration đã chọn
                 const selectedReg = myRegistrations.find((r) => r._id === batchCourse);
-                const course = selectedReg?.batchId?.courseId;
+                const course = selectedReg?.batchId?.courseId || selectedReg?.courseId;
                 payload.batchCourse = course
                     ? `[${course.code}] ${course.name}`
                     : batchCourse;
-            }
-            if (type === 'OFFLINE_PAYMENT') {
-                payload.paymentDate = paymentDate;
-                // Resolve tên từ các state đã chọn
-                const selectedStudent = offlineStudents.find((s) => s._id === offlineStudentId);
-                const selectedReg = offlineStudentRegs.find((r) => r._id === offlineSelectedRegId);
-                const selectedCourse = selectedReg?.batchId?.courseId;
-                payload.studentName = selectedStudent
-                    ? `${selectedStudent.fullName} (${selectedStudent.phone})`
-                    : offlineStudentId;
-                payload.courseName = selectedCourse
-                    ? `[${selectedCourse.code}] ${selectedCourse.name}`
-                    : offlineSelectedRegId;
-                payload.paymentBatch = offlinePaymentBatch;
-            }
-            if (type === 'CANCEL_SESSION') {
-                payload.sessionInfo = sessionInfo;
             }
 
             const response = await axios.post('/requests', payload);
@@ -260,9 +164,6 @@ const LetterRequest = () => {
                 const types = {
                     'LATE_PAYMENT': 'Xin nộp muộn',
                     'SUPPORT': 'Hỗ trợ',
-                    'OTHER': 'Khác',
-                    'OFFLINE_PAYMENT': 'Xác nhận nộp tiền offline',
-                    'CANCEL_SESSION': 'Hủy dạy đột xuất',
                 };
                 return types[val] || val;
             }
@@ -282,8 +183,6 @@ const LetterRequest = () => {
                     if (record.batchCourse) parts.push(`Khóa: ${record.batchCourse}`);
                     return parts.join(' | ');
                 }
-                if (record.type === 'OFFLINE_PAYMENT') return `Nộp: ${new Date(record.paymentDate).toLocaleDateString('vi-VN')} - HV: ${record.studentName} - Khóa: ${record.courseName}`;
-                if (record.type === 'CANCEL_SESSION') return record.sessionInfo ? `Ca dạy: ${record.sessionInfo}` : '-';
                 return '-';
             }
         },
@@ -320,24 +219,15 @@ const LetterRequest = () => {
                                     onChange={(e) => { setType(e.target.value); resetForm(); }}
                                     disabled={submitting}
                                 >
-                                    {/* LATE_PAYMENT chỉ student */}
-                                    {(isStudent || isConsultantOrAdmin) && (
+                                    {/* LATE_PAYMENT chỉ learner */}
+                                    {isLearner && (
                                         <option value="LATE_PAYMENT">Xin nộp muộn</option>
                                     )}
                                     <option value="SUPPORT">Yêu cầu hỗ trợ</option>
-                                    <option value="OTHER">Yêu cầu khác</option>
-                                    {/* OFFLINE_PAYMENT chỉ consultant/admin */}
-                                    {isConsultantOrAdmin && (
-                                        <option value="OFFLINE_PAYMENT">Xác nhận nộp tiền offline</option>
-                                    )}
-                                    {/* CANCEL_SESSION chỉ instructor */}
-                                    {isInstructor && (
-                                        <option value="CANCEL_SESSION">Hủy dạy đột xuất</option>
-                                    )}
                                 </select>
                             </div>
 
-                            {/* === LATE_PAYMENT fields (student) === */}
+                            {/* === LATE_PAYMENT fields (learner) === */}
                             {type === 'LATE_PAYMENT' && (<>
                                 <div>
                                     <label className="text-sm font-medium text-slate-700">Lý do</label>
@@ -361,7 +251,7 @@ const LetterRequest = () => {
                                             {loadingRegistrations ? 'Đang tải...' : myRegistrations.length === 0 ? 'Không có khóa học đang học' : '-- Chọn khóa học --'}
                                         </option>
                                         {myRegistrations.map((reg) => {
-                                            const course = reg.batchId?.courseId;
+                                            const course = reg.batchId?.courseId || reg.courseId;
                                             if (!course) return null;
                                             return (
                                                 <option key={reg._id} value={reg._id}>
@@ -405,8 +295,8 @@ const LetterRequest = () => {
                                 </div>
                             </>)}
 
-                            {/* === SUPPORT / OTHER fields === */}
-                            {(type === 'SUPPORT' || type === 'OTHER') && (
+                            {/* === SUPPORT fields === */}
+                            {type === 'SUPPORT' && (
                                 <div>
                                     <label className="text-sm font-medium text-slate-700">Lý do / Nội dung</label>
                                     <textarea
@@ -417,109 +307,6 @@ const LetterRequest = () => {
                                         disabled={submitting}
                                     />
                                 </div>
-                            )}
-
-                            {/* === OFFLINE_PAYMENT fields === */}
-                            {type === 'OFFLINE_PAYMENT' && (
-                                <>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700">Ngày nộp tiền</label>
-                                        <input
-                                            type="date"
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                                            value={paymentDate}
-                                            onChange={(e) => setPaymentDate(e.target.value)}
-                                            disabled={submitting}
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700">Học viên nộp</label>
-                                        <select
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                                            value={offlineStudentId}
-                                            onChange={(e) => handleOfflineStudentChange(e.target.value)}
-                                            disabled={submitting || loadingOfflineStudents}
-                                        >
-                                            <option value="">
-                                                {loadingOfflineStudents ? 'Đang tải...' : offlineStudents.length === 0 ? 'Không có học viên' : '-- Chọn học viên --'}
-                                            </option>
-                                            {offlineStudents.map((s) => (
-                                                <option key={s._id} value={s._id}>
-                                                    {s.fullName} – {s.phone}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700">Nộp cho khóa học</label>
-                                        <select
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                                            value={offlineSelectedRegId}
-                                            onChange={(e) => handleOfflineRegChange(e.target.value)}
-                                            disabled={submitting || !offlineStudentId || loadingOfflineRegs}
-                                        >
-                                            <option value="">
-                                                {!offlineStudentId ? 'Chọn học viên trước' : loadingOfflineRegs ? 'Đang tải...' : offlineStudentRegs.length === 0 ? 'Học viên chưa đăng ký khóa nào' : '-- Chọn khóa học --'}
-                                            </option>
-                                            {offlineStudentRegs.map((reg) => {
-                                                const course = reg.batchId?.courseId;
-                                                if (!course) return null;
-                                                return (
-                                                    <option key={reg._id} value={reg._id}>
-                                                        {course.code ? `[${course.code}] ` : ''}{course.name}
-                                                        {reg.batchId?.location ? ` – ${reg.batchId.location}` : ''}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700">Đợt nộp</label>
-                                        <select
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                                            value={offlinePaymentBatch}
-                                            onChange={(e) => setOfflinePaymentBatch(e.target.value)}
-                                            disabled={submitting || !offlineSelectedRegId}
-                                        >
-                                            <option value="">
-                                                {!offlineSelectedRegId ? 'Chọn khóa học trước' : offlineFeePayments.length === 0 ? 'Không có đợt nộp' : '-- Chọn đợt nộp --'}
-                                            </option>
-                                            {offlineFeePayments.map((fp, idx) => (
-                                                <option key={fp._id || idx} value={fp.name || `Đợt ${idx + 1}`}>
-                                                    {fp.name || `Đợt ${idx + 1}`}{fp.amount ? ` – ${fp.amount.toLocaleString('vi-VN')}đ` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* === CANCEL_SESSION fields (instructor only) === */}
-                            {type === 'CANCEL_SESSION' && (
-                                <>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700">Lý do hủy dạy</label>
-                                        <textarea
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none min-h-[100px]"
-                                            placeholder="Trình bày rõ lý do cần hủy buổi dạy..."
-                                            value={reason}
-                                            onChange={(e) => setReason(e.target.value)}
-                                            disabled={submitting}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700">Ca dạy</label>
-                                        <input
-                                            type="text"
-                                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                                            placeholder="VD: Ca sáng 08/03 – Lớp JS01..."
-                                            value={sessionInfo}
-                                            onChange={(e) => setSessionInfo(e.target.value)}
-                                            disabled={submitting}
-                                        />
-                                    </div>
-                                </>
                             )}
 
                             <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-700">
