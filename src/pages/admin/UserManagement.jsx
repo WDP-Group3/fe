@@ -21,7 +21,7 @@ const UserManagement = () => {
   const [pagination, setPagination] = useState({
     total: 0,
     totalPages: 0,
-    limit: 10
+    limit: 10,
   });
   const [formData, setFormData] = useState({
     email: "",
@@ -45,7 +45,7 @@ const UserManagement = () => {
   const [loadingOfflineRegs, setLoadingOfflineRegs] = useState(false);
   const [offlineForm, setOfflineForm] = useState({
     registrationId: "",
-    feePlanId: ""
+    feePlanId: "",
   });
   const [submittingOffline, setSubmittingOffline] = useState(false);
 
@@ -181,16 +181,19 @@ const UserManagement = () => {
   const submitOfflinePayment = async (e) => {
     e.preventDefault();
     if (!offlineForm.registrationId || !offlineForm.feePlanId) {
-       return showToast("Vui lòng chọn khóa học và đợt nộp", "error");
+      return showToast("Vui lòng chọn khóa học và đợt nộp", "error");
     }
     try {
       setSubmittingOffline(true);
-      await apiClient.patch(`/registrations/${offlineForm.registrationId}/offline-payment`, {
-        feePlanId: offlineForm.feePlanId
-      });
+      await apiClient.patch(
+        `/registrations/${offlineForm.registrationId}/offline-payment`,
+        {
+          feePlanId: offlineForm.feePlanId,
+        },
+      );
       showToast("Xác nhận nộp tiền offline thành công", "success");
       setShowOfflineModal(false);
-    } catch(err) {
+    } catch (err) {
       showToast(err.message || "Xác nhận thất bại", "error");
     } finally {
       setSubmittingOffline(false);
@@ -267,7 +270,13 @@ const UserManagement = () => {
                             : "bg-green-100 text-green-700"
                     }`}
         >
-          {record.role === "ADMIN" ? "Quản trị viên" : record.role === "INSTRUCTOR" ? "Giảng viên" : record.role === "CONSULTANT" ? "Tư vấn viên" : "Học viên"}
+          {record.role === "ADMIN"
+            ? "Quản trị viên"
+            : record.role === "INSTRUCTOR"
+              ? "Giảng viên"
+              : record.role === "CONSULTANT"
+                ? "Tư vấn viên"
+                : "Học viên"}
         </span>
       ),
     },
@@ -294,10 +303,10 @@ const UserManagement = () => {
           </button>
           {record.role === "learner" && record.status === "active" && (
             <button
-               onClick={() => openOfflinePaymentModal(record)}
-               className="rounded-md bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-600 hover:bg-amber-100 transition-colors"
+              onClick={() => openOfflinePaymentModal(record)}
+              className="rounded-md bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-600 hover:bg-amber-100 transition-colors"
             >
-               Nộp offline
+              Nộp offline
             </button>
           )}
           {record.status === "active" ? (
@@ -416,11 +425,12 @@ const UserManagement = () => {
                       Tên hiển thị
                     </label>
                     <input
+                      disabled={showEditModal}
                       value={formData.name || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-slate-50"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200  disabled:bg-slate-50 disabled:text-slate-400"
                     />
                   </div>
                 )}
@@ -431,12 +441,13 @@ const UserManagement = () => {
                   </label>
                   <input
                     type="email"
+                    disabled={showEditModal} // Email thường không cho đổi sau khi tạo
                     required
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
                   />
                 </div>
 
@@ -458,41 +469,40 @@ const UserManagement = () => {
                   </select>
                 </div>
 
-                <div className="relative">
-                  {" "}
-                  {/* Thêm relative để định vị icon */}
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    {showCreateModal
-                      ? "Mật khẩu"
-                      : "Mật khẩu mới (Để trống nếu không đổi)"}
-                  </label>
+                {!showEditModal && (
                   <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"} // Thay đổi type dựa trên state
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      placeholder={
-                        showCreateModal ? "11111111@" : "Nhập mật khẩu mới..."
-                      }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 pr-10 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                      // Lưu ý: Thêm "pr-10" để text không bị đè lên icon
-                    />
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      {showCreateModal
+                        ? "Mật khẩu"
+                        : "Mật khẩu mới (Để trống nếu không đổi)"}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
+                        placeholder={
+                          showCreateModal ? "11111111@" : "Nhập mật khẩu mới..."
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 pr-10 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      />
 
-                    <button
-                      type="button" // Quan trọng: Để không trigger submit form
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                    >
-                      {showPassword ? (
-                        <EyeOff size={18} /> // Icon mắt gạch chéo
-                      ) : (
-                        <Eye size={18} /> // Icon mắt mở
-                      )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -525,49 +535,79 @@ const UserManagement = () => {
                 Nộp Tiền Offline
               </h3>
               <div className="mb-4 text-sm text-slate-600">
-                Học viên: <span className="font-semibold text-slate-900">{offlineUser?.name}</span>
+                Học viên:{" "}
+                <span className="font-semibold text-slate-900">
+                  {offlineUser?.name}
+                </span>
               </div>
               <form onSubmit={submitOfflinePayment} className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Khóa học</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Khóa học
+                  </label>
                   <select
                     required
                     value={offlineForm.registrationId}
-                    onChange={(e) => setOfflineForm({ registrationId: e.target.value, feePlanId: "" })}
+                    onChange={(e) =>
+                      setOfflineForm({
+                        registrationId: e.target.value,
+                        feePlanId: "",
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
                     disabled={submittingOffline || loadingOfflineRegs}
                   >
                     <option value="">
-                       {loadingOfflineRegs ? 'Đang tải...' : offlineRegistrations.length === 0 ? 'Không có khóa học nào' : '-- Chọn khóa học --'}
+                      {loadingOfflineRegs
+                        ? "Đang tải..."
+                        : offlineRegistrations.length === 0
+                          ? "Không có khóa học nào"
+                          : "-- Chọn khóa học --"}
                     </option>
                     {offlineRegistrations.map((reg) => {
-                       const course = reg.batchId?.courseId || reg.courseId;
-                       if (!course) return null;
-                       return (
-                         <option key={reg._id} value={reg._id}>
-                           {course.code ? `[${course.code}] ` : ''}{course.name}
-                         </option>
-                       );
+                      const course = reg.batchId?.courseId || reg.courseId;
+                      if (!course) return null;
+                      return (
+                        <option key={reg._id} value={reg._id}>
+                          {course.code ? `[${course.code}] ` : ""}
+                          {course.name}
+                        </option>
+                      );
                     })}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Đợt nộp</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Đợt nộp
+                  </label>
                   <select
                     required
                     value={offlineForm.feePlanId}
-                    onChange={(e) => setOfflineForm({ ...offlineForm, feePlanId: e.target.value })}
+                    onChange={(e) =>
+                      setOfflineForm({
+                        ...offlineForm,
+                        feePlanId: e.target.value,
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
                     disabled={submittingOffline || !offlineForm.registrationId}
                   >
                     <option value="">
-                       {!offlineForm.registrationId ? 'Chọn khóa học trước' : '-- Chọn đợt nộp --'}
+                      {!offlineForm.registrationId
+                        ? "Chọn khóa học trước"
+                        : "-- Chọn đợt nộp --"}
                     </option>
-                    {offlineRegistrations.find(r => r._id === offlineForm.registrationId)?.feePlanSnapshot?.filter(f => !f.paymented).map((fp, idx) => (
-                       <option key={fp._id || idx} value={fp._id || fp.name}>
-                          {fp.name} - {fp.amount ? `${fp.amount.toLocaleString('vi-VN')}đ` : '0đ'}
-                       </option>
-                    ))}
+                    {offlineRegistrations
+                      .find((r) => r._id === offlineForm.registrationId)
+                      ?.feePlanSnapshot?.filter((f) => !f.paymented)
+                      .map((fp, idx) => (
+                        <option key={fp._id || idx} value={fp._id || fp.name}>
+                          {fp.name} -{" "}
+                          {fp.amount
+                            ? `${fp.amount.toLocaleString("vi-VN")}đ`
+                            : "0đ"}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -584,7 +624,7 @@ const UserManagement = () => {
                     className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm disabled:bg-indigo-400"
                     disabled={submittingOffline}
                   >
-                    {submittingOffline ? 'Đang xử lý...' : 'Xác nhận nộp'}
+                    {submittingOffline ? "Đang xử lý..." : "Xác nhận nộp"}
                   </button>
                 </div>
               </form>
