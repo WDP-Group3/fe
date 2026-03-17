@@ -414,7 +414,7 @@ const Schedule = () => {
                 <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() + 7))))}>Tuần sau</Button>
               </div>
             </div>
-            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="LEARNER" onSlotClick={handleSlotClick} />}
+            {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="learner" onSlotClick={handleSlotClick} />}
           </div>
         )}
       </div>

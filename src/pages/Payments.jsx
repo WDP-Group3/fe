@@ -19,7 +19,7 @@ const Payments = () => {
   const [expandedSchedules, setExpandedSchedules] = useState({});
 
 
-  const [LEARNERExtendForm, setLEARNERExtendForm] = useState({
+  const [learnerExtendForm, setlearnerExtendForm] = useState({
     registrationId: '',
     scheduleIndex: 0,
     extendedDays: 7,
@@ -60,7 +60,7 @@ const Payments = () => {
   const incomingRegistrationIdRef = useRef('');
 
   const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
-  const isLEARNER = user?.role === 'LEARNER';
+  const islearner = user?.role === 'learner';
 
   useEffect(() => {
     loadData();
@@ -77,7 +77,7 @@ const Payments = () => {
   }, [location.state]);
 
   useEffect(() => {
-    if (!isLEARNER) return undefined;
+    if (!islearner) return undefined;
 
     if (pendingPollRef.current) {
       clearInterval(pendingPollRef.current);
@@ -103,7 +103,7 @@ const Payments = () => {
         pendingPollRef.current = null;
       }
     };
-  }, [isLEARNER, transactions]);
+  }, [islearner, transactions]);
 
   useEffect(() => {
     return () => {
@@ -135,7 +135,7 @@ const Payments = () => {
 
         const incomingRegistrationId = location.state?.registration?._id || location.state?.registration?.registrationId || '';
         const defaultRegId = incomingRegistrationId || info?.items?.[0]?.registrationId || '';
-        setLEARNERExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
+        setlearnerExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
         setAdminDueDateForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
 
         if (incomingRegistrationId) {
@@ -163,9 +163,9 @@ const Payments = () => {
   };
 
 
-  const handleLEARNERExtend = async (e) => {
+  const handlelearnerExtend = async (e) => {
     e.preventDefault();
-    if (!LEARNERExtendForm.registrationId) {
+    if (!learnerExtendForm.registrationId) {
       alert('Vui lòng chọn hồ sơ cần gia hạn');
       return;
     }
@@ -173,10 +173,10 @@ const Payments = () => {
     try {
       setDueDateSubmitting(true);
       await apiClient.post('/payments/extend-due-date', {
-        registrationId: LEARNERExtendForm.registrationId,
-        scheduleIndex: Number(LEARNERExtendForm.scheduleIndex),
-        extendedDays: Number(LEARNERExtendForm.extendedDays),
-        reason: LEARNERExtendForm.reason,
+        registrationId: learnerExtendForm.registrationId,
+        scheduleIndex: Number(learnerExtendForm.scheduleIndex),
+        extendedDays: Number(learnerExtendForm.extendedDays),
+        reason: learnerExtendForm.reason,
       });
       await loadData();
       alert('Đã gia hạn hạn thanh toán thành công');
@@ -650,7 +650,7 @@ const Payments = () => {
         )}
       </div>
 
-      {isLEARNER && (
+      {islearner && (
         <>
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Thanh toán qua QR" description="Chọn khóa học và đợt đóng phí cố định" />
@@ -772,11 +772,11 @@ const Payments = () => {
 
           <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
             <SectionHeader title="Gia hạn hạn thanh toán" description="Học viên có thể xin gia hạn hạn đóng phí" />
-            <form onSubmit={handleLEARNERExtend} className="grid gap-3 md:grid-cols-2">
+            <form onSubmit={handlelearnerExtend} className="grid gap-3 md:grid-cols-2">
             <select
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={LEARNERExtendForm.registrationId}
-              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
+              value={learnerExtendForm.registrationId}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
               required
             >
               <option value="">-- Chọn khóa học --</option>
@@ -791,8 +791,8 @@ const Payments = () => {
               min="1"
               max="30"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={LEARNERExtendForm.extendedDays}
-              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
+              value={learnerExtendForm.extendedDays}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
               placeholder="Số ngày gia hạn"
               required
             />
@@ -800,14 +800,14 @@ const Payments = () => {
               type="number"
               min="0"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={LEARNERExtendForm.scheduleIndex}
-              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
+              value={learnerExtendForm.scheduleIndex}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
               placeholder="Index đợt cần gia hạn (0,1,2...)"
             />
             <input
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={LEARNERExtendForm.reason}
-              onChange={(e) => setLEARNERExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
+              value={learnerExtendForm.reason}
+              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
               placeholder="Lý do gia hạn"
             />
             <button

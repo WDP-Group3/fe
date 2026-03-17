@@ -294,7 +294,7 @@ const Reports = () => {
                                                 </td>
                                                 <td className="py-3">
                                                     <p className="font-medium text-slate-800">{tx.learnerName?.trim() || '—'}</p>
-                                                    <p className="text-xs text-slate-400">{tx.LEARNEREmail || ''}</p>
+                                                    <p className="text-xs text-slate-400">{tx.learnerEmail || ''}</p>
                                                 </td>
                                                 <td className="py-3 text-slate-600">{tx.courseName || '—'}</td>
                                                 <td className="py-3 text-right font-semibold text-green-600">{fmt(tx.amount)}</td>

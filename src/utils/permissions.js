@@ -27,11 +27,11 @@ export const canEditProfile = (currentUser, targetUser) => {
   if (currentRole === USER_ROLES.SALE || currentRole === USER_ROLES.STAFF) {
     // Cần call đến BE để check xem học viên có được phân công cho sale/staff này không
     // For now, we'll assume BE will handle this check
-    // In FE, we just allow if target is a LEARNER
-    return targetUser.role === USER_ROLES.LEARNER;
+    // In FE, we just allow if target is a learner
+    return targetUser.role === USER_ROLES.learner;
   }
 
-  // Instructor and LEARNER can only edit their own profile
+  // Instructor and learner can only edit their own profile
   return false;
 };
 
@@ -60,16 +60,16 @@ export const canViewProfile = (currentUser, targetUser) => {
 
   // Sale/Staff can view profiles of learners assigned to them
   if (currentRole === USER_ROLES.SALE || currentRole === USER_ROLES.STAFF) {
-    return targetUser.role === USER_ROLES.LEARNER;
+    return targetUser.role === USER_ROLES.learner;
   }
 
   // Instructor can view profiles of their learners
   if (currentRole === USER_ROLES.INSTRUCTOR) {
     // Cần call đến BE để check xem học viên có học với instructor này không
-    return targetUser.role === USER_ROLES.LEARNER;
+    return targetUser.role === USER_ROLES.learner;
   }
 
-  // LEARNER can only view their own profile
+  // learner can only view their own profile
   return false;
 };
 

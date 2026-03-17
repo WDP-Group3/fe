@@ -147,7 +147,7 @@ const DocumentApproval = () => {
   const rows = useMemo(() => {
     return (docs || []).map((d, idx) => {
       const reg = d.registrationId || {};
-      const LEARNER = d.learnerId || reg.learnerId || {};
+      const learner = d.learnerId || reg.learnerId || {};
       const batch = reg.batchId || {};
       const course = batch.courseId || {};
       const consultant = d.consultantId || {};
@@ -160,8 +160,8 @@ const DocumentApproval = () => {
 
       return {
         key: d._id || idx,
-        LEARNER: LEARNER.fullName || '—',
-        contact: [LEARNER.phone, LEARNER.email].filter(Boolean).join(' · ') || '—',
+        learner: learner.fullName || '—',
+        contact: [learner.phone, learner.email].filter(Boolean).join(' · ') || '—',
         batch: batchText,
         method: reg.registerMethod === 'CONSULTANT' ? 'Sale' : 'Admin',
         consultant: consultant.fullName
@@ -214,7 +214,7 @@ const DocumentApproval = () => {
   }, [docs]);
 
   const columns = [
-    { key: 'LEARNER', title: 'Học viên', dataIndex: 'LEARNER' },
+    { key: 'learner', title: 'Học viên', dataIndex: 'learner' },
     { key: 'contact', title: 'Liên hệ', dataIndex: 'contact' },
     { key: 'batch', title: 'Khóa/Lớp', dataIndex: 'batch' },
     { key: 'method', title: 'Phụ trách', dataIndex: 'method' },

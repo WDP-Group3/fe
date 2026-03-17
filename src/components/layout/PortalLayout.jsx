@@ -17,21 +17,20 @@ const PUBLIC_NAV_ITEMS = [
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
-    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'LEARNER', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
-    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'LEARNER'] },
-    { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['LEARNER'] },
-    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'LEARNER'] },
-    { label: 'Thi thử', to: '/portal/exams', roles: ['LEARNER', 'USER'] },
-    { label: 'Bài viết', to: '/blogs', roles: ['ADMIN', 'LEARNER', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
+    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
+    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'learner'] },
+    { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['learner'] },
+    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'learner'] },
+    { label: 'Thi thử', to: '/portal/exams', roles: ['learner', 'USER'] },
+    { label: 'Bài viết', to: '/blogs', roles: ['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
     { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT'] },
-    { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'LEARNER', 'INSTRUCTOR'] },
+    { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'learner', 'INSTRUCTOR'] },
     { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
     { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
-    { label: 'Làm đơn', to: '/portal/letter', roles: ['ADMIN', 'LEARNER', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
+    { label: 'Làm đơn', to: '/portal/letter', roles: ['learner'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
-    { label: 'Lương của tôi', to: '/portal/salary', roles: ['INSTRUCTOR', 'CONSULTANT'] },
-    // { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'LEARNER', 'INSTRUCTOR'] },
-    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'LEARNER', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
+    // { label: 'Danh sách lịch', to: '/portal/schedule', roles: ['ADMIN', 'learner', 'INSTRUCTOR'] },
+    { label: 'Thông báo', to: '/portal/notifications', roles: ['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
     { label: 'Lương của tôi', to: '/portal/my-salary', roles: ['INSTRUCTOR', 'CONSULTANT'] },
   ];
 
@@ -56,11 +55,11 @@ const PortalLayout = ({ children }) => {
       label: 'Thông tin cá nhân',
       onClick: () => navigate('/portal/profile'),
     },
-    ...(user?.role === 'LEARNER'
+    ...(user?.role === 'learner'
       ? [
         {
-          label: 'LEARNER Dashboard',
-          onClick: () => navigate('/portal/LEARNER-dashboard'),
+          label: 'learner Dashboard',
+          onClick: () => navigate('/portal/learner-dashboard'),
         },
       ]
       : []),
