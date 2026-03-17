@@ -43,10 +43,10 @@ const AdminSystemHolidays = () => {
     try {
       setLoading(true);
       const res = await axios.get(`/system-holidays?page=${currentPage}&limit=10`);
-      // Backend trả về { status: 'success', data: [...], pagination: {...} }
-      setHolidays(res?.data?.data || []);
-      if (res?.data?.pagination) {
-        setPagination(res.data.pagination);
+      // Backend trả về { status: 'success', data: [...], pagination: {...} }; axios đã return response.data nên res = body
+      setHolidays(Array.isArray(res?.data) ? res.data : (res?.data?.data || []));
+      if (res?.pagination) {
+        setPagination(res.pagination);
       }
     } catch (error) {
       console.error('Lỗi khi tải lịch nghỉ:', error);
@@ -255,6 +255,7 @@ const AdminSystemHolidays = () => {
                   <input
                     type="date"
                     required
+                    min={new Date().toISOString().split('T')[0]}
                     className="w-full border rounded-lg px-3 py-2"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -265,6 +266,7 @@ const AdminSystemHolidays = () => {
                   <input
                     type="date"
                     required
+                    min={formData.startDate || new Date().toISOString().split('T')[0]}
                     className="w-full border rounded-lg px-3 py-2"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}

@@ -457,7 +457,7 @@ const InstructorSchedule = () => {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-blue-800 text-sm">
-              📌 <strong>Lưu ý:</strong> Báo bận trong tuần hiện tại hoặc sau 18h thứ 6 sẽ tính là <strong>báo bận khẩn cấp</strong> và giới hạn 2 lần/tháng.
+              📌 <strong>Lưu ý:</strong> Báo bận <strong>trong tuần hiện tại</strong>, <strong>cuối tuần (Thứ 7-CN)</strong>, hoặc <strong>sau 18h thứ 6</strong> sẽ tính là <strong>báo bận khẩn cấp</strong> và giới hạn 2 lần/tháng.
             </p>
           </div>
 

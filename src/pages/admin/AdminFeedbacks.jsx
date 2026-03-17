@@ -250,30 +250,59 @@ const AdminFeedbacks = () => {
                 )}
             </div>
 
-            {/* Detail Modal */}
+            {/* Detail Modal - No background overlay */}
             {showDetailModal && selectedFeedback && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-transparent" onClick={() => setShowDetailModal(false)}></div>
+                    <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 relative z-10">
                         <h2 className="text-xl font-bold mb-4">Chi tiết đánh giá</h2>
                         
                         <div className="space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Học viên:</span>
-                                <span className="font-medium">{selectedFeedback.learnerId?.fullName || 'N/A'}</span>
+                            {/* Học viên info */}
+                            <div className="bg-blue-50 rounded-lg p-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-lg">
+                                        {selectedFeedback.learnerId?.fullName?.charAt(0) || 'HV'}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-slate-900">{selectedFeedback.learnerId?.fullName || 'N/A'}</div>
+                                        <div className="text-xs text-slate-500">{selectedFeedback.learnerId?.email || 'N/A'}</div>
+                                        <div className="text-xs text-slate-500">{selectedFeedback.learnerId?.phone || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                {selectedFeedback.learnerId?.role && (
+                                    <div className="mt-2 text-xs text-slate-600">
+                                        <span className="font-medium">Hạng:</span> {selectedFeedback.learnerId.role}
+                                    </div>
+                                )}
+                                {(selectedFeedback.batchId?.name || selectedFeedback.batchId?.courseId) && (
+                                    <div className="mt-2 text-xs text-slate-600">
+                                        <span className="font-medium">Lớp:</span> {selectedFeedback.batchId?.name || 'N/A'}
+                                        {selectedFeedback.batchId?.courseId && (
+                                            <> — <span className="font-medium">Khóa:</span> {selectedFeedback.batchId.courseId.name || selectedFeedback.batchId.courseId.code || 'N/A'}</>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Email HV:</span>
-                                <span className="font-medium">{selectedFeedback.learnerId?.email || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">SĐT HV:</span>
-                                <span className="font-medium">{selectedFeedback.learnerId?.phone || 'N/A'}</span>
-                            </div>
+                            
                             <hr />
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Giáo viên:</span>
-                                <span className="font-medium">{selectedFeedback.instructorId?.fullName || 'N/A'}</span>
+                            
+                            {/* Giáo viên info */}
+                            <div className="bg-green-50 rounded-lg p-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold text-lg">
+                                        {selectedFeedback.instructorId?.fullName?.charAt(0) || 'GV'}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-slate-900">{selectedFeedback.instructorId?.fullName || 'N/A'}</div>
+                                        <div className="text-xs text-slate-500">{selectedFeedback.instructorId?.email || 'N/A'}</div>
+                                        <div className="text-xs text-slate-500">{selectedFeedback.instructorId?.phone || 'N/A'}</div>
+                                    </div>
+                                </div>
                             </div>
+                            
+                            <hr />
+                            
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Ngày học:</span>
                                 <span className="font-medium">
