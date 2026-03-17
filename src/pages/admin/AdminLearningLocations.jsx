@@ -25,6 +25,8 @@ const AdminLearningLocations = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, name: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
+  const [instructorSearchQueries, setInstructorSearchQueries] = useState({});
+  const [openInstructorDropdown, setOpenInstructorDropdown] = useState(null);
 
   useEffect(() => {
     loadList();
@@ -34,6 +36,24 @@ const AdminLearningLocations = () => {
     loadCourses();
     loadInstructors();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (openInstructorDropdown !== null) {
+        const dropdownElements = document.querySelectorAll('[data-instructor-dropdown]');
+        let clickedInside = false;
+        dropdownElements.forEach((el) => {
+          if (el.contains(e.target)) clickedInside = true;
+        });
+        if (!clickedInside) {
+          setOpenInstructorDropdown(null);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openInstructorDropdown]);
 
   const loadList = async () => {
     try {
@@ -63,7 +83,8 @@ const AdminLearningLocations = () => {
 
   const loadInstructors = async () => {
     try {
-      const res = await apiClient.get('/users?role=INSTRUCTOR');
+      // Backend phân trang mặc định limit=10; cần lấy đủ tất cả thầy cho dropdown tìm kiếm
+      const res = await apiClient.get('/users?role=INSTRUCTOR&limit=500');
       if (res.status === 'success') setInstructors(res.data || []);
     } catch (err) {
       console.error(err);
@@ -74,6 +95,8 @@ const AdminLearningLocations = () => {
     setEditing(null);
     setForm({ areaName: '', yardName: '', googleMapAddress: '' });
     setInstructorRows([]);
+    setInstructorSearchQueries({});
+    setOpenInstructorDropdown(null);
     setModalOpen(true);
   };
 
@@ -85,7 +108,48 @@ const AdminLearningLocations = () => {
       googleMapAddress: item.googleMapAddress || '',
     });
     setInstructorRows(item.instructors || []);
+    setInstructorSearchQueries({});
+    setOpenInstructorDropdown(null);
     setModalOpen(true);
+  };
+
+  const getInstructorDisplayName = (row) => {
+    const id = row.instructorId?._id || row.instructorId;
+    if (!id) return '';
+    const idStr = String(id);
+    const found = instructors.find((u) => String(u._id) === idStr);
+    return found ? `${found.fullName} (${found.email})` : (row.instructorId?.fullName && row.instructorId?.email ? `${row.instructorId.fullName} (${row.instructorId.email})` : '');
+  };
+
+  // Bỏ dấu tiếng Việt để tìm "nguye" khớp "Nguyễn"
+  const removeVietnameseTone = (str) => {
+    if (!str) return '';
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  };
+
+  const getFilteredInstructors = (query) => {
+    if (!(query && query.trim())) return instructors;
+    const q = removeVietnameseTone(query.trim());
+    return instructors.filter((u) => {
+      const name = removeVietnameseTone(String(u.fullName || ''));
+      const email = String(u.email || '').toLowerCase();
+      const emailNorm = removeVietnameseTone(u.email || '');
+      return name.includes(q) || email.includes(q) || emailNorm.includes(q);
+    });
+  };
+
+  const setInstructorSearch = (idx, value) => {
+    setInstructorSearchQueries((prev) => ({ ...prev, [idx]: value }));
+    setOpenInstructorDropdown(idx);
+  };
+
+  const selectInstructor = (idx, instructorId) => {
+    updateInstructorRow(idx, 'instructorId', instructorId);
+    setInstructorSearchQueries((prev) => ({ ...prev, [idx]: '' }));
+    setOpenInstructorDropdown(null);
   };
 
   const handleSave = async () => {
@@ -303,23 +367,58 @@ const AdminLearningLocations = () => {
               Chọn thầy và khóa (hạng) thầy đảm nhận tại địa điểm này. Mỗi thầy chỉ 1 khu vực + 1 khóa.
             </p>
             <div className="space-y-3">
-              {instructorRows.map((row, idx) => (
+              {instructorRows.map((row, idx) => {
+                const selectedInstructorId = row.instructorId?._id || row.instructorId;
+                const query = instructorSearchQueries[idx] || '';
+                const filteredInstructors = getFilteredInstructors(query);
+                const isDropdownOpen = openInstructorDropdown === idx;
+                return (
                 <div
                   key={idx}
-                  className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3 sm:flex-row sm:items-center sm:gap-3"
+                  className="relative flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3 sm:flex-row sm:items-center sm:gap-3"
                 >
-                  <select
-                    className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    value={row.instructorId?._id || row.instructorId || ''}
-                    onChange={(e) => updateInstructorRow(idx, 'instructorId', e.target.value)}
-                  >
-                    <option value="">Chọn thầy</option>
-                    {instructors.map((u) => (
-                      <option key={u._id} value={u._id}>
-                        {u.fullName} ({u.email})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative min-w-0 flex-1" data-instructor-dropdown>
+                    <div className="flex rounded-lg border border-slate-300 bg-white shadow-sm">
+                      <input
+                        type="text"
+                        className="min-w-0 flex-1 rounded-l-lg border-0 bg-transparent px-3 py-2 text-sm outline-none"
+                        placeholder="Chọn thầy hoặc gõ tìm theo tên / email..."
+                        value={isDropdownOpen ? query : (selectedInstructorId ? getInstructorDisplayName(row) : '')}
+                        onChange={(e) => setInstructorSearch(idx, e.target.value)}
+                        onFocus={() => setOpenInstructorDropdown(idx)}
+                      />
+                      <button
+                        type="button"
+                        className="flex shrink-0 items-center rounded-r-lg border-l border-slate-200 bg-slate-50 px-2 text-slate-500 hover:bg-slate-100"
+                        onClick={() => setOpenInstructorDropdown(isDropdownOpen ? null : idx)}
+                        title={isDropdownOpen ? 'Đóng danh sách' : 'Mở danh sách thầy'}
+                      >
+                        <svg className={`h-5 w-5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
+                    {isDropdownOpen && (
+                      <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                        {filteredInstructors.length > 0 ? (
+                          filteredInstructors.map((u) => (
+                            <button
+                              key={u._id}
+                              type="button"
+                              className={`w-full px-3 py-2 text-left text-sm hover:bg-slate-100 ${
+                                String(u._id) === String(selectedInstructorId) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'
+                              }`}
+                              onClick={() => selectInstructor(idx, u._id)}
+                            >
+                              {u.fullName} ({u.email})
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-slate-400">Không tìm thấy thầy</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <select
                     className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                     value={row.courseId?._id || row.courseId || ''}
@@ -341,7 +440,7 @@ const AdminLearningLocations = () => {
                     Xóa
                   </Button>
                 </div>
-              ))}
+              )})}
               {instructorRows.length === 0 && (
                 <p className="rounded-lg border border-dashed border-slate-200 py-4 text-center text-sm text-slate-400">
                   Chưa có thầy. Nhấn &quot;+ Thêm thầy&quot; để thêm.
