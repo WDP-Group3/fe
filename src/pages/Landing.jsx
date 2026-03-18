@@ -105,13 +105,13 @@ const Landing = () => {
       image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200',
       title: 'Thi thử 600 câu miễn phí',
       description: 'Luyện tập không giới hạn với bộ đề thi mới nhất từ Bộ GTVT',
-      button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/portal/exams' },
+      button: { label: 'Bắt đầu thi thử', onClick: () => window.location.href = '/exams' },
     },
     {
       image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
       title: 'Hỗ trợ học phí linh hoạt',
       description: 'Chia đợt thanh toán, hỗ trợ công nợ cho học viên',
-      button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/portal/courses' },
+      button: { label: 'Xem chi tiết', onClick: () => window.location.href = '/courses' },
     },
   ];
 
@@ -122,7 +122,7 @@ const Landing = () => {
         <div className="mb-10">
           <Carousel items={banners} autoPlay interval={2000} showDots showArrows />
         </div>
-        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-100 shadow-sm">
               Minh bạch khóa học · Lịch học rõ ràng · Nhắc phí tự động
@@ -153,41 +153,18 @@ const Landing = () => {
               <StatCard title="Lịch trống tuần này" value="38 slot" delta="Thực hành + lý thuyết" />
             </div>
           </div>
-          <div className="relative">
-            <div className="absolute -right-6 -top-6 h-40 w-40 rounded-full bg-indigo-100 blur-3xl" />
-            <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white/80 shadow-xl backdrop-blur">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+
+          <div className="relative hidden lg:block">
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-tr from-indigo-100 to-sky-50 opacity-50 blur-2xl" />
+            <img
+              src="https://bizweb.dktcdn.net/100/415/690/files/lai-xe-ban-dem-1.jpg"
+              alt="Học viên học lái xe"
+              className="relative h-[480px] w-full rounded-3xl object-cover shadow-2xl"
+            />
+            <div className="absolute right-8 top-8 rounded-2xl bg-white/90 p-4 shadow-lg backdrop-blur">
+              <div className="flex items-center gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-indigo-600">Lịch học mẫu</p>
-                  <p className="text-sm text-slate-600">Cập nhật mỗi ngày · Nhắc qua SMS/App</p>
                 </div>
-                <StatusBadge status="doing" label="Học viên xem trực tiếp" />
-              </div>
-              <div className="divide-y divide-slate-100">
-                {sessions.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 px-5 py-4">
-                    <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center">
-                      <p className="text-xs font-semibold text-indigo-600">{item.date}</p>
-                      <p className="text-[11px] text-slate-500">{item.time}</p>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-slate-900">{item.type}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.instructor} · {item.location}
-                      </p>
-                    </div>
-                    <StatusBadge status="done" label="Còn slot" />
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-between bg-slate-50 px-5 py-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Thi thử 600 câu</p>
-                  <p className="text-Thời gian gọi text-slate-500">Lưu lịch sử, thống kê câu sai</p>
-                </div>
-                <button className="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm">
-                  Bắt đầu ngay
-                </button>
               </div>
             </div>
           </div>
@@ -203,7 +180,7 @@ const Landing = () => {
             Xem đầy đủ các khóa học, chi tiết học phí từng đợt và lịch khai giảng mới nhất của trung tâm.
           </p>
           <Link
-            to="/portal/courses"
+            to="/courses"
             className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors"
           >
             Xem tất cả khóa học →
@@ -211,94 +188,124 @@ const Landing = () => {
         </div>
 
 
-        <div id="consult-form" className="mt-12 grid gap-6 md:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-            <SectionHeader
-              title="Đặt lịch tư vấn nhanh"
-              description="Hẹn giờ gọi điện, tự động gửi SMS nhắc"
+        <div id="consult-form" className="relative mt-16 overflow-hidden rounded-[2.5rem] shadow-2xl">
+          {/* Background Image & Overlay */}
+          <div className="absolute inset-0">
+            <img
+              src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1600&q=80"
+              alt="Background"
+              className="h-full w-full object-cover"
             />
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Họ tên *</label>
-                <input
-                  name="name"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  placeholder="Nhập họ tên"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                />
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px]" />
+          </div>
+
+          <div className="relative grid gap-10 md:grid-cols-2 lg:gap-16 items-center p-8 md:p-12 lg:p-16">
+            {/* Left Content */}
+            <div className="text-white space-y-6">
+              <h2 className="text-3xl font-bold sm:text-4xl text-white leading-tight">
+                Dạy lái bằng cả trái tim!<br />
+                <span className="text-yellow-400 text-5xl mt-2 block">Tự tin vững lái</span>
+              </h2>
+              <div className="w-16 h-1 bg-yellow-400 rounded-full" />
+              <p className="text-lg text-white/90 leading-relaxed font-medium">
+                Đào tạo học lái xe ô tô Uy Tín và Chất Lượng 100% luôn đi đầu trong khu vực và trong cả nước.
+              </p>
+              <p className="text-white/80">
+                Với chi phí hợp lí, bạn đã có thể học lái xe ô tô một cách thuần thục.
+              </p>
+              <ul className="space-y-3 mt-6 text-white/90">
+                <li className="flex items-center gap-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  Thủ tục đơn giản, làm hồ sơ tận nhà
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  Dàn xe đời mới, sân tập đạt chuẩn
+                </li>
+              </ul>
+            </div>
+
+            {/* Right Form */}
+            <div className="rounded-3xl bg-white/95 p-6 shadow-xl backdrop-blur-sm sm:p-8">
+              <div className="mb-6 border-b border-slate-100 pb-6 text-center">
+                <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Kỷ niệm 10 năm thành lập</p>
+                <h3 className="mt-2 text-2xl font-black uppercase text-slate-900 leading-tight">
+                  <span className="text-indigo-600">Khuyến mãi toàn quốc</span><br />
+                  <span className="text-red-500 text-lg">Giảm ngay 20% học phí</span>
+                </h3>
+                <p className="mt-3 text-sm text-slate-600 flex justify-center items-center gap-1">
+                  <span className="text-orange-500">🔥</span> Chỉ còn 5 suất ưu đãi cuối cùng
+                </p>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Số điện thoại *</label>
                   <input
-                    name="phone"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                    placeholder="0912 xxx xxx"
-                    value={formData.phone}
+                    name="name"
+                    className="w-full rounded-xl border-none bg-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                    placeholder="👤 Nhập tên của bạn *"
+                    value={formData.name}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Chọn khóa *</label>
-                  <select
-                    name="course"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                    value={formData.course}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="" disabled>Chọn khóa học</option>
-                    {courses.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Thời gian gọi<span className="text-xs text-slate-500">(các cuộc tư vấn thường chỉ mất từ 15 - 30 phút)</span></label>
-                <input
-                  name="timeToCall"
-                  type="datetime-local"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  value={formData.timeToCall}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              >
-                {submitting ? 'Đang gửi...' : 'Gửi yêu cầu tư vấn'}
-              </button>
-              <p className="text-xs text-slate-500">Chúng tôi sẽ gọi trong vòng 30 phút giờ hành chính.</p>
-            </form>
-          </div>
-          <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow-sm backdrop-blur">
-            <SectionHeader title="Luật & blog" description="Thông tin chính thống, cập nhật liên tục" />
-            <div className="space-y-3">
-              {[
-                { title: '600 câu Bộ GTVT - phiên bản mới nhất', tag: 'Thi thử' },
-                { title: 'Quy trình nộp hồ sơ và sát hạch', tag: 'Hồ sơ' },
-                { title: 'Mức phí và phụ phí theo quy định', tag: 'Học phí' },
-              ].map((item) => (
-                <div key={item.title} className="rounded-2xl border border-slate-100 p-4 hover:border-indigo-100">
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status="doing" label={item.tag} />
-                    <span className="text-xs text-slate-400">Cập nhật 08/01/2026</span>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <input
+                      name="phone"
+                      className="w-full rounded-xl border-none bg-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                      placeholder="📞 Số điện thoại *"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
-                  <p className="text-xs text-slate-600">Xem chi tiết trên portal</p>
+                  <div>
+                    <select
+                      name="course"
+                      className="w-full rounded-xl border-none bg-slate-100 px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                      value={formData.course}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="" disabled>🚗 Chọn loại bằng muốn học *</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              ))}
+                <div>
+                  <input
+                    name="timeToCall"
+                    type="datetime-local"
+                    placeholder="Thời gian gọi lại *"
+                    className="w-full rounded-xl border-none bg-slate-100 px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                    value={formData.timeToCall}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full rounded-xl bg-yellow-400 py-4 text-sm font-bold uppercase text-slate-900 shadow-lg shadow-yellow-400/30 transition hover:bg-yellow-500 hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {submitting ? 'Đang gửi...' : 'GỬI THÔNG TIN'}
+                </button>
+              </form>
             </div>
           </div>
         </div>
       </div>
-    </PortalLayout >
+    </PortalLayout>
   );
 };
 

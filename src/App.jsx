@@ -134,7 +134,7 @@ function App() {
               }
             >
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
+                <Route index element={<Reports />} />
                 <Route path="documents" element={<DocumentApproval />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />

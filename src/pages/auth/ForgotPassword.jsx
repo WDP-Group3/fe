@@ -43,7 +43,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <PortalLayout>
+    <PortalLayout hideNav={true}>
       <div className="flex min-h-[calc(100vh-140px)] items-center justify-center py-12 px-4">
         <Container size="sm">
           <Card className="shadow-xl">

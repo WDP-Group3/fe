@@ -282,32 +282,54 @@ const Reports = () => {
                                             <th className="py-3 text-left font-semibold text-slate-500">Ngày</th>
                                             <th className="py-3 text-left font-semibold text-slate-500">Học viên</th>
                                             <th className="py-3 text-left font-semibold text-slate-500">Khóa học</th>
+                                            <th className="py-3 text-left font-semibold text-slate-500">Mã GD</th>
                                             <th className="py-3 text-right font-semibold text-slate-500">Số tiền</th>
                                             <th className="py-3 text-center font-semibold text-slate-500">Phương thức</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {recentTx.map((tx) => (
-                                            <tr key={tx._id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                                <td className="py-3 text-slate-500 whitespace-nowrap">
-                                                    {tx.paidAt ? new Date(tx.paidAt).toLocaleDateString('vi-VN') : '—'}
-                                                </td>
-                                                <td className="py-3">
-                                                    <p className="font-medium text-slate-800">{tx.learnerName?.trim() || '—'}</p>
-                                                    <p className="text-xs text-slate-400">{tx.learnerEmail || ''}</p>
-                                                </td>
-                                                <td className="py-3 text-slate-600">{tx.courseName || '—'}</td>
-                                                <td className="py-3 text-right font-semibold text-green-600">{fmt(tx.amount)}</td>
-                                                <td className="py-3 text-center">
-                                                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
-                                                        ${tx.method === 'CASH' ? 'bg-green-100 text-green-700' :
-                                                            tx.method === 'TRANSFER' ? 'bg-blue-100 text-blue-700' :
-                                                                'bg-purple-100 text-purple-700'}`}>
-                                                        {METHOD_LABELS[tx.method] || tx.method}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {recentTx.map((tx) => {
+                                            // Trích xuất mã giao dịch từ note (SePay ghi "SePay auto webhook - HP-xxx")
+                                            const txCode = tx.note
+                                                ? tx.note.replace('SePay auto webhook - ', '').trim()
+                                                : null;
+                                            return (
+                                                <tr key={tx._id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 text-slate-500 whitespace-nowrap">
+                                                        {tx.paidAt ? new Date(tx.paidAt).toLocaleDateString('vi-VN') : '—'}
+                                                    </td>
+                                                    <td className="py-3">
+                                                        {tx.learnerName?.trim() ? (
+                                                            <>
+                                                                <p className="font-medium text-slate-800">{tx.learnerName}</p>
+                                                                <p className="text-xs text-slate-400">{tx.learnerEmail || ''}</p>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic">Không xác định</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 text-slate-600">
+                                                        {tx.courseName || <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                    <td className="py-3">
+                                                        {txCode ? (
+                                                            <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                                                {txCode}
+                                                            </span>
+                                                        ) : <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                    <td className="py-3 text-right font-semibold text-green-600">{fmt(tx.amount)}</td>
+                                                    <td className="py-3 text-center">
+                                                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                                                            ${tx.method === 'CASH' ? 'bg-green-100 text-green-700' :
+                                                                tx.method === 'TRANSFER' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-purple-100 text-purple-700'}`}>
+                                                            {METHOD_LABELS[tx.method] || tx.method}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
