@@ -59,7 +59,9 @@ const NotFoundRedirect = () => {
 
   if (!isAuthenticated) return <Navigate to="/" replace />;
 
-  return <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/portal'} replace />;
+  return (
+    <Navigate to={user?.role === "ADMIN" ? "/admin" : "/portal"} replace />
+  );
 };
 
 function App() {
@@ -71,7 +73,14 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses" element={<CourseUser />} />
-            <Route path="/exams" element={<PortalLayout><Exams /></PortalLayout>} />
+            <Route
+              path="/exams"
+              element={
+                <PortalLayout>
+                  <Exams />
+                </PortalLayout>
+              }
+            />
             <Route path="/exam-taking" element={<ExamTaking />} />
             <Route path="/exam-result/:id" element={<ExamResult />} />
             <Route path="/blogs" element={<Blogs />} />
@@ -83,7 +92,13 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER']}
+                  allowedRoles={[
+                    "ADMIN",
+                    "learner",
+                    "INSTRUCTOR",
+                    "CONSULTANT",
+                    "USER",
+                  ]}
                 />
               }
             >
@@ -95,24 +110,28 @@ function App() {
                 <Route path="payments" element={<Payments />} />
                 <Route path="payments/qr" element={<PaymentQr />} />
                 <Route path="schedule" element={<Schedule />} />
-                <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><UserManagement /></ProtectedRoute>} />
+                <Route
+                  path="admin"
+                  element={
+                    <ProtectedRoute requiredRole="ADMIN">
+                      <UserManagement />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="letter" element={<LetterRequest />} />
                 <Route path="leads" element={<Leads />} />
 
                 <Route
                   element={
-                    <ProtectedRoute allowedRoles={['ADMIN', 'CONSULTANT']} />
+                    <ProtectedRoute allowedRoles={["ADMIN", "CONSULTANT"]} />
                   }
                 >
-                  <Route path="document-approval" element={<DocumentApproval />} />
+                  <Route
+                    path="document-approval"
+                    element={<DocumentApproval />}
+                  />
                 </Route>
-                <Route
-                  element={
-                    <ProtectedRoute
-                      requiredRole="INSTRUCTOR"
-                    />
-                  }
-                >
+                <Route element={<ProtectedRoute requiredRole="INSTRUCTOR" />}>
                   <Route
                     path="instructor-schedule"
                     element={<InstructorSchedule />}
@@ -124,20 +143,22 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="learner-dashboard" element={<LearnerDashboard />} />
+                <Route
+                  path="learner-dashboard"
+                  element={<LearnerDashboard />}
+                />
                 <Route path="salary" element={<Salary />} />
                 <Route path="fee-submissions" element={<FeeSubmissions />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
 
-            <Route
-              element={
-                <ProtectedRoute requiredRole="ADMIN" />
-              }
-            >
+            <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
+                <Route
+                  index
+                  element={<Navigate to="/admin/reports" replace />}
+                />{" "}
                 <Route path="documents" element={<DocumentApproval />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="letter" element={<LetterRequestManagement />} />
@@ -148,8 +169,14 @@ function App() {
                 <Route path="reports" element={<Reports />} />
                 <Route path="leads" element={<Leads />} />
                 <Route path="blogs" element={<AdminBlogs />} />
-                <Route path="system-holidays" element={<AdminSystemHolidays />} />
-                <Route path="learning-locations" element={<AdminLearningLocations />} />
+                <Route
+                  path="system-holidays"
+                  element={<AdminSystemHolidays />}
+                />
+                <Route
+                  path="learning-locations"
+                  element={<AdminLearningLocations />}
+                />
                 <Route path="exam-locations" element={<AdminExamLocations />} />
                 <Route path="salary" element={<AdminSalary />} />
                 <Route path="fee-submissions" element={<FeeSubmissions />} />
