@@ -45,6 +45,9 @@ const InstructorSchedule = () => {
   // [NEW] Modal chi tiết học viên
   const [learnerDetailModal, setlearnerDetailModal] = useState({ isOpen: false, data: null });
   
+  // [MỚI] Dropdown Chi tiết các buổi dạy: chỉ 1 thứ mở tại một thời điểm (dateLabel hoặc null)
+  const [expandedLessonDay, setExpandedLessonDay] = useState(null);
+
   // [MỚI] Modal chọn báo bận ca hay cả ngày
   const [confirmBusyModal, setConfirmBusyModal] = useState({ 
     isOpen: false, 
@@ -241,28 +244,28 @@ const InstructorSchedule = () => {
   return (
     <div className="space-y-10">
       {/* [MỚI] Thông tin nghỉ phép khẩn cấp */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl">📋</div>
-            <div>
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 overflow-hidden min-w-0">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="text-3xl flex-shrink-0">📋</div>
+            <div className="min-w-0">
               <h3 className="font-bold text-amber-800">Nghỉ phép khẩn cấp (Emergency Leave)</h3>
               <p className="text-sm text-amber-700">Tháng {emergencyLeaveInfo.currentMonth} - Bạn đã sử dụng {emergencyLeaveInfo.usedCount}/2 lần</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             <div className="text-3xl font-bold text-amber-600">{emergencyLeaveInfo.remainingCount}</div>
             <div className="text-xs text-amber-600">lần còn lại</div>
           </div>
         </div>
-        {/* Progress bar */}
-        <div className="mt-3 w-full bg-amber-200 rounded-full h-2">
-          <div 
+        {/* Progress bar - giới hạn tối đa 100% để không vỡ layout khi usedCount > maxPerMonth */}
+        <div className="mt-3 w-full bg-amber-200 rounded-full h-2 overflow-hidden">
+          <div
             className={`h-2 rounded-full ${emergencyLeaveInfo.remainingCount === 0 ? 'bg-red-500' : 'bg-amber-500'}`}
-            style={{ width: `${(emergencyLeaveInfo.usedCount / emergencyLeaveInfo.maxPerMonth) * 100}%` }}
+            style={{ width: `${Math.min(100, (emergencyLeaveInfo.usedCount / emergencyLeaveInfo.maxPerMonth) * 100)}%` }}
           />
         </div>
-        <p className="text-xs text-amber-600 mt-2">
+        <p className="text-xs text-amber-600 mt-3 break-words min-w-0">
           ⚠️ Lưu ý: Báo bận vượt deadline (sau thứ 6, 18:00) sẽ tính là nghỉ phép khẩn cấp. Tối đa 2 lần/tháng.
         </p>
       </div>
@@ -330,40 +333,63 @@ const InstructorSchedule = () => {
         {Object.keys(groupedSchedules).length === 0 ? (
           <div className="text-center text-slate-400 py-10 bg-white rounded-xl border border-dashed">Chưa có lịch dạy nào trong tuần này</div>
         ) : (
-          Object.entries(groupedSchedules).map(([dateLabel, items]) => (
-            <div key={dateLabel} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
-                <span className="font-bold text-slate-700 uppercase text-sm">{dateLabel}</span>
-                <span className="text-xs font-medium bg-white px-2 py-1 rounded border text-slate-500">{items.length} ca</span>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {items.map((item) => (
-                  <div key={item._id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors group">
-                    <div className="flex items-center gap-4 w-full md:w-1/4">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg border border-indigo-100">{item.timeSlot}</div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">Ca {item.timeSlot}</p>
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase inline-block mt-1 ${item.type === 'THEORY' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{item.type || 'Thực hành'}</span>
+          (() => {
+            const dayKeys = Object.keys(groupedSchedules);
+            return Object.entries(groupedSchedules).map(([dateLabel, items], index) => {
+              const isExpanded = expandedLessonDay === dateLabel;
+              const handleToggle = () => {
+                if (isExpanded) {
+                  const nextIndex = index + 1;
+                  setExpandedLessonDay(nextIndex < dayKeys.length ? dayKeys[nextIndex] : null);
+                } else {
+                  setExpandedLessonDay(dateLabel);
+                }
+              };
+              return (
+                <div key={dateLabel} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="w-full bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center hover:bg-slate-100 transition-colors text-left"
+                  >
+                    <span className="font-bold text-slate-700 uppercase text-sm flex items-center gap-2">
+                      <span className="inline-block transition-transform text-slate-500">{isExpanded ? '▼' : '▶'}</span>
+                      {dateLabel}
+                    </span>
+                    <span className="text-xs font-medium bg-white px-2 py-1 rounded border text-slate-500">{items.length} ca</span>
+                  </button>
+                {isExpanded && (
+                  <div className="divide-y divide-slate-100">
+                    {items.map((item) => (
+                      <div key={item._id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors group">
+                        <div className="flex items-center gap-4 w-full md:w-1/4">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg border border-indigo-100">{item.timeSlot}</div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-500 uppercase">Ca {item.timeSlot}</p>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase inline-block mt-1 ${item.type === 'THEORY' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{item.type || 'Thực hành'}</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 border-l border-slate-100 pl-0 md:pl-4">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Học viên</p>
+                          <p className="font-semibold text-slate-800 text-sm">{item.learnerId?.fullName || 'N/A'}</p>
+                          <p className="text-xs text-slate-500">{item.learnerId?.phone}</p>
+                        </div>
+                        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${item.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : item.status === 'ABSENT' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                            {item.status === 'COMPLETED' ? 'Đã dạy' : item.status === 'ABSENT' ? 'Vắng mặt' : 'Chờ dạy'}
+                          </div>
+                          <Button size="sm" variant={item.status === 'BOOKED' ? 'primary' : 'ghost'} onClick={() => setlearnerDetailModal({ isOpen: true, data: item })}>
+                            Chi tiết
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 border-l border-slate-100 pl-0 md:pl-4">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Học viên</p>
-                      <p className="font-semibold text-slate-800 text-sm">{item.learnerId?.fullName || 'N/A'}</p>
-                      <p className="text-xs text-slate-500">{item.learnerId?.phone}</p>
-                    </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${item.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : item.status === 'ABSENT' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                        {item.status === 'COMPLETED' ? 'Đã dạy' : item.status === 'ABSENT' ? 'Vắng mặt' : 'Chờ dạy'}
-                      </div>
-                      <Button size="sm" variant={item.status === 'BOOKED' ? 'primary' : 'ghost'} onClick={() => setlearnerDetailModal({ isOpen: true, data: item })}>
-                        Chi tiết
-                      </Button>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))
+            );
+            });
+          })()
         )}
       </div>
 
@@ -457,7 +483,7 @@ const InstructorSchedule = () => {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-blue-800 text-sm">
-              📌 <strong>Lưu ý:</strong> Báo bận trong tuần hiện tại hoặc sau 18h thứ 6 sẽ tính là <strong>báo bận khẩn cấp</strong> và giới hạn 2 lần/tháng.
+              📌 <strong>Lưu ý:</strong> Báo bận <strong>trong tuần hiện tại</strong>, <strong>cuối tuần (Thứ 7-CN)</strong>, hoặc <strong>sau 18h thứ 6</strong> sẽ tính là <strong>báo bận khẩn cấp</strong> và giới hạn 2 lần/tháng.
             </p>
           </div>
 

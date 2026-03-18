@@ -5,6 +5,8 @@ import apiClient from "../../services/apiClient";
 import { TYPE_TITLES_Notification } from "../../constants";
 import { useToast } from "../../context/ToastContext";
 import Pagination from "../../components/common/Pagination";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+
 const AdminNotifications = () => {
   const { user } = useAuthContext();
   const [notifications, setNotifications] = useState([]);
@@ -29,6 +31,15 @@ const AdminNotifications = () => {
     expirationDays: 30,
   });
 
+  // Confirmation dialog states
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "default",
+  });
+
   useEffect(() => {
     loadNotifications();
   }, [filterType, currentPage]);
@@ -37,7 +48,9 @@ const AdminNotifications = () => {
     try {
       setLoading(true);
       const query = filterType ? `?type=${filterType}&` : "?";
-      const response = await apiClient.get(`/notifications${query}page=${currentPage}&limit=10`);
+      const response = await apiClient.get(
+        `/notifications${query}page=${currentPage}&limit=10`,
+      );
       if (response.status === "success") {
         setNotifications(response.data);
         if (response.pagination) {
@@ -45,7 +58,10 @@ const AdminNotifications = () => {
         }
       }
     } catch (err) {
-      throw new Error("Không thể tải thông báo: " + (err.response?.data?.message || "Lỗi hệ thống"));
+      throw new Error(
+        "Không thể tải thông báo: " +
+          (err.response?.data?.message || "Lỗi hệ thống"),
+      );
     } finally {
       setLoading(false);
     }
@@ -74,16 +90,33 @@ const AdminNotifications = () => {
     setShowCreateModal(true);
   };
 
-  const handleDeleteClick = async (e, id) => {
+  const handleDeleteClick = async (e, item) => {
     e.stopPropagation();
-    if (window.confirm("Bạn có chắc chắn muốn xóa thông báo này?")) {
-      try {
-        await apiClient.delete(`/notifications/${id}`);
-        loadNotifications();
-      } catch (error) {
-        showToast("Xóa thất bại");
-      }
-    }
+    // if (ConfirmDialog("Bạn có chắc chắn muốn xóa thông báo này?")) {
+    //   try {
+    //     await apiClient.delete(`/notifications/${item._id}`);
+    //     loadNotifications();
+    //   } catch (error) {
+    //     showToast("Xóa thất bại");
+    //   }
+    // }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: "Xác nhận xóa thông báo",
+      message: `Bạn có chắc chắn muốn xóa thông báo "${item.title}"?`,
+      type: "default",
+      onConfirm: async () => {
+        try {
+          await apiClient.delete(`/notifications/${item._id}`);
+          loadNotifications();
+          showToast(`Đã xóa thông báo ${item.title}`, "success");
+        } catch (error) {
+          showToast(error.message || "Xóa thông báo thất bại", "error");
+          throw error; // Rethrow for ConfirmDialog loading state
+        }
+      },
+    });
   };
 
   const handleSave = async (e) => {
@@ -208,7 +241,7 @@ const AdminNotifications = () => {
                     </svg>
                   </button>
                   <button
-                    onClick={(e) => handleDeleteClick(e, item._id)}
+                    onClick={(e) => handleDeleteClick(e, item)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-full"
                   >
                     <svg
@@ -230,7 +263,7 @@ const AdminNotifications = () => {
             ))}
           </div>
         )}
-        
+
         {!loading && notifications.length > 0 && (
           <div className="mt-6 border-t border-slate-100 pt-6">
             <Pagination
@@ -337,6 +370,16 @@ const AdminNotifications = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+      />
 
       {/* Detail Modal */}
       {showDetailModal && selectedNotification && (

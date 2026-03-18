@@ -18,7 +18,7 @@ const PUBLIC_NAV_ITEMS = [
 const getNavItems = (userRole) => {
   const allItems = [
     { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
-    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'learner'] },
+    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'learner', 'USER'] },
     { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['learner'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'learner'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['learner', 'USER'] },
@@ -26,6 +26,7 @@ const getNavItems = (userRole) => {
     { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT'] },
     { label: 'Lịch học', to: '/portal/schedule', roles: ['ADMIN', 'learner', 'INSTRUCTOR'] },
     { label: 'Ứng viên', to: '/portal/leads', roles: ['CONSULTANT'] },
+    { label: 'Đợt nộp phí', to: '/portal/fee-submissions', roles: ['ADMIN', 'CONSULTANT'] },
     { label: 'Quản trị', to: '/admin', roles: ['ADMIN'] },
     { label: 'Làm đơn', to: '/portal/letter', roles: ['learner'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
