@@ -10,6 +10,7 @@ const navItems = [
     { label: 'Người dùng', to: '/admin/users', icon: '👥' },
     { label: 'Khóa học', to: '/admin/courses', icon: '📚' },
     { label: 'Học phí', to: '/admin/payments', icon: '💳' },
+    { label: 'Đợt nộp phí', to: '/admin/fee-submissions', icon: '📑' },
     { label: 'Lương', to: '/admin/salary', icon: '💰' },
     { label: 'Thông báo', to: '/admin/notifications', icon: '📢' },
     { label: 'Đánh giá', to: '/admin/feedbacks', icon: '⭐' },

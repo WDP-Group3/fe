@@ -44,6 +44,7 @@ import AdminExamLocations from './pages/admin/AdminExamLocations';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminSalary from './pages/admin/AdminSalary';
 import Salary from './pages/Salary';
+import FeeSubmissions from './pages/FeeSubmissions';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -125,6 +126,7 @@ function App() {
                 <Route path="profile" element={<Profile />} />
                 <Route path="learner-dashboard" element={<LearnerDashboard />} />
                 <Route path="salary" element={<Salary />} />
+                <Route path="fee-submissions" element={<FeeSubmissions />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
@@ -150,6 +152,7 @@ function App() {
                 <Route path="learning-locations" element={<AdminLearningLocations />} />
                 <Route path="exam-locations" element={<AdminExamLocations />} />
                 <Route path="salary" element={<AdminSalary />} />
+                <Route path="fee-submissions" element={<FeeSubmissions />} />
               </Route>
             </Route>
 
