@@ -29,10 +29,18 @@ const AdminCourses = () => {
 
   // Pagination states
   const [coursesPage, setCoursesPage] = useState(1);
-  const [coursesPagination, setCoursesPagination] = useState({ total: 0, totalPages: 0, limit: 10 });
-  
+  const [coursesPagination, setCoursesPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    limit: 10,
+  });
+
   const [batchesPage, setBatchesPage] = useState(1);
-  const [batchesPagination, setBatchesPagination] = useState({ total: 0, totalPages: 0, limit: 10 });
+  const [batchesPagination, setBatchesPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    limit: 10,
+  });
 
   // Batch form state
   const [batchForm, setBatchForm] = useState({
@@ -90,12 +98,12 @@ const AdminCourses = () => {
 
   const loadExamLocations = async () => {
     try {
-      const res = await apiClient.get('/exam-locations/simple');
-      if (res.status === 'success') {
+      const res = await apiClient.get("/exam-locations/simple");
+      if (res.status === "success") {
         setExamLocations(res.data || []);
       }
     } catch (err) {
-      console.error('Error loading exam locations:', err);
+      console.error("Error loading exam locations:", err);
     }
   };
 
@@ -109,7 +117,9 @@ const AdminCourses = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get(`/courses?page=${coursesPage}&limit=${coursesPagination.limit}`);
+      const response = await apiClient.get(
+        `/courses?page=${coursesPage}&limit=${coursesPagination.limit}`,
+      );
       if (response.status === "success") {
         const mappedCourses = (response.data || []).map((course) => ({
           ...course,
@@ -138,23 +148,26 @@ const AdminCourses = () => {
       let queryParams = [];
       if (filters.courseId) queryParams.push(`courseId=${filters.courseId}`);
       if (filters.status) queryParams.push(`status=${filters.status}`);
-      if (filters.location) queryParams.push(`location=${encodeURIComponent(filters.location)}`);
+      if (filters.location)
+        queryParams.push(`location=${encodeURIComponent(filters.location)}`);
       queryParams.push(`page=${batchesPage}`);
       queryParams.push(`limit=${batchesPagination.limit}`);
 
-      const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
+      const queryString =
+        queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
       const response = await apiClient.get(`/batches${queryString}`);
-      
+
       let batchData = response?.data || [];
-      
+
       // Apply client-side search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        batchData = batchData.filter(b => 
-          b.name?.toLowerCase().includes(searchLower) ||
-          b.location?.toLowerCase().includes(searchLower) ||
-          b.courseId?.name?.toLowerCase().includes(searchLower) ||
-          b.courseId?.code?.toLowerCase().includes(searchLower)
+        batchData = batchData.filter(
+          (b) =>
+            b.name?.toLowerCase().includes(searchLower) ||
+            b.location?.toLowerCase().includes(searchLower) ||
+            b.courseId?.name?.toLowerCase().includes(searchLower) ||
+            b.courseId?.code?.toLowerCase().includes(searchLower),
         );
       }
 
@@ -162,24 +175,26 @@ const AdminCourses = () => {
       const batchesWithCourse = await Promise.all(
         batchData.map(async (batch) => {
           let courseInfo = batch.courseId;
-          if (typeof batch.courseId === 'string') {
+          if (typeof batch.courseId === "string") {
             try {
-              const courseRes = await apiClient.get(`/courses/${batch.courseId}`);
+              const courseRes = await apiClient.get(
+                `/courses/${batch.courseId}`,
+              );
               courseInfo = courseRes?.data || null;
             } catch (e) {
               console.error("Error loading course:", e);
             }
           }
-          
+
           // learnerCount is now provided by the getAllBatches API response
-          return { 
-            ...batch, 
-            courseInfo, 
-            learnerCount: batch.learnerCount || 0 
+          return {
+            ...batch,
+            courseInfo,
+            learnerCount: batch.learnerCount || 0,
           };
-        })
+        }),
       );
-      
+
       setBatches(batchesWithCourse);
       if (response.pagination) {
         setBatchesPagination(response.pagination);
@@ -208,7 +223,12 @@ const AdminCourses = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const locationStr = typeof formData.location === 'string' ? formData.location : (Array.isArray(formData.location) ? formData.location.join(', ') : '');
+      const locationStr =
+        typeof formData.location === "string"
+          ? formData.location
+          : Array.isArray(formData.location)
+            ? formData.location.join(", ")
+            : "";
       const payload = {
         ...formData,
         estimatedCost: Number(formData.estimatedCost),
@@ -310,7 +330,10 @@ const AdminCourses = () => {
     try {
       const payload = {
         ...batchForm,
-        courseId: batchForm.courseId || (editingBatch?.courseId?._id || editingBatch?.courseId),
+        courseId:
+          batchForm.courseId ||
+          editingBatch?.courseId?._id ||
+          editingBatch?.courseId,
         maxlearners: Number(batchForm.maxlearners) || 30,
         minlearners: Number(batchForm.minlearners) || 1,
         examLocationId: batchForm.examLocationId || null,
@@ -349,8 +372,10 @@ const AdminCourses = () => {
     setBatchForm({
       courseId: batch.courseId?._id || batch.courseId || "",
       name: batch.name || "",
-      startDate: batch.startDate ? batch.startDate.split('T')[0] : "",
-      estimatedEndDate: batch.estimatedEndDate ? batch.estimatedEndDate.split('T')[0] : "",
+      startDate: batch.startDate ? batch.startDate.split("T")[0] : "",
+      estimatedEndDate: batch.estimatedEndDate
+        ? batch.estimatedEndDate.split("T")[0]
+        : "",
       location: batch.location || "",
       examLocation: batch.examLocation || "",
       examLocationId: batch.examLocationId?._id || batch.examLocationId || "",
@@ -383,12 +408,12 @@ const AdminCourses = () => {
       const courseId = batch.courseId?._id || batch.courseId;
       // Chỉ lấy học viên đã nộp tiền đợt 1 và chưa được gán vào lớp nào
       const pendingRegRes = await apiClient.get(
-        `/registrations?courseId=${courseId}&unassigned=true&status=NEW,PROCESSING,WAITING&paidFirstInstallment=true`
+        `/registrations?courseId=${courseId}&unassigned=true&status=NEW,PROCESSING,WAITING&paidFirstInstallment=true`,
       );
 
       const eligiblelearners = (pendingRegRes?.data || [])
-        .map(reg => reg.learnerId)
-        .filter(learner => learner != null);
+        .map((reg) => reg.learnerId)
+        .filter((learner) => learner != null);
 
       setlearners(eligiblelearners);
     } catch (openError) {
@@ -429,7 +454,11 @@ const AdminCourses = () => {
     e.preventDefault();
     if (!editingCourse?._id) return;
 
-    if (!batchForm.startDate || !batchForm.estimatedEndDate || !batchForm.location) {
+    if (
+      !batchForm.startDate ||
+      !batchForm.estimatedEndDate ||
+      !batchForm.location
+    ) {
       showToast("Vui lòng nhập đủ thông tin lớp (batch)");
       return;
     }
@@ -460,7 +489,7 @@ const AdminCourses = () => {
 
       await loadCourseBatches(editingCourse._id);
       // Also reload all batches if active tab is batches
-      if (activeTab === 'batches') {
+      if (activeTab === "batches") {
         loadAllBatches();
       }
       showToast("Tạo lớp học thành công");
@@ -557,7 +586,7 @@ const AdminCourses = () => {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const clearFilters = () => {
@@ -570,7 +599,9 @@ const AdminCourses = () => {
   };
 
   // Get unique locations from batches for filter
-  const uniqueLocations = [...new Set(batches.map(b => b.location).filter(Boolean))];
+  const uniqueLocations = [
+    ...new Set(batches.map((b) => b.location).filter(Boolean)),
+  ];
 
   if (loading && courses.length === 0) {
     return (
@@ -778,14 +809,16 @@ const AdminCourses = () => {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            requiredPracticeHours: parseInt(e.target.value) || 0,
+                            requiredPracticeHours:
+                              parseInt(e.target.value) || 0,
                           })
                         }
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                         placeholder="VD: 10 giờ (0 = không giới hạn)"
                       />
                       <p className="text-xs text-slate-500 mt-1">
-                        Số giờ thực hành mà học viên cần hoàn thành để hoàn thành khóa học
+                        Số giờ thực hành mà học viên cần hoàn thành để hoàn
+                        thành khóa học
                       </p>
                     </div>
                   </div>
@@ -811,7 +844,10 @@ const AdminCourses = () => {
                       rows="3"
                       value={formData.description}
                       onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
                       }
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                     ></textarea>
@@ -882,7 +918,11 @@ const AdminCourses = () => {
                               placeholder="Ghi chú"
                               value={payment.note}
                               onChange={(e) =>
-                                handlePaymentChange(index, "note", e.target.value)
+                                handlePaymentChange(
+                                  index,
+                                  "note",
+                                  e.target.value,
+                                )
                               }
                               className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                             />
@@ -898,7 +938,6 @@ const AdminCourses = () => {
                       ))}
                     </div>
                   </div>
-
                 </form>
                 <div className="sticky bottom-0 left-0 right-0 bg-white border-t p-4 flex gap-3 z-[999]">
                   <button
@@ -933,15 +972,28 @@ const AdminCourses = () => {
                     className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm"
                   >
                     <div className="flex items-center justify-between">
-                      <StatusBadge status="done" label={course.level || "Mở đăng ký"} />
+                      <StatusBadge
+                        status="done"
+                        label={course.level || "Mở đăng ký"}
+                      />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(course)}
                           className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
                           title="Sửa"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            ></path>
                           </svg>
                         </button>
                         <button
@@ -949,8 +1001,18 @@ const AdminCourses = () => {
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded-full"
                           title="Xóa"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            ></path>
                           </svg>
                         </button>
                       </div>
@@ -1001,14 +1063,16 @@ const AdminCourses = () => {
                           </p>
                         ))
                       ) : (
-                        <p className="text-slate-500 italic text-xs">Phí nộp 1 lần</p>
+                        <p className="text-slate-500 italic text-xs">
+                          Phí nộp 1 lần
+                        </p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-6">
-                <Pagination 
+                <Pagination
                   currentPage={coursesPage}
                   totalPages={coursesPagination.totalPages}
                   onPageChange={setCoursesPage}
@@ -1053,11 +1117,24 @@ const AdminCourses = () => {
           {/* Filters */}
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="flex items-center gap-2 mb-4">
-              <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+              <svg
+                className="w-5 h-5 text-slate-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                ></path>
               </svg>
               <span className="font-medium text-slate-700">Bộ lọc</span>
-              {(filters.courseId || filters.status || filters.location || filters.search) && (
+              {(filters.courseId ||
+                filters.status ||
+                filters.location ||
+                filters.search) && (
                 <button
                   onClick={clearFilters}
                   className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
@@ -1068,10 +1145,14 @@ const AdminCourses = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Khoá học</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Khoá học
+                </label>
                 <select
                   value={filters.courseId}
-                  onChange={(e) => handleFilterChange("courseId", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("courseId", e.target.value)
+                  }
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 >
                   <option value="">Tất cả khoá học</option>
@@ -1083,7 +1164,9 @@ const AdminCourses = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Trạng thái</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Trạng thái
+                </label>
                 <select
                   value={filters.status}
                   onChange={(e) => handleFilterChange("status", e.target.value)}
@@ -1095,20 +1178,28 @@ const AdminCourses = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Địa điểm</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Địa điểm
+                </label>
                 <select
                   value={filters.location}
-                  onChange={(e) => handleFilterChange("location", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("location", e.target.value)
+                  }
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 >
                   <option value="">Tất cả địa điểm</option>
                   {uniqueLocations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Tìm kiếm</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Tìm kiếm
+                </label>
                 <input
                   type="text"
                   placeholder="Tên lớp, địa điểm..."
@@ -1127,8 +1218,18 @@ const AdminCourses = () => {
             </div>
           ) : batches.length === 0 ? (
             <div className="text-center py-12 text-slate-500 bg-white rounded-xl border border-slate-200">
-              <svg className="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+              <svg
+                className="w-12 h-12 mx-auto text-slate-300 mb-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                ></path>
               </svg>
               <p>Chưa có lớp học nào</p>
               <button
@@ -1158,34 +1259,62 @@ const AdminCourses = () => {
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tên lớp</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Khoá học</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Thời gian</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Địa điểm</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Học viên</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Trạng thái</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Thao tác</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Tên lớp
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Khoá học
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Thời gian
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Địa điểm
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Học viên
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {batches.map((batch, idx) => (
-                    <tr key={`${batch._id}-${idx}`} className="hover:bg-slate-50">
+                    <tr
+                      key={`${batch._id}-${idx}`}
+                      className="hover:bg-slate-50"
+                    >
                       <td className="px-6 py-4">
-                        <p className="font-medium text-slate-900">{batch.name || "Lớp không tên"}</p>
+                        <p className="font-medium text-slate-900">
+                          {batch.name || "Lớp không tên"}
+                        </p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-slate-700">
-                          {batch.courseInfo?.name || batch.courseId?.name || "—"}
+                          {batch.courseInfo?.name ||
+                            batch.courseId?.name ||
+                            "—"}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {batch.courseInfo?.code || batch.courseId?.code || "—"}
+                          {batch.courseInfo?.code ||
+                            batch.courseId?.code ||
+                            "—"}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {batch.startDate && batch.estimatedEndDate ? (
                           <>
-                            {new Date(batch.startDate).toLocaleDateString("vi-VN")} →{" "}
-                            {new Date(batch.estimatedEndDate).toLocaleDateString("vi-VN")}
+                            {new Date(batch.startDate).toLocaleDateString(
+                              "vi-VN",
+                            )}{" "}
+                            →{" "}
+                            {new Date(
+                              batch.estimatedEndDate,
+                            ).toLocaleDateString("vi-VN")}
                           </>
                         ) : (
                           "—"
@@ -1195,16 +1324,19 @@ const AdminCourses = () => {
                         <div>Học: {batch.location || "—"}</div>
                         {(batch.examLocationId?.name || batch.examLocation) && (
                           <div className="mt-1">
-                            Thi: {batch.examLocationId?.name || batch.examLocation}
+                            Thi:{" "}
+                            {batch.examLocationId?.name || batch.examLocation}
                           </div>
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          batch.learnerCount >= (batch.maxlearners || 30)
-                            ? "bg-red-100 text-red-800"
-                            : "bg-green-100 text-green-800"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            batch.learnerCount >= (batch.maxlearners || 30)
+                              ? "bg-red-100 text-red-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
                           {batch.learnerCount || 0} / {batch.maxlearners || 30}
                         </span>
                       </td>
@@ -1213,15 +1345,17 @@ const AdminCourses = () => {
                           value={batch.status}
                           onChange={async (e) => {
                             try {
-                              await apiClient.put(`/batches/${batch._id}`, { status: e.target.value });
+                              await apiClient.put(`/batches/${batch._id}`, {
+                                status: e.target.value,
+                              });
                               loadAllBatches();
                             } catch (err) {
                               showToast("Lỗi cập nhật trạng thái", "error");
                             }
                           }}
                           className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${
-                            batch.status === "OPEN" 
-                              ? "bg-green-100 text-green-800" 
+                            batch.status === "OPEN"
+                              ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
                           }`}
                         >
@@ -1243,8 +1377,18 @@ const AdminCourses = () => {
                             className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
                             title="Sửa"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              ></path>
                             </svg>
                           </button>
                           <button
@@ -1252,8 +1396,18 @@ const AdminCourses = () => {
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                             title="Xóa"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              ></path>
                             </svg>
                           </button>
                         </div>
@@ -1263,7 +1417,7 @@ const AdminCourses = () => {
                 </tbody>
               </table>
               <div className="px-6 py-4 border-t border-slate-200">
-                <Pagination 
+                <Pagination
                   currentPage={batchesPage}
                   totalPages={batchesPagination.totalPages}
                   onPageChange={setBatchesPage}
@@ -1289,7 +1443,9 @@ const AdminCourses = () => {
                 <select
                   required
                   value={batchForm.courseId}
-                  onChange={(e) => setBatchForm({ ...batchForm, courseId: e.target.value })}
+                  onChange={(e) =>
+                    setBatchForm({ ...batchForm, courseId: e.target.value })
+                  }
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 >
                   <option value="">-- Chọn khoá học --</option>
@@ -1306,7 +1462,9 @@ const AdminCourses = () => {
                 </label>
                 <input
                   value={batchForm.name}
-                  onChange={(e) => setBatchForm({ ...batchForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setBatchForm({ ...batchForm, name: e.target.value })
+                  }
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   placeholder="VD: Lớp A1 - Sáng thứ 2"
                 />
@@ -1320,7 +1478,9 @@ const AdminCourses = () => {
                     type="date"
                     required
                     value={batchForm.startDate}
-                    onChange={(e) => setBatchForm({ ...batchForm, startDate: e.target.value })}
+                    onChange={(e) =>
+                      setBatchForm({ ...batchForm, startDate: e.target.value })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
@@ -1332,48 +1492,54 @@ const AdminCourses = () => {
                     type="date"
                     required
                     value={batchForm.estimatedEndDate}
-                    onChange={(e) => setBatchForm({ ...batchForm, estimatedEndDate: e.target.value })}
+                    onChange={(e) =>
+                      setBatchForm({
+                        ...batchForm,
+                        estimatedEndDate: e.target.value,
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Địa điểm
-                </label>
-                <input
-                  required
-                  value={batchForm.location}
-                  onChange={(e) => setBatchForm({ ...batchForm, location: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  placeholder="VD: 123 Nguyễn Trãi, Q1, TP.HCM"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Trường sát hạch (Tuỳ chọn)
-                </label>
-                <select
-                  value={batchForm.examLocationId}
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    const selectedLocation = examLocations.find(loc => loc._id === selectedId);
-                    setBatchForm({
-                      ...batchForm,
-                      examLocationId: selectedId,
-                      examLocation: selectedLocation?.address || '',
-                    });
-                  }}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                >
-                  <option value="">-- Chọn trường sát hạch --</option>
-                  {examLocations.map((loc) => (
-                    <option key={loc._id} value={loc._id}>
-                      {loc.name} {loc.address ? `(${loc.address})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={batchForm.examLocationId}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  // Tìm location trong danh sách
+                  const selectedLocation = examLocations.find(
+                    (loc) => loc._id === selectedId,
+                  );
+
+                  setBatchForm((prev) => ({
+                    ...prev,
+                    examLocationId: selectedId,
+                    // Ưu tiên lấy googleMapUrl, nếu không có thì lấy address, nếu không có nữa thì để trống
+                    location: selectedLocation
+                      ? selectedLocation.googleMapUrl || selectedLocation.address || ""
+                      : prev.location,
+                  }));
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              >
+                <option value="">-- Chọn trường sát hạch --</option>
+                {examLocations.map((loc) => (
+                  <option key={loc._id} value={loc._id}>
+                    {loc.name} - {loc.address}
+                  </option>
+                ))}
+              </select>
+
+              {/* Ô Địa điểm bên dưới */}
+              <input
+                required
+                value={batchForm.location || ""} // Thêm || "" để tránh lỗi controlled/uncontrolled
+                onChange={(e) =>
+                  setBatchForm({ ...batchForm, location: e.target.value })
+                }
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                placeholder="VD: 123 Nguyễn Trãi, Q1, TP.HCM"
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -1382,7 +1548,12 @@ const AdminCourses = () => {
                   <input
                     type="number"
                     value={batchForm.minlearners}
-                    onChange={(e) => setBatchForm({ ...batchForm, minlearners: parseInt(e.target.value) || 1 })}
+                    onChange={(e) =>
+                      setBatchForm({
+                        ...batchForm,
+                        minlearners: parseInt(e.target.value) || 1,
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                     min={1}
                   />
@@ -1394,7 +1565,12 @@ const AdminCourses = () => {
                   <input
                     type="number"
                     value={batchForm.maxlearners}
-                    onChange={(e) => setBatchForm({ ...batchForm, maxlearners: parseInt(e.target.value) || 30 })}
+                    onChange={(e) =>
+                      setBatchForm({
+                        ...batchForm,
+                        maxlearners: parseInt(e.target.value) || 30,
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
@@ -1405,7 +1581,9 @@ const AdminCourses = () => {
                 </label>
                 <select
                   value={batchForm.status}
-                  onChange={(e) => setBatchForm({ ...batchForm, status: e.target.value })}
+                  onChange={(e) =>
+                    setBatchForm({ ...batchForm, status: e.target.value })
+                  }
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 >
                   <option value="OPEN">Mở</option>
@@ -1445,7 +1623,11 @@ const AdminCourses = () => {
             <p className="mt-1 text-sm text-slate-600">
               Lớp: <span className="font-semibold">{assigningBatch?.name}</span>
               <br />
-              Khoá học: <span className="font-semibold">{assigningBatch?.courseInfo?.name || assigningBatch?.courseId?.name}</span>
+              Khoá học:{" "}
+              <span className="font-semibold">
+                {assigningBatch?.courseInfo?.name ||
+                  assigningBatch?.courseId?.name}
+              </span>
             </p>
 
             <form className="mt-4 space-y-4" onSubmit={handleAssignlearner}>
@@ -1456,7 +1638,12 @@ const AdminCourses = () => {
                 <select
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   value={assignForm.learnerId}
-                  onChange={(e) => setAssignForm((prev) => ({ ...prev, learnerId: e.target.value }))}
+                  onChange={(e) =>
+                    setAssignForm((prev) => ({
+                      ...prev,
+                      learnerId: e.target.value,
+                    }))
+                  }
                   required
                   disabled={assignLoading}
                 >
