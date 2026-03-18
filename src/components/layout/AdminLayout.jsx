@@ -9,6 +9,7 @@ const navItems = [
   { label: "Người dùng", to: "/admin/users", icon: "👥" },
   { label: "Khóa học", to: "/admin/courses", icon: "📚" },
   { label: "Học phí", to: "/admin/payments", icon: "💳" },
+  { label: "Đợt nộp phí", to: "/admin/fee-submissions", icon: "📑" },
   { label: "Lương", to: "/admin/salary", icon: "💰" },
   { label: "Thông báo", to: "/admin/notifications", icon: "📢" },
   { label: "Đánh giá", to: "/admin/feedbacks", icon: "⭐" },
@@ -39,7 +40,10 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1 hide-scrollbar [mask-image:linear-gradient(to_bottom,transparent,black_5%,black_95%,transparent)]">
+      <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white shadow-xl flex flex-col">
+        {/* Thêm flex flex-col ở trên để quản lý chiều cao dọc */}
+
+        {/* Header: Cố định */}
         <div className="flex h-16 shrink-0 items-center gap-3 px-6 border-b border-slate-800">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white font-bold shadow-md">
             AD
@@ -102,7 +106,8 @@ const AdminLayout = () => {
             </div>
           )}
         </div>
-      </nav>
+      </aside>
+
       <main className="ml-64 flex-1 p-8">
         <Outlet />
       </main>
