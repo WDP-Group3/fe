@@ -81,7 +81,7 @@ const Overview = () => {
 
 
       {/* Stats Section with Images */}
-      <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-indigo-50/30 to-white p-6 shadow-sm backdrop-blur">
+      {/* <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-indigo-50/30 to-white p-6 shadow-sm backdrop-blur">
         <SectionHeader
           title="Tổng quan vận hành"
           description="Theo dõi tiến độ học viên, lịch học và công nợ"
@@ -112,132 +112,135 @@ const Overview = () => {
             icon={cancelIcon}
           />
         </div>
-      </div>
+      </div> */}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-        {/* Payment Section with Image */}
-        <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-emerald-50/20 to-white p-6 shadow-sm backdrop-blur">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-emerald-100/50 blur-3xl" />
-          <SectionHeader
-            title="Thanh toán theo đợt"
-            description="Chia đợt, nhắc phí tự động, staff xác nhận giao dịch"
-            action={
-              <Button variant="outline" size="sm">
-                Tạo phiếu thu
-              </Button>
-            }
-          />
-          <div className="relative z-10 mt-4">
-            <DataTable columns={paymentColumns} data={paymentSchedule} />
-          </div>
-        </div>
-
-        {/* Schedule Section with Images */}
-        <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-indigo-50/20 to-white p-6 shadow-sm backdrop-blur">
-          <div className="absolute left-0 bottom-0 h-32 w-32 translate-y-8 -translate-x-8 rounded-full bg-indigo-100/50 blur-3xl" />
-          <SectionHeader
-            title="Lịch học sắp tới"
-            description="Tránh trùng lịch giáo viên, xe, học viên"
-            action={
-              <Link to="/portal/schedule">
-                <Button variant="outline" size="sm">
-                  Xem lịch
-                </Button>
-              </Link>
-            }
-          />
-          <div className="relative z-10 mt-4 space-y-4">
-            {sessions.slice(0, 4).map((item) => (
-              <div 
-                key={item.id} 
-                className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white/80 p-4 backdrop-blur transition-all hover:border-indigo-200 hover:shadow-md"
-              >
-                <div className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-gradient-to-br from-indigo-100/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <div className="relative flex items-center gap-4">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white shadow-sm">
-                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-slate-900">{item.type}</p>
-                    <p className="text-xs text-slate-500">
-                      {item.date} · {item.time}
-                    </p>
-                    <p className="text-xs text-slate-500">{item.instructor} · {item.location}</p>
-                  </div>
-                  <StatusBadge status="doing" label="Đủ xe + GV" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Section with Visual Elements */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-sky-50/30 to-white p-6 shadow-sm backdrop-blur">
-        <div className="absolute right-0 top-0 h-40 w-40 -translate-y-12 translate-x-12 rounded-full bg-sky-100/50 blur-3xl" />
-        <SectionHeader
-          title="Tiến độ hồ sơ"
-          description="Học viên và staff cùng xem trạng thái"
-          action={<span className="text-sm text-slate-500">Cập nhật 08/01/2026</span>}
-        />
-        <div className="relative z-10 mt-4 grid gap-4 md:grid-cols-3">
-          {[
-            { 
-              title: 'Học viên đủ hồ sơ', 
-              value: 76,
-              icon: '✅',
-              color: 'emerald',
-              image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop',
-            },
-            { 
-              title: 'Chờ khám sức khoẻ', 
-              value: 18,
-              icon: '⏳',
-              color: 'amber',
-              image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=300&fit=crop',
-            },
-            { 
-              title: 'Chưa liên lạc >7 ngày', 
-              value: 6,
-              icon: '⚠️',
-              color: 'rose',
-              image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=300&fit=crop',
-            },
-          ].map((item) => (
-            <div 
-              key={item.title} 
-              className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md"
-            >
-              <div 
-                className="absolute inset-0 bg-cover bg-center opacity-5 transition-opacity group-hover:opacity-10"
-                style={{ backgroundImage: `url(${item.image})` }}
+      {false && (
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+            {/* Payment Section with Image */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-emerald-50/20 to-white p-6 shadow-sm backdrop-blur">
+              <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-emerald-100/50 blur-3xl" />
+              <SectionHeader
+                title="Thanh toán theo đợt"
+                description="Chia đợt, nhắc phí tự động, staff xác nhận giao dịch"
+                action={
+                  <Button variant="outline" size="sm">
+                    Tạo phiếu thu
+                  </Button>
+                }
               />
-              <div className="relative flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="text-xl">{item.icon}</span>
-                    <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+              <div className="relative z-10 mt-4">
+                <DataTable columns={paymentColumns} data={paymentSchedule} />
+              </div>
+            </div>
+
+            {/* Schedule Section with Images */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-indigo-50/20 to-white p-6 shadow-sm backdrop-blur">
+              <div className="absolute left-0 bottom-0 h-32 w-32 translate-y-8 -translate-x-8 rounded-full bg-indigo-100/50 blur-3xl" />
+              <SectionHeader
+                title="Lịch học sắp tới"
+                description="Tránh trùng lịch giáo viên, xe, học viên"
+                action={
+                  <Link to="/portal/schedule">
+                    <Button variant="outline" size="sm">
+                      Xem lịch
+                    </Button>
+                  </Link>
+                }
+              />
+              <div className="relative z-10 mt-4 space-y-4">
+                {sessions.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id}
+                    className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white/80 p-4 backdrop-blur transition-all hover:border-indigo-200 hover:shadow-md"
+                  >
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-gradient-to-br from-indigo-100/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="relative flex items-center gap-4">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white shadow-sm">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900">{item.type}</p>
+                        <p className="text-xs text-slate-500">
+                          {item.date} · {item.time}
+                        </p>
+                        <p className="text-xs text-slate-500">{item.instructor} · {item.location}</p>
+                      </div>
+                      <StatusBadge status="doing" label="Đủ xe + GV" />
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className={`text-2xl font-bold ${
-                      item.color === 'emerald' ? 'text-emerald-700' :
-                      item.color === 'amber' ? 'text-amber-700' :
-                      'text-rose-700'
-                    }`}>
-                      {item.value}
-                    </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Section with Visual Elements */}
+          <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-br from-white via-sky-50/30 to-white p-6 shadow-sm backdrop-blur">
+            <div className="absolute right-0 top-0 h-40 w-40 -translate-y-12 translate-x-12 rounded-full bg-sky-100/50 blur-3xl" />
+            <SectionHeader
+              title="Tiến độ hồ sơ"
+              description="Học viên và staff cùng xem trạng thái"
+              action={<span className="text-sm text-slate-500">Cập nhật 08/01/2026</span>}
+            />
+            <div className="relative z-10 mt-4 grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  title: 'Học viên đủ hồ sơ',
+                  value: 76,
+                  icon: '✅',
+                  color: 'emerald',
+                  image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop',
+                },
+                {
+                  title: 'Chờ khám sức khoẻ',
+                  value: 18,
+                  icon: '⏳',
+                  color: 'amber',
+                  image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=300&fit=crop',
+                },
+                {
+                  title: 'Chưa liên lạc >7 ngày',
+                  value: 6,
+                  icon: '⚠️',
+                  color: 'rose',
+                  image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=300&fit=crop',
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md"
+                >
+                  <div
+                    className="absolute inset-0 bg-cover bg-center opacity-5 transition-opacity group-hover:opacity-10"
+                    style={{ backgroundImage: `url(${item.image})` }}
+                  />
+                  <div className="relative flex items-start justify-between">
                     <div className="flex-1">
-                      <ProgressBar value={item.value} />
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-xl">{item.icon}</span>
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className={`text-2xl font-bold ${item.color === 'emerald' ? 'text-emerald-700' :
+                          item.color === 'amber' ? 'text-amber-700' :
+                            'text-rose-700'
+                          }`}>
+                          {item.value}
+                        </span>
+                        <div className="flex-1">
+                          <ProgressBar value={item.value} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Quick Actions with Images */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

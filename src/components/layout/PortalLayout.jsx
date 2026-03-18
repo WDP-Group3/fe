@@ -39,7 +39,7 @@ const getNavItems = (userRole) => {
   return allItems.filter((item) => item.roles.includes(userRole));
 };
 
-const PortalLayout = ({ children }) => {
+const PortalLayout = ({ children, hideNav = false }) => {
   const { user, logout } = useAuthContext();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -134,27 +134,29 @@ const PortalLayout = ({ children }) => {
             )}
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-full items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `relative whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100'
-                  }`
-                }
-              >
-                {item.label}
-                {item.to === '/portal/notifications' && unreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-                )}
-              </NavLink>
-            ))}
+        {!hideNav && (
+          <div className="border-t border-slate-100 bg-white">
+            <div className="mx-auto flex max-w-full items-center gap-2 overflow-x-auto px-4 py-2 xl:ml-64 xl:mr-64">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `relative whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-slate-600 hover:bg-slate-100'
+                    }`
+                  }
+                >
+                  {item.label}
+                  {item.to === '/portal/notifications' && unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                  )}
+                </NavLink>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-full px-4 py-8 xl:ml-64 xl:mr-64">
