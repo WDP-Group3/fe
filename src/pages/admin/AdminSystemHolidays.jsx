@@ -43,10 +43,10 @@ const AdminSystemHolidays = () => {
     try {
       setLoading(true);
       const res = await axios.get(`/system-holidays?page=${currentPage}&limit=10`);
-      // Backend trả về { status: 'success', data: [...], pagination: {...} }
-      setHolidays(res?.data?.data || []);
-      if (res?.data?.pagination) {
-        setPagination(res.data.pagination);
+      // Backend trả về { status: 'success', data: [...], pagination: {...} }; axios đã return response.data nên res = body
+      setHolidays(Array.isArray(res?.data) ? res.data : (res?.data?.data || []));
+      if (res?.pagination) {
+        setPagination(res.pagination);
       }
     } catch (error) {
       console.error('Lỗi khi tải lịch nghỉ:', error);
@@ -212,7 +212,7 @@ const AdminSystemHolidays = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">
               {editingId ? 'Sửa lịch nghỉ' : 'Thêm lịch nghỉ'}
@@ -255,6 +255,7 @@ const AdminSystemHolidays = () => {
                   <input
                     type="date"
                     required
+                    min={new Date().toISOString().split('T')[0]}
                     className="w-full border rounded-lg px-3 py-2"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -265,6 +266,7 @@ const AdminSystemHolidays = () => {
                   <input
                     type="date"
                     required
+                    min={formData.startDate || new Date().toISOString().split('T')[0]}
                     className="w-full border rounded-lg px-3 py-2"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}

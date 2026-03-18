@@ -37,6 +37,9 @@ const Schedule = () => {
   // [MỚI] Trạng thái mở đăng ký tuần sau
   const [bookingStatus, setBookingStatus] = useState({ isNextWeekOpen: false, message: '' });
 
+  // Dropdown Chi tiết các buổi học: chỉ 1 thứ mở tại một thời điểm (dateLabel hoặc null)
+  const [expandedSessionDay, setExpandedSessionDay] = useState(null);
+
   // Modals
   const [confirmBookingModal, setConfirmBookingModal] = useState({ isOpen: false, data: null, type: 'PRACTICE' });
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, bookingId: null, rating: 5, comment: '' });
@@ -434,40 +437,63 @@ const Schedule = () => {
             {!selectedInstructor && <div className="mt-2 text-xs">Lưu ý: Bạn có thể đổi tuần ở nút "Tuần trước/Tuần sau" phía trên để xem lịch sử hoặc tương lai.</div>}
           </div>
         ) : (
-          Object.entries(groupedSessions).map(([dateLabel, items]) => (
-            <div key={dateLabel} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
-                <span className="font-bold text-slate-700 uppercase text-sm">{dateLabel}</span>
-                <span className="text-xs font-medium bg-white px-2 py-1 rounded border text-slate-500">{items.length} buổi</span>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {items.map((item) => (
-                  <div key={item._id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg">{item.timeSlot}</div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">Ca {item.timeSlot}</p>
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${item.type === 'THEORY' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{item.type === 'THEORY' ? 'Lý thuyết' : 'Thực hành'}</span>
+          (() => {
+            const dayKeys = Object.keys(groupedSessions);
+            return Object.entries(groupedSessions).map(([dateLabel, items], index) => {
+              const isExpanded = expandedSessionDay === dateLabel;
+              const handleToggle = () => {
+                if (isExpanded) {
+                  const nextIndex = index + 1;
+                  setExpandedSessionDay(nextIndex < dayKeys.length ? dayKeys[nextIndex] : null);
+                } else {
+                  setExpandedSessionDay(dateLabel);
+                }
+              };
+              return (
+                <div key={dateLabel} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="w-full bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center hover:bg-slate-100 transition-colors text-left"
+                  >
+                    <span className="font-bold text-slate-700 uppercase text-sm flex items-center gap-2">
+                      <span className="inline-block transition-transform text-slate-500">{isExpanded ? '▼' : '▶'}</span>
+                      {dateLabel}
+                    </span>
+                    <span className="text-xs font-medium bg-white px-2 py-1 rounded border text-slate-500">{items.length} buổi</span>
+                  </button>
+                  {isExpanded && (
+                  <div className="divide-y divide-slate-100">
+                    {items.map((item) => (
+                      <div key={item._id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg">{item.timeSlot}</div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">Ca {item.timeSlot}</p>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${item.type === 'THEORY' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{item.type === 'THEORY' ? 'Lý thuyết' : 'Thực hành'}</span>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-400 uppercase font-bold">Giáo viên</p>
+                          <p className="font-semibold text-slate-800">{item.instructorId?.fullName}</p>
+                          <p className="text-xs text-slate-500">{item.instructorId?.phone}</p>
+                        </div>
+                        <div className="flex items-center gap-3 justify-end">
+                          <div className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'ABSENT' ? 'bg-red-100 text-red-700' : item.status === 'CANCELLED' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                            {item.status === 'COMPLETED' ? 'Hoàn thành' : (item.status === 'ABSENT' ? 'Vắng' : (item.status === 'CANCELLED' ? 'Đã hủy' : 'Chờ học'))}
+                          </div>
+                          {item.status === 'BOOKED' && <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => handleCancel(item._id, item.date, item.timeSlot)}>Hủy</Button>}
+                          {item.status === 'COMPLETED' && !item.rating && <Button size="sm" className="bg-yellow-500 text-white border-none" onClick={() => setFeedbackModal({ isOpen: true, bookingId: item._id, rating: 5, comment: '' })}>Đánh giá</Button>}
+                          {item.rating && <span className="text-yellow-500 font-bold">⭐ {item.rating}</span>}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-400 uppercase font-bold">Giáo viên</p>
-                      <p className="font-semibold text-slate-800">{item.instructorId?.fullName}</p>
-                      <p className="text-xs text-slate-500">{item.instructorId?.phone}</p>
-                    </div>
-                    <div className="flex items-center gap-3 justify-end">
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'ABSENT' ? 'bg-red-100 text-red-700' : item.status === 'CANCELLED' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
-                        {item.status === 'COMPLETED' ? 'Hoàn thành' : (item.status === 'ABSENT' ? 'Vắng' : (item.status === 'CANCELLED' ? 'Đã hủy' : 'Chờ học'))}
-                      </div>
-                      {item.status === 'BOOKED' && <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => handleCancel(item._id, item.date, item.timeSlot)}>Hủy</Button>}
-                      {item.status === 'COMPLETED' && !item.rating && <Button size="sm" className="bg-yellow-500 text-white border-none" onClick={() => setFeedbackModal({ isOpen: true, bookingId: item._id, rating: 5, comment: '' })}>Đánh giá</Button>}
-                      {item.rating && <span className="text-yellow-500 font-bold">⭐ {item.rating}</span>}
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))
+            );
+            });
+          })()
         )}
       </div>
 

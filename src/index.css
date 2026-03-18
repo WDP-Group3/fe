@@ -25,3 +25,21 @@
     @apply bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-semibold;
   }
 }
+
+/* Custom scrollbar cho riêng vùng nav */
+nav.flex-1::-webkit-scrollbar {
+    width: 5px; /* Độ rộng cực mỏng */
+}
+
+nav.flex-1::-webkit-scrollbar-track {
+    background: transparent; 
+}
+
+nav.flex-1::-webkit-scrollbar-thumb {
+    background: #ed4532; /* Màu slate-700 để tiệp với nền */
+    border-radius: 5px;
+}
+
+nav.flex-1::-webkit-scrollbar-thumb:hover {
+    background: #e6200a; /* Sáng lên một chút khi hover */
+}
