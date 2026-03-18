@@ -1,49 +1,50 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./context/AuthProvider";
-import { ToastProvider } from "./context/ToastContext";
-import { useAuthContext } from "./context/AuthContext";
-import Landing from "./pages/Landing";
-import PortalLayout from "./components/layout/PortalLayout";
-import AdminLayout from "./components/layout/AdminLayout";
-import Overview from "./pages/Overview";
-import Courses from "./pages/Courses";
-import Enrollment from "./pages/Enrollment";
-import Payments from "./pages/Payments";
-import PaymentQr from "./pages/PaymentQr";
-import Schedule from "./pages/Schedule";
-import Exams from "./pages/Exams";
-import ExamTaking from "./pages/ExamTaking";
-import ExamResult from "./pages/ExamResult";
-import Notifications from "./pages/Notifications";
-import Reports from "./pages/admin/Reports";
-import UserManagement from "./pages/admin/UserManagement";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminCourses from "./pages/admin/AdminCourses";
-import AdminNotifications from "./pages/admin/AdminNotifications";
-import AdminFeedbacks from "./pages/admin/AdminFeedbacks";
-import Feedback from "./pages/Feedback";
-import Leads from "./pages/Lead";
-import Profile from "./pages/Profile";
-import LetterRequest from "./pages/LetterRequest";
-import LetterRequestManagement from "./pages/admin/LetterRequestManagement";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import CourseDetail from "./pages/CourseDetail";
-import CourseUser from "./pages/CourseUser";
-import Blogs from "./pages/Blogs";
-import BlogDetails from "./pages/BlogDetails";
-import ProtectedRoute from "./components/common/ProtectedRoute";
-import InstructorSchedule from "./pages/instructor/InstructorSchedule";
-import AdminBlogs from "./pages/admin/AdminBlogs";
-import DocumentApproval from "./pages/DocumentApproval";
-import LearnerDashboard from "./pages/LearnerDashboard";
-import AdminSystemHolidays from "./pages/admin/AdminSystemHolidays";
-import AdminLearningLocations from "./pages/admin/AdminLearningLocations";
-import AdminExamLocations from "./pages/admin/AdminExamLocations";
-import AdminPayments from "./pages/admin/AdminPayments";
-import AdminSalary from "./pages/admin/AdminSalary";
-import Salary from "./pages/Salary";
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './context/AuthProvider';
+import { ToastProvider } from './context/ToastContext';
+import { useAuthContext } from './context/AuthContext';
+import Landing from './pages/Landing';
+import PortalLayout from './components/layout/PortalLayout';
+import AdminLayout from './components/layout/AdminLayout';
+import Overview from './pages/Overview';
+import Courses from './pages/Courses';
+import Enrollment from './pages/Enrollment';
+import Payments from './pages/Payments';
+import PaymentQr from './pages/PaymentQr';
+import Schedule from './pages/Schedule';
+import Exams from './pages/Exams';
+import ExamTaking from './pages/ExamTaking';
+import ExamResult from './pages/ExamResult';
+import Notifications from './pages/Notifications';
+import Reports from './pages/admin/Reports';
+import UserManagement from './pages/admin/UserManagement';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminCourses from './pages/admin/AdminCourses';
+import AdminNotifications from './pages/admin/AdminNotifications';
+import AdminFeedbacks from './pages/admin/AdminFeedbacks';
+import Feedback from './pages/Feedback';
+import Leads from './pages/Lead';
+import Profile from './pages/Profile';
+import LetterRequest from './pages/LetterRequest';
+import LetterRequestManagement from './pages/admin/LetterRequestManagement';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import CourseDetail from './pages/CourseDetail';
+import CourseUser from './pages/CourseUser';
+import Blogs from './pages/Blogs';
+import BlogDetails from './pages/BlogDetails';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import InstructorSchedule from './pages/instructor/InstructorSchedule';
+import AdminBlogs from './pages/admin/AdminBlogs';
+import DocumentApproval from './pages/DocumentApproval';
+import LearnerDashboard from './pages/LearnerDashboard';
+import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
+import AdminLearningLocations from './pages/admin/AdminLearningLocations';
+import AdminExamLocations from './pages/admin/AdminExamLocations';
+import AdminPayments from './pages/admin/AdminPayments';
+import AdminSalary from './pages/admin/AdminSalary';
+import Salary from './pages/Salary';
+import FeeSubmissions from './pages/FeeSubmissions';
 
 const NotFoundRedirect = () => {
   const { user, isAuthenticated, loading } = useAuthContext();
@@ -147,6 +148,7 @@ function App() {
                   element={<LearnerDashboard />}
                 />
                 <Route path="salary" element={<Salary />} />
+                <Route path="fee-submissions" element={<FeeSubmissions />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
             </Route>
@@ -177,6 +179,7 @@ function App() {
                 />
                 <Route path="exam-locations" element={<AdminExamLocations />} />
                 <Route path="salary" element={<AdminSalary />} />
+                <Route path="fee-submissions" element={<FeeSubmissions />} />
               </Route>
             </Route>
 

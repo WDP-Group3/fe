@@ -39,7 +39,7 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-<nav className="flex-1 overflow-y-auto p-4 space-y-1 hide-scrollbar [mask-image:linear-gradient(to_bottom,transparent,black_5%,black_95%,transparent)]">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-1 hide-scrollbar [mask-image:linear-gradient(to_bottom,transparent,black_5%,black_95%,transparent)]">
         <div className="flex h-16 shrink-0 items-center gap-3 px-6 border-b border-slate-800">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white font-bold shadow-md">
             AD
@@ -102,8 +102,7 @@ const AdminLayout = () => {
             </div>
           )}
         </div>
-      </aside>
-
+      </nav>
       <main className="ml-64 flex-1 p-8">
         <Outlet />
       </main>
