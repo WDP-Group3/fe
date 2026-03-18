@@ -40,6 +40,7 @@ import DocumentApproval from './pages/DocumentApproval';
 import LearnerDashboard from './pages/LearnerDashboard';
 import AdminSystemHolidays from './pages/admin/AdminSystemHolidays';
 import AdminLearningLocations from './pages/admin/AdminLearningLocations';
+import AdminExamLocations from './pages/admin/AdminExamLocations';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminSalary from './pages/admin/AdminSalary';
 import Salary from './pages/Salary';
@@ -147,6 +148,7 @@ function App() {
                 <Route path="blogs" element={<AdminBlogs />} />
                 <Route path="system-holidays" element={<AdminSystemHolidays />} />
                 <Route path="learning-locations" element={<AdminLearningLocations />} />
+                <Route path="exam-locations" element={<AdminExamLocations />} />
                 <Route path="salary" element={<AdminSalary />} />
               </Route>
             </Route>

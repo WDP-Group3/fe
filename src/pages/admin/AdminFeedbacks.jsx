@@ -250,11 +250,11 @@ const AdminFeedbacks = () => {
                 )}
             </div>
 
-            {/* Detail Modal - No background overlay */}
+            {/* Detail Modal */}
             {showDetailModal && selectedFeedback && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-transparent" onClick={() => setShowDetailModal(false)}></div>
-                    <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 relative z-10">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="absolute inset-0" onClick={() => setShowDetailModal(false)} aria-hidden="true" />
+                    <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full relative z-10" onClick={(e) => e.stopPropagation()}>
                         <h2 className="text-xl font-bold mb-4">Chi tiết đánh giá</h2>
                         
                         <div className="space-y-3">

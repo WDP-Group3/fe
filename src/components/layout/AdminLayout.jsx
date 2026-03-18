@@ -17,7 +17,8 @@ const navItems = [
     { label: 'Duyệt đơn', to: '/admin/letter', icon: '📝' },
     { label: 'Bài viết', to: '/admin/blogs', icon: '✍️' },
     { label: 'Lịch nghỉ', to: '/admin/system-holidays', icon: '📅' },
-    { label: 'Địa điểm học', to: '/admin/learning-locations', icon: '📍' }
+    { label: 'Địa điểm học', to: '/admin/learning-locations', icon: '📍' },
+    { label: 'Sân sát hạch', to: '/admin/exam-locations', icon: '🎯' },
 ];
 
 const AdminLayout = () => {
