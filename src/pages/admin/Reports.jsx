@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import SectionHeader from '../../components/ui/SectionHeader';
+import Modal from '../../components/ui/Modal';
 import apiClient from '../../services/apiClient';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -59,6 +60,7 @@ const Reports = () => {
     const [topCourses, setTopCourses] = useState([]);
     const [debt, setDebt] = useState({ totalDue: 0, totalPaid: 0, totalDebt: 0 });
     const [recentTx, setRecentTx] = useState([]);
+    const [selectedTx, setSelectedTx] = useState(null);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
@@ -294,7 +296,11 @@ const Reports = () => {
                                                 ? tx.note.replace('SePay auto webhook - ', '').trim()
                                                 : null;
                                             return (
-                                                <tr key={tx._id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <tr 
+                                                    key={tx._id} 
+                                                    className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                                                    onClick={() => setSelectedTx({ ...tx, txCode })}
+                                                >
                                                     <td className="py-3 text-slate-500 whitespace-nowrap">
                                                         {tx.paidAt ? new Date(tx.paidAt).toLocaleDateString('vi-VN') : '—'}
                                                     </td>
@@ -337,6 +343,58 @@ const Reports = () => {
                     </div>
                 </>
             )}
+
+            {/* Modal Chi tiết giao dịch */}
+            <Modal
+                isOpen={!!selectedTx}
+                onClose={() => setSelectedTx(null)}
+                title="Chi tiết giao dịch"
+                size="md"
+            >
+                {selectedTx && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Mã giao dịch</span>
+                            <span className="font-mono text-slate-800 font-medium">
+                                {selectedTx.txCode || '—'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Ngày thanh toán</span>
+                            <span className="text-slate-800 font-medium">
+                                {selectedTx.paidAt ? new Date(selectedTx.paidAt).toLocaleString('vi-VN') : '—'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Học viên</span>
+                            <span className="text-slate-800 font-medium">{selectedTx.learnerName?.trim() || 'Không xác định'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Email</span>
+                            <span className="text-slate-800 font-medium">{selectedTx.learnerEmail || '—'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Khóa học</span>
+                            <span className="text-slate-800 font-medium">{selectedTx.courseName || '—'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Số tiền gốc ghi nhận</span>
+                            <span className="text-slate-800 font-medium">{fmt(selectedTx.amount)}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-3">
+                            <span className="text-slate-500">Phương thức</span>
+                            <span className="text-slate-800 font-medium">
+                                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                                    ${selectedTx.method === 'CASH' ? 'bg-green-100 text-green-700' :
+                                        selectedTx.method === 'TRANSFER' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-purple-100 text-purple-700'}`}>
+                                    {METHOD_LABELS[selectedTx.method] || selectedTx.method}
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };
