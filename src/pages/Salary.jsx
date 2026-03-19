@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import apiClient from '../services/apiClient';
 import { formatCurrency } from '../utils/formatters';
+import { useAuthContext } from '../context/AuthContext';
 
 const fmt = (n) => formatCurrency(n || 0);
 
@@ -14,13 +15,23 @@ const KpiCard = ({ label, value, sub, color = 'text-slate-900' }) => (
 );
 
 const Salary = () => {
+  const { user } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [salaryData, setSalaryData] = useState(null);
   const [error, setError] = useState('');
+  const [courses, setCourses] = useState([]);
+  const [showDetail, setShowDetail] = useState(false);
+
+  // Default: tháng trước
+  const now = new Date();
+  const prevMonth = now.getMonth(); // 0-indexed, Jan=0
+  const prevMonthNum = prevMonth === 0 ? 12 : prevMonth;
+  const prevYear = prevMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
 
   const [filters, setFilters] = useState({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
+    month: prevMonthNum,
+    year: prevYear,
+    courseId: '',
   });
 
   const months = Array.from({ length: 12 }, (_, i) => ({
@@ -31,11 +42,28 @@ const Salary = () => {
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const res = await apiClient.get('/salary/courses');
+        setCourses(res?.data || []);
+      } catch {
+        // ignore
+      }
+    };
+    loadCourses();
+  }, []);
+
+  useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError('');
-        const res = await apiClient.get(`/salary/my?month=${filters.month}&year=${filters.year}`);
+        const params = new URLSearchParams({
+          month: filters.month,
+          year: filters.year,
+        });
+        if (filters.courseId) params.append('courseId', filters.courseId);
+        const res = await apiClient.get(`/salary/my?${params}`);
         setSalaryData(res?.data || null);
       } catch (err) {
         setError(err.message || 'Không thể tải dữ liệu lương');
@@ -46,7 +74,29 @@ const Salary = () => {
     };
 
     loadData();
-  }, [filters.month, filters.year]);
+  }, [filters.month, filters.year, filters.courseId]);
+
+  const handleExport = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        userId: user._id,
+        month: filters.month,
+        year: filters.year,
+      });
+      if (filters.courseId) params.append('courseId', filters.courseId);
+      const res = await apiClient.get(`/salary/export?${params}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `luong_cua_toi_${filters.month}_${filters.year}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Lỗi khi xuất file: ' + (err.message || 'Unknown error'));
+    }
+  }, [filters, user]);
 
   const summary = useMemo(() => {
     if (!salaryData) return null;
@@ -76,26 +126,59 @@ const Salary = () => {
       />
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={filters.month}
-            onChange={(e) => setFilters((f) => ({ ...f, month: Number(e.target.value) }))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          >
-            {months.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Tháng</label>
+            <select
+              value={filters.month}
+              onChange={(e) => setFilters((f) => ({ ...f, month: Number(e.target.value) }))}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              {months.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={filters.year}
-            onChange={(e) => setFilters((f) => ({ ...f, year: Number(e.target.value) }))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Năm</label>
+            <select
+              value={filters.year}
+              onChange={(e) => setFilters((f) => ({ ...f, year: Number(e.target.value) }))}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Khóa học</label>
+            <select
+              value={filters.courseId}
+              onChange={(e) => setFilters((f) => ({ ...f, courseId: e.target.value }))}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="">Tất cả khóa học</option>
+              {courses.map((c) => (
+                <option key={c._id} value={c._id}>{c.code} - {c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => setShowDetail(true)}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
-            {years.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+            Xem chi tiết
+          </button>
+          <button
+            onClick={handleExport}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+          >
+            Xuất CSV
+          </button>
         </div>
       </div>
 
@@ -121,18 +204,18 @@ const Salary = () => {
               color="text-emerald-600"
             />
             {summary.isInstructor && (
-              <KpiCard
-                label="Giờ dạy"
-                value={summary.totalTeachingHours}
-                sub="Tổng giờ trong tháng"
-              />
-            )}
-            {summary.isInstructor && (
-              <KpiCard
-                label="Số buổi"
-                value={summary.totalTeachingSessions}
-                sub="Buổi dạy hoàn thành"
-              />
+              <>
+                <KpiCard
+                  label="Giờ dạy"
+                  value={summary.totalTeachingHours}
+                  sub="Tổng giờ trong tháng"
+                />
+                <KpiCard
+                  label="Số buổi"
+                  value={summary.totalTeachingSessions}
+                  sub="Buổi dạy hoàn thành"
+                />
+              </>
             )}
             {summary.isConsultant && (
               <KpiCard
@@ -148,12 +231,12 @@ const Salary = () => {
               color="text-indigo-600"
             />
           </div>
-<></>
+
           {summary.isInstructor && (
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Chi tiết giờ dạy</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">Chi tiết giờ dạy</h3>
               {salaryData.teachingDetails?.length ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="max-h-96 space-y-2 overflow-y-auto">
                   {salaryData.teachingDetails.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
                       <div>
@@ -174,9 +257,9 @@ const Salary = () => {
 
           {summary.isConsultant && (
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Chi tiết hoa hồng</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">Chi tiết hoa hồng</h3>
               {salaryData.commissionDetails?.length ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="max-h-96 space-y-2 overflow-y-auto">
                   {salaryData.commissionDetails.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2 text-sm">
                       <div>
@@ -197,7 +280,7 @@ const Salary = () => {
 
           {salaryData.courseCounts?.length > 0 && (
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Thống kê theo khóa học</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">Thống kê theo khóa học</h3>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {salaryData.courseCounts.map((c) => (
                   <div key={c.courseId} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
@@ -209,6 +292,99 @@ const Salary = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Detail Modal */}
+      {showDetail && salaryData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6">
+            <h2 className="mb-4 text-xl font-bold text-slate-900">
+              Chi tiết lương Tháng {filters.month}/{filters.year}
+            </h2>
+
+            {summary.isInstructor && salaryData.teachingDetails?.length > 0 && (
+              <div className="mb-6">
+                <h3 className="mb-3 text-lg font-semibold text-slate-800">Chi tiết giờ dạy</h3>
+                <div className="max-h-60 overflow-y-auto rounded border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Ngày</th>
+                        <th className="px-3 py-2 text-left">Ca</th>
+                        <th className="px-3 py-2 text-left">Học viên</th>
+                        <th className="px-3 py-2 text-right">Số giờ</th>
+                        <th className="px-3 py-2 text-right">Số tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {salaryData.teachingDetails.map((d, idx) => (
+                        <tr key={idx} className="border-t border-slate-100">
+                          <td className="px-3 py-2">{new Date(d.date).toLocaleDateString('vi-VN')}</td>
+                          <td className="px-3 py-2">Ca {d.timeSlot}</td>
+                          <td className="px-3 py-2">{d.learnerName}</td>
+                          <td className="px-3 py-2 text-right">{d.hours}</td>
+                          <td className="px-3 py-2 text-right">{fmt(d.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {summary.isConsultant && salaryData.commissionDetails?.length > 0 && (
+              <div className="mb-6">
+                <h3 className="mb-3 text-lg font-semibold text-slate-800">Chi tiết hoa hồng</h3>
+                <div className="max-h-60 overflow-y-auto rounded border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Khóa học</th>
+                        <th className="px-3 py-2 text-left">Học viên</th>
+                        <th className="px-3 py-2 text-left">Ngày nhận</th>
+                        <th className="px-3 py-2 text-right">Hoa hồng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {salaryData.commissionDetails.map((d, idx) => (
+                        <tr key={idx} className="border-t border-slate-100">
+                          <td className="px-3 py-2">{d.courseCode}</td>
+                          <td className="px-3 py-2">{d.learnerName}</td>
+                          <td className="px-3 py-2">{new Date(d.registrationDate).toLocaleDateString('vi-VN')}</td>
+                          <td className="px-3 py-2 text-right text-green-600">{fmt(d.commissionAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg bg-slate-50 p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Tổng giờ dạy:</span>
+                <span className="font-medium">{summary.totalTeachingHours || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Tổng hoa hồng:</span>
+                <span className="font-medium text-green-600">{fmt(summary.totalCommission)}</span>
+              </div>
+              <div className="mt-2 flex justify-between border-t border-slate-200 pt-2">
+                <span className="font-semibold text-slate-900">Tổng lương:</span>
+                <span className="font-bold text-indigo-600">{fmt(summary.totalSalary)}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowDetail(false)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-slate-600 hover:bg-slate-50"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
