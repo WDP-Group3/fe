@@ -3,11 +3,15 @@ import { useState, useEffect } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import { formatCurrency } from '../utils/formatters';
 import useApi from '../hooks/useApi';
+import { useSocket } from '../context/SocketContext';
+import { useToast } from '../context/ToastContext';
 
 const PaymentQr = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { fetchApi } = useApi();
+  const socket = useSocket();
+  const { showToast } = useToast();
   const [status, setStatus] = useState('pending');
   const [countdown, setCountdown] = useState(30);
 
@@ -25,7 +29,29 @@ const PaymentQr = () => {
     scheduleNote,
   } = state;
 
-  // Polling kiểm tra trạng thái thanh toán
+  // Socket listener cho payment success (real-time)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePaymentSuccess = (data) => {
+      console.log('[PaymentQr] Payment success received via socket:', data);
+      if (data.registrationId === state.registrationId || !state.registrationId) {
+        showToast('Thanh toán thành công!', 'success');
+        setStatus('completed');
+        setTimeout(() => {
+          navigate('/portal/payments', { replace: true });
+        }, 2000);
+      }
+    };
+
+    socket.on('payment-success', handlePaymentSuccess);
+
+    return () => {
+      socket.off('payment-success', handlePaymentSuccess);
+    };
+  }, [socket, navigate, state.registrationId, showToast]);
+
+  // Polling kiểm tra trạng thái thanh toán (fallback)
   useEffect(() => {
     if (!transactionId) return;
 
