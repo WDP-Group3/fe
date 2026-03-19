@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider';
 import { ToastProvider } from './context/ToastContext';
+import { SocketProvider } from './context/SocketContext';
 import { useAuthContext } from './context/AuthContext';
 import Landing from './pages/Landing';
 import PortalLayout from './components/layout/PortalLayout';
@@ -67,8 +68,9 @@ const NotFoundRedirect = () => {
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <BrowserRouter>
+      <SocketProvider>
+        <ToastProvider>
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
@@ -186,7 +188,8 @@ function App() {
             <Route path="*" element={<NotFoundRedirect />} />
           </Routes>
         </BrowserRouter>
-      </ToastProvider>
+        </ToastProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }

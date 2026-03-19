@@ -337,6 +337,7 @@ const Payments = () => {
             scheduleName: scheduleItem?.name || `Đợt ${Number(selectedScheduleIndex) + 1}`,
             scheduleAmount: scheduleItem?.amount || Number(qrForm.amount),
             scheduleNote: scheduleItem?.note || '',
+            registrationId: selectedItem?._id || '',
           },
         });
       } else {
@@ -539,7 +540,9 @@ const Payments = () => {
                                 <div>
                                   <p className="font-medium text-slate-900">{scheduleItem?.name || `Đợt ${idx + 1}`}</p>
                                   <p className="text-xs text-slate-500">
-                                    Hạn nộp: {scheduleItem?.dueDate ? new Date(scheduleItem.dueDate).toLocaleDateString('vi-VN') : 'Chưa có'}
+                                    {idx === 0 && item.registrationDate
+                                      ? `Ngày đăng ký: ${new Date(item.registrationDate).toLocaleDateString('vi-VN')}`
+                                      : `Hạn nộp: ${scheduleItem?.dueDate ? new Date(scheduleItem.dueDate).toLocaleDateString('vi-VN') : 'Chưa có'}`}
                                   </p>
                                   {scheduleItem?.note && (
                                     <p className="text-xs text-slate-500">Ghi chú: {scheduleItem.note}</p>
@@ -554,7 +557,7 @@ const Payments = () => {
                                       {isPaid ? 'Đã đóng' : 'Chưa đóng'}
                                     </span>
                                   </div>
-                                  {!isPaid && (
+                                  {!isPaid && canCollect && (
                                     <div className="flex flex-wrap items-center gap-2">
                                       <button
                                         type="button"
@@ -584,6 +587,7 @@ const Payments = () => {
                             );
                           })}
 
+                          {canCollect && (
                           <form onSubmit={handleSendNotification} className="mt-3 grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs">
                             <p className="text-xs font-semibold text-indigo-700">Gửi thông báo nhắc đóng</p>
                             <textarea
@@ -606,6 +610,7 @@ const Payments = () => {
                               {notifySubmitting ? 'Đang gửi...' : 'Gửi thông báo'}
                             </button>
                           </form>
+                          )}
                         </div>
                       )}
                     </div>
