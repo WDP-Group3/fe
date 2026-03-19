@@ -23,8 +23,6 @@ const KpiCard = ({ label, value, sub, color = 'text-slate-900', bgColor = '' }) 
 const AdminPayments = () => {
   const [loading, setLoading] = useState(true);
   const [tuitionData, setTuitionData] = useState({ items: [], summary: {} });
-  const [courses, setCourses] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,8 +30,6 @@ const AdminPayments = () => {
 
   // Filters
   const [filters, setFilters] = useState({
-    courseId: '',
-    batchId: '',
     status: '', // '', 'paid', 'partial', 'unpaid', 'overdue'
     search: '',
   });
@@ -47,7 +43,7 @@ const AdminPayments = () => {
   // Load initial data
   useEffect(() => {
     loadData();
-  }, [filters.courseId, filters.status, filters.search, currentPage]);
+  }, [filters.status, filters.search, currentPage]);
 
   const loadData = async () => {
     try {
@@ -57,7 +53,6 @@ const AdminPayments = () => {
       // Build query params
       const params = new URLSearchParams();
       if (filters.search) params.append('search', filters.search);
-      if (filters.courseId) params.append('courseId', filters.courseId);
       if (filters.status) params.append('status', filters.status);
       params.append('page', currentPage);
       params.append('limit', 10);
@@ -65,15 +60,12 @@ const AdminPayments = () => {
       const queryString = params.toString();
       console.log('[AdminPayments] Query:', queryString);
 
-      const [tuitionRes, coursesRes, batchesRes, transactionsRes] = await Promise.all([
+      const [tuitionRes, transactionsRes] = await Promise.all([
         apiClient.get(`/payments/tuition-info?${queryString}`),
-        apiClient.get('/courses'),
-        apiClient.get('/batches'),
         apiClient.get('/payments/transactions'),
       ]);
 
       console.log('[AdminPayments] tuitionRes:', tuitionRes);
-      console.log('[AdminPayments] coursesRes:', coursesRes?.data?.data?.length || 0, 'courses');
       console.log('[AdminPayments] transactionsRes:', transactionsRes?.data?.length || 0, 'transactions');
 
       // Handle different response structures
@@ -93,8 +85,6 @@ const AdminPayments = () => {
       if (tuitionSummary.pagination) {
         setPagination(tuitionSummary.pagination);
       }
-      setCourses(coursesRes?.data?.data || []);
-      setBatches(batchesRes?.data?.data || []);
       setTransactions(transactionsRes?.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -272,9 +262,12 @@ const AdminPayments = () => {
           <div className="flex flex-1 min-w-[200px] gap-2">
             <input
               type="text"
-              placeholder="Tìm học viên, khóa học, SĐT..."
+              placeholder=", khóa học..."
               value={filters.search}
-              onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
+              onChange={(e) => {
+                setFilters(f => ({ ...f, search: e.target.value }));
+                setCurrentPage(1);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && loadData()}
               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
@@ -287,19 +280,11 @@ const AdminPayments = () => {
           </div>
 
           <select
-            value={filters.courseId}
-            onChange={(e) => setFilters(f => ({ ...f, courseId: e.target.value }))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          >
-            <option value="">Tất cả khóa học</option>
-            {courses.map(c => (
-              <option key={c._id} value={c._id}>{c.name}</option>
-            ))}
-          </select>
-
-          <select
             value={filters.status}
-            onChange={(e) => setFilters(f => ({ ...f, status: e.target.value }))}
+            onChange={(e) => {
+              setFilters(f => ({ ...f, status: e.target.value }));
+              setCurrentPage(1);
+            }}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           >
             <option value="">Tất cả trạng thái</option>
@@ -308,16 +293,6 @@ const AdminPayments = () => {
             <option value="unpaid">Chưa đóng</option>
             <option value="overdue">Quá hạn</option>
           </select>
-
-          <button
-            onClick={() => {
-              setFilters({ courseId: '', batchId: '', status: '', search: '' });
-              setCurrentPage(1);
-            }}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200"
-          >
-            Xóa lọc
-          </button>
         </div>
       </div>
 
@@ -329,6 +304,9 @@ const AdminPayments = () => {
           </div>
         ) : (
           <>
+            <div className="px-4 pt-4 text-xs text-slate-500">
+              Hiển thị {filteredItems.length} trên tổng số {pagination.total} kết quả
+            </div>
             <DataTable columns={columns} data={filteredItems} />
             {pagination.totalPages > 1 && (
               <div className="px-4 py-3 border-t border-slate-100">
