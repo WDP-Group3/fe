@@ -36,8 +36,6 @@ const AdminPayments = () => {
     batchId: '',
     status: '', // '', 'paid', 'partial', 'unpaid', 'overdue'
     search: '',
-    dateFrom: '',
-    dateTo: '',
   });
 
   // Modal states
@@ -49,7 +47,7 @@ const AdminPayments = () => {
   // Load initial data
   useEffect(() => {
     loadData();
-  }, [filters.courseId, filters.status, filters.search, filters.dateFrom, filters.dateTo, currentPage]);
+  }, [filters.courseId, filters.status, filters.search, currentPage]);
 
   const loadData = async () => {
     try {
@@ -61,8 +59,6 @@ const AdminPayments = () => {
       if (filters.search) params.append('search', filters.search);
       if (filters.courseId) params.append('courseId', filters.courseId);
       if (filters.status) params.append('status', filters.status);
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.append('dateTo', filters.dateTo);
       params.append('page', currentPage);
       params.append('limit', 10);
 
@@ -313,25 +309,9 @@ const AdminPayments = () => {
             <option value="overdue">Quá hạn</option>
           </select>
 
-          <input
-            type="date"
-            value={filters.dateFrom}
-            onChange={(e) => setFilters(f => ({ ...f, dateFrom: e.target.value }))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Từ ngày"
-          />
-
-          <input
-            type="date"
-            value={filters.dateTo}
-            onChange={(e) => setFilters(f => ({ ...f, dateTo: e.target.value }))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Đến ngày"
-          />
-
           <button
             onClick={() => {
-              setFilters({ courseId: '', batchId: '', status: '', search: '', dateFrom: '', dateTo: '' });
+              setFilters({ courseId: '', batchId: '', status: '', search: '' });
               setCurrentPage(1);
             }}
             className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200"
