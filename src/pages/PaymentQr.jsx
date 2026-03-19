@@ -30,21 +30,26 @@ const PaymentQr = () => {
     if (!transactionId) return;
 
     const checkStatus = async () => {
-      const response = await fetchApi(`/api/payments/transaction-status/${transactionId}`, 'GET');
-      if (response?.status === 'success' && response?.data?.paymentStatus === 'completed') {
-        setStatus('completed');
-        // Redirect về trang học phí sau 2 giây
-        setTimeout(() => {
-          navigate('/portal/payments', { replace: true });
-        }, 2000);
+      try {
+        const response = await fetchApi(`/api/payments/transaction-status/${transactionId}`, 'GET');
+        console.log('[PaymentQr] Check status:', response);
+        if (response?.status === 'success' && response?.data?.paymentStatus === 'completed') {
+          setStatus('completed');
+          // Redirect về trang học phí sau 2 giây
+          setTimeout(() => {
+            navigate('/portal/payments', { replace: true });
+          }, 2000);
+        }
+      } catch (err) {
+        console.error('[PaymentQr] Check status error:', err);
       }
     };
 
     // Kiểm tra ngay lập tức
     checkStatus();
 
-    // Poll mỗi 5 giây
-    const interval = setInterval(checkStatus, 5000);
+    // Poll mỗi 3 giây (nhanh hơn)
+    const interval = setInterval(checkStatus, 3000);
 
     return () => clearInterval(interval);
   }, [transactionId, fetchApi, navigate]);

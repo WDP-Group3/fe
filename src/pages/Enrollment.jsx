@@ -14,7 +14,8 @@ const Enrollment = () => {
   const [consultantEmail, setConsultantEmail] = useState('');
   const [consultantLookup, setConsultantLookup] = useState(null);
   const [consultantLookupStatus, setConsultantLookupStatus] = useState('idle');
-  const [cccdFile, setCccdFile] = useState(null);
+  const [cccdFrontFile, setCccdFrontFile] = useState(null);
+  const [cccdBackFile, setCccdBackFile] = useState(null);
   const [healthFile, setHealthFile] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -103,14 +104,16 @@ const Enrollment = () => {
     try {
       setUploading(true);
 
-      const [cccdImageUrl, healthUrl, photoUrl] = await Promise.all([
-        uploadToCloudinary(cccdFile),
+      const [cccdFrontUrl, cccdBackUrl, healthUrl, photoUrl] = await Promise.all([
+        uploadToCloudinary(cccdFrontFile),
+        uploadToCloudinary(cccdBackFile),
         uploadToCloudinary(healthFile),
         uploadToCloudinary(photoFile),
       ]);
 
       await apiClient.post('/documents/upload', {
-        cccdImage: cccdImageUrl,
+        cccdImageFront: cccdFrontUrl,
+        cccdImageBack: cccdBackUrl,
         healthCertificate: healthUrl,
         photo: photoUrl,
         cccdNumber: cccdNumber.trim(),
@@ -181,31 +184,43 @@ const Enrollment = () => {
                 )}
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3 md:items-start">
-                <FileUpload
-                  label="Ảnh CMND/CCCD"
-                  accept=".jpg,.jpeg,.png"
-                  multiple={false}
-                  maxSize={5 * 1024 * 1024}
-                  onChange={setCccdFile}
-                  helperText="Upload ảnh chụp rõ thông tin"
-                />
-                <FileUpload
-                  label="Giấy khám sức khoẻ (không bắt buộc)"
-                  accept=".jpg,.jpeg,.png"
-                  multiple={false}
-                  maxSize={5 * 1024 * 1024}
-                  onChange={setHealthFile}
-                  helperText="Có thể bổ sung sau khi đi khám"
-                />
-                <FileUpload
-                  label="Ảnh 3x4"
-                  accept=".jpg,.jpeg,.png"
-                  multiple={false}
-                  maxSize={5 * 1024 * 1024}
-                  onChange={setPhotoFile}
-                  helperText="Ảnh nền sáng, rõ mặt"
-                />
+              <div className="grid gap-3 md:grid-cols-2 md:items-start">
+                <div className="space-y-3">
+                  <FileUpload
+                    label="Ảnh CMND/CCCD - Mặt trước"
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                    maxSize={5 * 1024 * 1024}
+                    onChange={setCccdFrontFile}
+                    helperText="Upload ảnh mặt trước CCCD"
+                  />
+                  <FileUpload
+                    label="Ảnh CMND/CCCD - Mặt sau"
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                    maxSize={5 * 1024 * 1024}
+                    onChange={setCccdBackFile}
+                    helperText="Upload ảnh mặt sau CCCD"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <FileUpload
+                    label="Giấy khám sức khỏe (không bắt buộc)"
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                    maxSize={5 * 1024 * 1024}
+                    onChange={setHealthFile}
+                    helperText="Bên trung tâm sẽ nộp giúp sau khi khám xong"
+                  />
+                  <FileUpload
+                    label="Ảnh 3x4"
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                    maxSize={5 * 1024 * 1024}
+                    onChange={setPhotoFile}
+                    helperText="Ảnh nền sáng, rõ mặt"
+                  />
+                </div>
               </div>
 
               <button

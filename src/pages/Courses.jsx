@@ -76,7 +76,7 @@ const Courses = () => {
       });
 
       if (response.status === "success") {
-        showToast("Đăng ký khóa học thành công", "success");
+        showToast(response.message || "Đăng ký khóa học thành công", "success");
         setIsRegisterModalOpen(false);
         navigate("/portal/payments", {
           state: { registration: response.data },

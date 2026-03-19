@@ -41,31 +41,36 @@ const AdminPayments = () => {
   });
 
   // Modal states
-  const [showDueDateModal, setShowDueDateModal] = useState(false);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [dueDateForm, setDueDateForm] = useState({
-    scheduleIndex: 0,
-    dueDate: '',
-    name: '',
-    amount: '',
-    note: '',
-  });
   const [notifyForm, setNotifyForm] = useState({ message: '' });
   const [submitting, setSubmitting] = useState(false);
 
   // Load initial data
   useEffect(() => {
     loadData();
-  }, [filters.courseId, filters.status, filters.dateFrom, filters.dateTo, currentPage]);
+  }, [filters.courseId, filters.status, filters.search, filters.dateFrom, filters.dateTo, currentPage]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('[AdminPayments] Loading data...');
+      console.log('[AdminPayments] Loading data with filters:', filters);
+
+      // Build query params
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.courseId) params.append('courseId', filters.courseId);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters.dateTo) params.append('dateTo', filters.dateTo);
+      params.append('page', currentPage);
+      params.append('limit', 10);
+
+      const queryString = params.toString();
+      console.log('[AdminPayments] Query:', queryString);
 
       const [tuitionRes, coursesRes, batchesRes, transactionsRes] = await Promise.all([
-        apiClient.get('/payments/tuition-info'),
+        apiClient.get(`/payments/tuition-info?${queryString}`),
         apiClient.get('/courses'),
         apiClient.get('/batches'),
         apiClient.get('/payments/transactions'),
@@ -184,98 +189,9 @@ const AdminPayments = () => {
         </span>
       ),
     },
-    {
-      key: 'dueDate',
-      title: 'Hạn nộp',
-      render: (_, row) => (
-        <div>
-          <p className={row.isOverdue ? 'text-red-600 font-medium' : ''}>{fmtDate(row.dueDate)}</p>
-          {row.isOverdue && <span className="text-xs text-red-500">Quá hạn</span>}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      title: 'Trạng thái',
-      render: (_, row) => {
-        if (row.remaining === 0) {
-          return <StatusBadge status="COMPLETED" label="Đã đóng" />;
-        }
-        if (row.isOverdue) {
-          return <StatusBadge status="OVERDUE" label="Quá hạn" />;
-        }
-        if (row.paidAmount > 0) {
-          return <StatusBadge status="PENDING" label="Còn nợ" />;
-        }
-        return <StatusBadge status="UNPAID" label="Chưa đóng" />;
-      },
-    },
-    {
-      key: 'actions',
-      title: 'Thao tác',
-      render: (_, row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => openDueDateModal(row)}
-            className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100"
-          >
-            Đặt hạn
-          </button>
-          <button
-            onClick={() => openNotifyModal(row)}
-            className="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
-          >
-            Gửi nhắc
-          </button>
-        </div>
-      ),
-    },
   ];
 
   // Handlers
-  const openDueDateModal = (item) => {
-    setSelectedItem(item);
-    const nextSchedule = (item.paymentSchedule || [])[0];
-    setDueDateForm({
-      scheduleIndex: 0,
-      dueDate: nextSchedule?.dueDate ? nextSchedule.dueDate.split('T')[0] : '',
-      name: nextSchedule?.name || '',
-      amount: nextSchedule?.amount || item.remaining || '',
-      note: nextSchedule?.note || '',
-    });
-    setShowDueDateModal(true);
-  };
-
-  const openNotifyModal = (item) => {
-    setSelectedItem(item);
-    setNotifyForm({ message: '' });
-    setShowNotifyModal(true);
-  };
-
-  const handleUpdateDueDate = async (e) => {
-    e.preventDefault();
-    if (!selectedItem) return;
-
-    try {
-      setSubmitting(true);
-      await apiClient.post('/payments/upsert-due-date', {
-        registrationId: selectedItem.registrationId,
-        scheduleIndex: dueDateForm.scheduleIndex,
-        dueDate: dueDateForm.dueDate,
-        name: dueDateForm.name,
-        amount: dueDateForm.amount ? Number(dueDateForm.amount) : undefined,
-        note: dueDateForm.note,
-      });
-      await loadData();
-      setShowDueDateModal(false);
-      alert('Đã cập nhật hạn thanh toán');
-    } catch (error) {
-      alert(error.message || 'Cập nhật thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleSendNotification = async (e) => {
     e.preventDefault();
     if (!selectedItem) return;
@@ -294,26 +210,6 @@ const AdminPayments = () => {
       alert('Đã gửi thông báo');
     } catch (error) {
       alert(error.message || 'Gửi thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleQuickExtend = async (days) => {
-    if (!selectedItem) return;
-    try {
-      setSubmitting(true);
-      await apiClient.post('/payments/upsert-due-date', {
-        registrationId: selectedItem.registrationId,
-        scheduleIndex: 0,
-        dueDate: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-        note: `Admin gia hạn ${days} ngày`,
-      });
-      await loadData();
-      setShowDueDateModal(false);
-      alert('Đã gia hạn');
-    } catch (error) {
-      alert(error.message || 'Gia hạn thất bại');
     } finally {
       setSubmitting(false);
     }
@@ -466,86 +362,6 @@ const AdminPayments = () => {
           </>
         )}
       </div>
-
-      {/* Due Date Modal */}
-      {showDueDateModal && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Đặt hạn thanh toán</h3>
-            <p className="text-sm text-slate-600 mb-4">
-              {selectedItem.learnerName} - {selectedItem.courseName}
-            </p>
-            <form onSubmit={handleUpdateDueDate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tên đợt</label>
-                <input
-                  type="text"
-                  value={dueDateForm.name}
-                  onChange={(e) => setDueDateForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  placeholder="Đợt 1, Đợt 2..."
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Số tiền</label>
-                  <input
-                    type="number"
-                    value={dueDateForm.amount}
-                    onChange={(e) => setDueDateForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hạn nộp</label>
-                  <input
-                    type="date"
-                    value={dueDateForm.dueDate}
-                    onChange={(e) => setDueDateForm(f => ({ ...f, dueDate: e.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú</label>
-                <textarea
-                  value={dueDateForm.note}
-                  onChange={(e) => setDueDateForm(f => ({ ...f, note: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => handleQuickExtend(7)} className="flex-1 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200">
-                  +7 ngày
-                </button>
-                <button type="button" onClick={() => handleQuickExtend(14)} className="flex-1 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200">
-                  +14 ngày
-                </button>
-                <button type="button" onClick={() => handleQuickExtend(30)} className="flex-1 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200">
-                  +30 ngày
-                </button>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDueDateModal(false)}
-                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700"
-                >
-                  Huỷ
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {submitting ? 'Đang lưu...' : 'Lưu'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Notify Modal */}
       {showNotifyModal && selectedItem && (

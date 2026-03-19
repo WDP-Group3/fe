@@ -485,9 +485,17 @@ const Profile = () => {
                     <p className="mt-1 text-slate-900">{learnerDocument?.status || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-500">Ảnh CCCD</p>
-                    {learnerDocument?.cccdImage ? (
-                      <a href={learnerDocument.cccdImage} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                    <p className="text-sm font-medium text-slate-500">CCCD mặt trước</p>
+                    {learnerDocument?.cccdImageFront ? (
+                      <a href={learnerDocument.cccdImageFront} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                        Xem file
+                      </a>
+                    ) : <p className="mt-1 text-slate-900">-</p>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">CCCD mặt sau</p>
+                    {learnerDocument?.cccdImageBack ? (
+                      <a href={learnerDocument.cccdImageBack} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
                         Xem file
                       </a>
                     ) : <p className="mt-1 text-slate-900">-</p>}
