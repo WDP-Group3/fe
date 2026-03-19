@@ -52,9 +52,7 @@ const MySalary = () => {
       params.append('year', year);
 
       const res = await apiClient.get(`/salary/my?${params.toString()}`);
-      if (res.data?.status === 'success') {
-        setSalaryData(res.data.data);
-      }
+      setSalaryData(res?.data || null);
     } catch (err) {
       console.error('Error fetching my salary:', err);
     } finally {

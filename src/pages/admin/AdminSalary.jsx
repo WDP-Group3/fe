@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+ import { useState, useEffect, useMemo } from 'react';
 import SectionHeader from '../../components/ui/SectionHeader';
 import DataTable from '../../components/ui/DataTable';
 import apiClient from '../../services/apiClient';
@@ -18,6 +18,7 @@ const KpiCard = ({ label, value, sub, color = 'text-slate-900' }) => (
 const AdminSalary = () => {
   const [loading, setLoading] = useState(true);
   const [salaryData, setSalaryData] = useState([]);
+  const [salaryDataAll, setSalaryDataAll] = useState([]);
   const [config, setConfig] = useState(null);
   const [courses, setCourses] = useState([]);
 
@@ -73,21 +74,24 @@ const AdminSalary = () => {
         limit: 10
       });
 
-      const [summaryRes, configRes, coursesRes] = await Promise.all([
+      // KPI: fetch ALL users (limit=1000), Table: paginated
+      const [kpiRes, summaryRes, configRes, coursesRes] = await Promise.all([
+        apiClient.get(`/salary/monthly-summary?${new URLSearchParams({ month: filters.month, year: filters.year, page: 1, limit: 1000 })}`),
         apiClient.get(`/salary/monthly-summary?${query.toString()}`),
         apiClient.get('/salary/config'),
         apiClient.get('/salary/courses'),
       ]);
 
-      setSalaryData(summaryRes?.data?.data?.users || []);
-      if (summaryRes?.data?.data?.pagination) {
+      setSalaryData(summaryRes?.data?.users || []);
+      setSalaryDataAll(kpiRes?.data?.users || []);
+      if (summaryRes?.data?.pagination) {
         setPagination({
-          total: summaryRes.data.data.pagination.total,
-          totalPages: summaryRes.data.data.pagination.pages
+          total: summaryRes.data.pagination.total,
+          totalPages: summaryRes.data.pagination.pages
         });
       }
-      setConfig(configRes?.data?.data || null);
-      setCourses(coursesRes?.data?.data || []);
+      setConfig(configRes?.data || null);
+      setCourses(coursesRes?.data || []);
     } catch (error) {
       console.error('Error loading salary data:', error);
     } finally {
@@ -96,7 +100,8 @@ const AdminSalary = () => {
   };
 
   const stats = useMemo(() => {
-    const data = salaryData;
+    // KPI dùng ALL users, table dùng paginated
+    const data = salaryDataAll;
     const instructors = data.filter(u => u.role === 'INSTRUCTOR');
     const consultants = data.filter(u => u.role === 'CONSULTANT');
 
@@ -113,7 +118,7 @@ const AdminSalary = () => {
       instructorCount: instructors.length,
       consultantCount: consultants.length,
     };
-  }, [salaryData]);
+  }, [salaryDataAll]);
 
   const handleOpenConfig = () => {
     if (config) {
@@ -138,7 +143,7 @@ const AdminSalary = () => {
         salaryHourlyRate: data?.salaryHourlyRate ?? '',
         commissionOverrides: data?.commissionOverrides || [],
       });
-    } catch (error) {
+    } catch (_) {
       alert('Không tải được cấu hình lương cá nhân');
     }
   };
@@ -227,7 +232,7 @@ const AdminSalary = () => {
         courseId: filters.courseId || ''
       });
       const res = await apiClient.get(`/salary/detail?${query.toString()}`);
-      setDetailData(res?.data?.data || null);
+      setDetailData(res?.data || null);
     } catch (error) {
       console.error('Error loading detail:', error);
     } finally {
@@ -252,7 +257,7 @@ const AdminSalary = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (error) {
+    } catch (_) {
       alert('Xuất file thất bại');
     }
   };
@@ -286,9 +291,11 @@ const AdminSalary = () => {
       key: 'userName',
       title: 'Nhân viên',
       render: (_, row) => (
-        <div>
+        <div className="flex items-center gap-1">
           <p className="font-medium text-slate-900">{row.fullName || row.userName || '—'}</p>
-          <p className="text-xs text-slate-500">{row.role === 'INSTRUCTOR' ? 'Giảng viên' : 'Tư vấn'}</p>
+          {row.hasOverride && (
+            <span title="Có cấu hình lương riêng" className="text-amber-500 text-xs">★</span>
+          )}
         </div>
       ),
     },
@@ -611,7 +618,7 @@ const AdminSalary = () => {
                       {detailData.commissionDetails.map((c, idx) => (
                         <div key={idx} className="flex justify-between text-sm p-2 bg-indigo-50 rounded">
                           <span>{c.courseName} - {c.learnerName}</span>
-                          <span className="font-medium text-indigo-600">{fmt(c.commission)}</span>
+                          <span className="font-medium text-indigo-600">{fmt(c.commissionAmount)}</span>
                         </div>
                       ))}
                     </div>

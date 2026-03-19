@@ -150,6 +150,7 @@ function App() {
                   element={<LearnerDashboard />}
                 />
                 <Route path="salary" element={<Salary />} />
+                <Route path="my-salary" element={<Salary />} />
                 <Route path="fee-submissions" element={<FeeSubmissions />} />
                 <Route path="profile/:id" element={<Profile />} />
               </Route>
