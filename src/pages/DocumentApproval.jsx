@@ -171,9 +171,14 @@ const DocumentApproval = () => {
         status: <StatusBadge status={statusInfo.badge} label={statusInfo.label} />,
         files: (
           <div className="flex flex-wrap gap-2">
-            {d.cccdImage && (
-              <a className="text-xs font-semibold text-indigo-700 hover:underline" href={d.cccdImage} target="_blank" rel="noreferrer">
-                CCCD
+            {d.cccdImageFront && (
+              <a className="text-xs font-semibold text-indigo-700 hover:underline" href={d.cccdImageFront} target="_blank" rel="noreferrer">
+                CCCD mặt trước
+              </a>
+            )}
+            {d.cccdImageBack && (
+              <a className="text-xs font-semibold text-indigo-700 hover:underline" href={d.cccdImageBack} target="_blank" rel="noreferrer">
+                CCCD mặt sau
               </a>
             )}
             {d.healthCertificate && (
@@ -186,7 +191,7 @@ const DocumentApproval = () => {
                 Ảnh 3x4
               </a>
             )}
-            {!d.cccdImage && !d.healthCertificate && !d.photo ? <span className="text-xs text-slate-500">—</span> : null}
+            {!d.cccdImageFront && !d.cccdImageBack && !d.healthCertificate && !d.photo ? <span className="text-xs text-slate-500">—</span> : null}
           </div>
         ),
         action: user?.role === 'CONSULTANT' ? (

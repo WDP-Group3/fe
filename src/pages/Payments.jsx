@@ -19,13 +19,6 @@ const Payments = () => {
   const [expandedSchedules, setExpandedSchedules] = useState({});
 
 
-  const [learnerExtendForm, setlearnerExtendForm] = useState({
-    registrationId: '',
-    scheduleIndex: 0,
-    extendedDays: 7,
-    reason: '',
-  });
-
   const [adminDueDateForm, setAdminDueDateForm] = useState({
     registrationId: '',
     scheduleIndex: '',
@@ -135,7 +128,6 @@ const Payments = () => {
 
         const incomingRegistrationId = location.state?.registration?._id || location.state?.registration?.registrationId || '';
         const defaultRegId = incomingRegistrationId || info?.items?.[0]?.registrationId || '';
-        setlearnerExtendForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
         setAdminDueDateForm((prev) => ({ ...prev, registrationId: prev.registrationId || defaultRegId }));
 
         if (incomingRegistrationId) {
@@ -162,31 +154,6 @@ const Payments = () => {
     }
   };
 
-
-  const handlelearnerExtend = async (e) => {
-    e.preventDefault();
-    if (!learnerExtendForm.registrationId) {
-      alert('Vui lòng chọn hồ sơ cần gia hạn');
-      return;
-    }
-
-    try {
-      setDueDateSubmitting(true);
-      await apiClient.post('/payments/extend-due-date', {
-        registrationId: learnerExtendForm.registrationId,
-        scheduleIndex: Number(learnerExtendForm.scheduleIndex),
-        extendedDays: Number(learnerExtendForm.extendedDays),
-        reason: learnerExtendForm.reason,
-      });
-      await loadData();
-      alert('Đã gia hạn hạn thanh toán thành công');
-    } catch (error) {
-      console.error(error);
-      alert(error.message || 'Gia hạn thất bại');
-    } finally {
-      setDueDateSubmitting(false);
-    }
-  };
 
   const handleAdminUpsertDueDate = async (e) => {
     e.preventDefault();
@@ -769,56 +736,6 @@ const Payments = () => {
               </div>
             )}
           </div>
-
-          <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-            <SectionHeader title="Gia hạn hạn thanh toán" description="Học viên có thể xin gia hạn hạn đóng phí" />
-            <form onSubmit={handlelearnerExtend} className="grid gap-3 md:grid-cols-2">
-            <select
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={learnerExtendForm.registrationId}
-              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, registrationId: e.target.value }))}
-              required
-            >
-              <option value="">-- Chọn khóa học --</option>
-              {(tuitionInfo?.items || []).map((item) => (
-                <option key={item.registrationId} value={item.registrationId}>
-                  [{item.courseCode || 'N/A'}] {item.courseName}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min="1"
-              max="30"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={learnerExtendForm.extendedDays}
-              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, extendedDays: e.target.value }))}
-              placeholder="Số ngày gia hạn"
-              required
-            />
-            <input
-              type="number"
-              min="0"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={learnerExtendForm.scheduleIndex}
-              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, scheduleIndex: e.target.value }))}
-              placeholder="Index đợt cần gia hạn (0,1,2...)"
-            />
-            <input
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={learnerExtendForm.reason}
-              onChange={(e) => setlearnerExtendForm((prev) => ({ ...prev, reason: e.target.value }))}
-              placeholder="Lý do gia hạn"
-            />
-            <button
-              type="submit"
-              disabled={dueDateSubmitting}
-              className="md:col-span-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white"
-            >
-              {dueDateSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu gia hạn'}
-            </button>
-          </form>
-        </div>
         </>
       )}
 
