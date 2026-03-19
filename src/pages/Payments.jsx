@@ -337,6 +337,7 @@ const Payments = () => {
             scheduleName: scheduleItem?.name || `Đợt ${Number(selectedScheduleIndex) + 1}`,
             scheduleAmount: scheduleItem?.amount || Number(qrForm.amount),
             scheduleNote: scheduleItem?.note || '',
+            registrationId: selectedItem?._id || '',
           },
         });
       } else {
