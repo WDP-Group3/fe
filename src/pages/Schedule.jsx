@@ -4,7 +4,6 @@ import { SocialIcons } from '../components/common';
 import WeekScheduler from '../components/scheduler/WeekScheduler';
 import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
-import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 
