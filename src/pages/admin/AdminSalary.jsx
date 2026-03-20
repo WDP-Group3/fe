@@ -2,7 +2,6 @@
 import SectionHeader from '../../components/ui/SectionHeader';
 import useDebounce from '../../hooks/useDebounce';
 import { useToast } from '../../context/ToastContext';
-import DataTable from '../../components/ui/DataTable';
 import apiClient from '../../services/apiClient';
 import { formatCurrency } from '../../utils/formatters';
 import Pagination from '../../components/common/Pagination';
@@ -64,16 +63,6 @@ const AdminSalary = () => {
   const [leaveUsage, setLeaveUsage] = useState(null);
   const [showLeavePanel, setShowLeavePanel] = useState(false);
 
-  // Salary column config
-  const [salaryColumns, setSalaryColumns] = useState([]);
-  const [showColumnModal, setShowColumnModal] = useState(false);
-  const [columnForm, setColumnForm] = useState({
-    name: '', code: '', type: 'allowance',
-    applyToRoles: ['ALL'], order: 0, description: '',
-    courseId: '', defaultValue: 0,
-  });
-  const [editingColumn, setEditingColumn] = useState(null);
-
   // Config form
   const [configForm, setConfigForm] = useState({
     instructorHourlyRate: 80000,
@@ -128,18 +117,18 @@ const AdminSalary = () => {
       }
       // Extract active courses from the summary response for dynamic columns
       const coursesFromSummary = summaryRes?.data?.courses || [];
+      console.log('[AdminSalary] coursesFromSummary:', coursesFromSummary);
       setActiveCourses(coursesFromSummary);
 
-      // Tính KPI từ dữ liệu đang hiển thị
-      const instructors = users.filter(u => u.role === 'INSTRUCTOR');
-      const consultants = users.filter(u => u.role === 'CONSULTANT');
+      // Stats tổng hợp từ backend (tính trên toàn bộ users, không phân trang)
+      const ts = summaryRes?.data?.totalStats;
       setStats({
-        totalSalary: users.reduce((sum, u) => sum + (u.totalSalary || 0), 0),
-        totalHours: users.reduce((sum, u) => sum + (u.totalTeachingHours || 0), 0),
-        totalCommission: users.reduce((sum, u) => sum + (u.totalCommission || 0), 0),
-        totalDocuments: users.reduce((sum, u) => sum + (u.totalDocuments || 0), 0),
-        instructorCount: instructors.length,
-        consultantCount: consultants.length,
+        totalSalary: ts?.totalSalary || 0,
+        totalHours: ts?.totalHours || 0,
+        totalCommission: ts?.totalCommission || 0,
+        totalDocuments: ts?.totalDocuments || 0,
+        instructorCount: ts?.instructorCount || 0,
+        consultantCount: ts?.consultantCount || 0,
       });
 
       setNoConfig(false);
@@ -391,92 +380,6 @@ const AdminSalary = () => {
     setShowAddCommissionModal(false);
   };
 
-  // --- Salary Column Config ---
-  const loadSalaryColumns = async () => {
-    try {
-      const res = await apiClient.get('/salary/columns');
-      setSalaryColumns(res?.data?.data || []);
-    } catch {
-      showToast('Không tải được cấu hình cột lương', 'error');
-    }
-  };
-
-  const handleOpenAddColumn = () => {
-    loadSalaryColumns();
-    setEditingColumn(null);
-    setColumnForm({ name: '', code: '', type: 'allowance', applyToRoles: ['ALL'], order: 0, description: '', courseId: '', defaultValue: 0, isActive: true });
-    setShowColumnModal(true);
-  };
-
-  const handleOpenEditColumn = (col) => {
-    setEditingColumn(col);
-    setColumnForm({
-      name: col.name || '',
-      code: col.code || '',
-      type: col.type || 'allowance',
-      applyToRoles: col.applyToRoles || ['ALL'],
-      order: col.order || 0,
-      description: col.description || '',
-      courseId: col.courseId?._id || col.courseId || '',
-      defaultValue: col.defaultValue || 0,
-      isActive: col.isActive !== false,
-    });
-    setShowColumnModal(true);
-  };
-
-  const handleSaveColumn = async (e) => {
-    e.preventDefault();
-    if (!columnForm.name.trim()) {
-      showToast('Tên cột là bắt buộc', 'warning');
-      return;
-    }
-    if (!columnForm.code.trim()) {
-      showToast('Mã cột là bắt buộc', 'warning');
-      return;
-    }
-    try {
-      setSubmitting(true);
-      const payload = {
-        ...columnForm,
-        courseId: columnForm.courseId || null,
-      };
-      if (editingColumn) {
-        await apiClient.put(`/salary/columns/${editingColumn._id}`, payload);
-        showToast('Đã cập nhật cột lương', 'success');
-      } else {
-        await apiClient.post('/salary/columns', payload);
-        showToast('Đã tạo cột lương', 'success');
-      }
-      setShowColumnModal(false);
-      await loadSalaryColumns();
-    } catch (error) {
-      showToast(error.message || 'Lưu thất bại', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteColumn = async (col) => {
-    if (!confirm(`Xóa cột "${col.name}"?`)) return;
-    try {
-      await apiClient.delete(`/salary/columns/${col._id}`);
-      await loadSalaryColumns();
-      showToast('Đã xóa cột lương', 'success');
-    } catch (error) {
-      showToast(error.message || 'Xóa thất bại', 'error');
-    }
-  };
-
-  const toggleColumnRole = (role) => {
-    setColumnForm(prev => {
-      const roles = prev.applyToRoles || [];
-      if (roles.includes(role)) {
-        return { ...prev, applyToRoles: roles.filter(r => r !== role) };
-      }
-      return { ...prev, applyToRoles: [...roles, role] };
-    });
-  };
-
   const todayStr = new Date().toISOString().split('T')[0];
 
   const columns = useMemo(() => {
@@ -666,12 +569,6 @@ const AdminSalary = () => {
             Cấu hình nghỉ phép
           </button>
 
-          <button
-            onClick={handleOpenAddColumn}
-            className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-          >
-            Cấu hình cột lương
-          </button>
         </div>
       </div>
 
@@ -724,213 +621,6 @@ const AdminSalary = () => {
         </div>
       )}
 
-      {/* Salary Column Config Modal */}
-      {showColumnModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">
-                {editingColumn ? 'Sửa cột lương' : 'Thêm cột lương'}
-              </h3>
-              <button
-                onClick={() => setShowColumnModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Column list */}
-            {!editingColumn && salaryColumns.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm font-medium text-slate-700 mb-2">Các cột hiện có:</p>
-                <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 rounded-lg p-2">
-                  {salaryColumns.map(col => {
-                    const typeLabel = { course: 'Khóa học', allowance: 'Phụ cấp', deduction: 'Khấu trừ', bonus: 'Thưởng' }[col.type] || col.type;
-                    return (
-                      <div key={col._id} className="flex items-center gap-2 p-2 bg-white rounded-lg shadow-sm">
-                        <span className="flex-1 text-sm">
-                          <span className="font-medium">{col.name}</span>
-                          <span className="ml-2 text-xs text-slate-400">[{col.code}]</span>
-                          <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-                            col.type === 'allowance' ? 'bg-green-100 text-green-700' :
-                            col.type === 'deduction' ? 'bg-red-100 text-red-700' :
-                            col.type === 'bonus' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>{typeLabel}</span>
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${col.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
-                          {col.isActive ? 'Bật' : 'Tắt'}
-                        </span>
-                        <button
-                          onClick={() => handleOpenEditColumn(col)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDeleteColumn(col)}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleSaveColumn} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên hiển thị</label>
-                  <input
-                    type="text"
-                    value={columnForm.name}
-                    onChange={(e) => setColumnForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="VD: Hỗ trợ xăng xe"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Mã code</label>
-                  <input
-                    type="text"
-                    value={columnForm.code}
-                    onChange={(e) => setColumnForm(f => ({ ...f, code: e.target.value }))}
-                    placeholder="VD: support_fuel"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Loại</label>
-                  <select
-                    value={columnForm.type}
-                    onChange={(e) => setColumnForm(f => ({ ...f, type: e.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  >
-                    <option value="course">Theo khóa học</option>
-                    <option value="allowance">Phụ cấp</option>
-                    <option value="deduction">Khấu trừ</option>
-                    <option value="bonus">Thưởng</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Thứ tự</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={columnForm.order}
-                    onChange={(e) => setColumnForm(f => ({ ...f, order: Number(e.target.value) }))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              {columnForm.type === 'course' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Khóa học liên kết</label>
-                  <select
-                    value={columnForm.courseId}
-                    onChange={(e) => setColumnForm(f => ({ ...f, courseId: e.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  >
-                    <option value="">-- Chọn khóa học --</option>
-                    {courses.map(c => (
-                      <option key={c._id} value={c._id}>{c.name} ({c.code})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {(columnForm.type === 'allowance' || columnForm.type === 'deduction' || columnForm.type === 'bonus') && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Giá trị mặc định</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={columnForm.defaultValue}
-                    onChange={(e) => setColumnForm(f => ({ ...f, defaultValue: Number(e.target.value) }))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Áp dụng cho</label>
-                <div className="flex gap-4">
-                  {['INSTRUCTOR', 'CONSULTANT', 'ALL'].map(role => (
-                    <label key={role} className="flex items-center gap-1.5 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={columnForm.applyToRoles.includes(role)}
-                        onChange={() => toggleColumnRole(role)}
-                        className="rounded border-slate-300"
-                      />
-                      {role === 'INSTRUCTOR' ? 'Giảng viên' : role === 'CONSULTANT' ? 'Tư vấn viên' : 'Tất cả'}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={columnForm.isActive !== false}
-                    onChange={(e) => setColumnForm(f => ({ ...f, isActive: e.target.checked }))}
-                    className="rounded border-slate-300"
-                  />
-                  Đang bật (hiển thị trên bảng lương)
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Mô tả</label>
-                <textarea
-                  value={columnForm.description}
-                  onChange={(e) => setColumnForm(f => ({ ...f, description: e.target.value }))}
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                {editingColumn && (
-                  <button
-                    type="button"
-                    onClick={() => setEditingColumn(null)}
-                    className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700"
-                  >
-                    Quay lại danh sách
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowColumnModal(false)}
-                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700"
-                >
-                  Huỷ
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-teal-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {submitting ? 'Đang lưu...' : editingColumn ? 'Cập nhật' : 'Thêm mới'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Table */}
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
@@ -954,7 +644,30 @@ const AdminSalary = () => {
           </div>
         ) : (
           <>
-            <DataTable columns={columns} data={salaryData} />
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {columns.map(col => (
+                      <th key={col.key} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        {col.title}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {salaryData.map((row, idx) => (
+                    <tr key={row.id || row.userId || idx} className="hover:bg-slate-50">
+                      {columns.map(col => (
+                        <td key={col.key} className="px-4 py-3 text-sm text-slate-800">
+                          {col.render ? col.render(null, row) : (row[col.key] ?? '')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {pagination.totalPages > 1 && (
               <div className="px-4 py-3 border-t border-slate-100">
                 <Pagination 
