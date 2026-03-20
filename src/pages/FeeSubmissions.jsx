@@ -61,9 +61,14 @@ function PaymentStatusBadge({ status }) {
   );
 }
 
-function FeePlanRow({ item, idx }) {
+function FeePlanRow({ item, idx, feePlan, paidAmount = 0 }) {
   const installAmt = Number(item.amount || 0);
-  const isPaid = !!item.paymented;
+  // Compute isPaid from cumulative payment amounts (consistent across all payment methods).
+  // VNPay/QR payments create Payment records but don't set feePlanSnapshot[].paymented.
+  const cumulativeInstallmentAmount = feePlan.slice(0, idx + 1).reduce(
+    (sum, fp) => sum + (Number(fp.amount) || 0), 0
+  );
+  const isPaid = (Number(paidAmount) || 0) >= cumulativeInstallmentAmount;
   return (
     <div className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 ${isPaid ? 'bg-emerald-50 border border-emerald-100' : 'bg-white border border-slate-100'}`}>
       <div className="flex items-center gap-2.5">
@@ -209,7 +214,7 @@ function LearnerRow({ item, expanded, onToggle }) {
                     <p className="text-xs text-slate-400">Chưa có lịch đóng phí.</p>
                   )}
                   {(item.feePlanSnapshot || []).map((fp, idx) => (
-                    <FeePlanRow key={idx} item={fp} idx={idx} />
+                    <FeePlanRow key={idx} item={fp} idx={idx} feePlan={item.feePlanSnapshot || []} paidAmount={item.paidAmount || 0} />
                   ))}
                 </div>
               </div>
@@ -280,8 +285,6 @@ const FeeSubmissions = () => {
   // Filters
   const [search, setSearch] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   const buildQuery = useCallback(() => {
@@ -290,10 +293,8 @@ const FeeSubmissions = () => {
     params.set('limit', 10);
     if (search) params.set('search', search);
     if (paymentStatus) params.set('paymentStatus', paymentStatus);
-    if (dateFrom) params.set('dateFrom', dateFrom);
-    if (dateTo) params.set('dateTo', dateTo);
     return params.toString();
-  }, [currentPage, search, paymentStatus, dateFrom, dateTo]);
+  }, [currentPage, search, paymentStatus]);
 
   const loadData = useCallback(async () => {
     try {
@@ -347,13 +348,11 @@ const FeeSubmissions = () => {
   const resetFilters = () => {
     setSearch('');
     setPaymentStatus('');
-    setDateFrom('');
-    setDateTo('');
     setCurrentPage(1);
     setExpandedRows({});
   };
 
-  const hasFilters = search || paymentStatus || dateFrom || dateTo;
+  const hasFilters = search || paymentStatus;
 
   return (
     <div className="space-y-6">
@@ -423,28 +422,6 @@ const FeeSubmissions = () => {
               <option value="unpaid">Chưa đóng</option>
               <option value="overdue">Trễ hạn</option>
             </select>
-
-            {/* Date from */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 whitespace-nowrap">Từ ngày</span>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={handleFilterChange(setDateFrom)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
-              />
-            </div>
-
-            {/* Date to */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 whitespace-nowrap">Đến ngày</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={handleFilterChange(setDateTo)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
-              />
-            </div>
 
             {/* Reset filters */}
             {hasFilters && (

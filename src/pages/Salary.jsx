@@ -3,6 +3,7 @@ import SectionHeader from '../components/ui/SectionHeader';
 import apiClient from '../services/apiClient';
 import { formatCurrency } from '../utils/formatters';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const fmt = (n) => formatCurrency(n || 0);
 
@@ -16,6 +17,7 @@ const KpiCard = ({ label, value, sub, color = 'text-slate-900' }) => (
 
 const Salary = () => {
   const { user } = useAuthContext();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [salaryData, setSalaryData] = useState(null);
   const [error, setError] = useState('');
@@ -79,24 +81,40 @@ const Salary = () => {
   const handleExport = useCallback(async () => {
     try {
       const params = new URLSearchParams({
-        userId: user._id,
         month: filters.month,
         year: filters.year,
       });
       if (filters.courseId) params.append('courseId', filters.courseId);
-      const res = await apiClient.get(`/salary/export?${params}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/salary/my-export?${params}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${(() => {
+            let token = localStorage.getItem('token');
+            if (!token) return '';
+            try { const p = JSON.parse(token); return typeof p === 'string' ? p : p; } catch { return token; }
+          })()}`
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || 'Xuất file thất bại', 'error');
+        return;
+      }
+
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `luong_cua_toi_${filters.month}_${filters.year}.csv`);
+      link.href = blobUrl;
+      link.setAttribute('download', `luong_cua_toi_${filters.month}_${filters.year}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      alert('Lỗi khi xuất file: ' + (err.message || 'Unknown error'));
+      showToast('Xuất file thất bại', 'error');
     }
-  }, [filters, user]);
+  }, [filters, showToast]);
 
   const summary = useMemo(() => {
     if (!salaryData) return null;

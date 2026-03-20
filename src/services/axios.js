@@ -52,6 +52,16 @@ axiosInstance.interceptors.response.use(
       }
     }
 
+    // Debug log 400 errors to help identify sources
+    if (error.response?.status === 400) {
+      console.warn('[API 400]', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    }
+
     // Trả về error với thông tin chi tiết
     return Promise.reject(error.response?.data || error.message || 'Có lỗi xảy ra');
   }
