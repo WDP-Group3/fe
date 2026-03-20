@@ -10,6 +10,17 @@ import Pagination from '../../components/common/Pagination';
 const fmt = (n) => formatCurrency(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 
+// Payment status helper — uses Number() coercion and a grace threshold to avoid
+// floating-point and type-mismatch inconsistencies between frontend and backend.
+const PAYMENT_GRACE = 1000; // VND; amounts below this are considered "paid"
+const getPaymentStatus = (item) => {
+  const remaining = Number(item.remaining || 0);
+  const paidAmount = Number(item.paidAmount || 0);
+  if (remaining <= PAYMENT_GRACE) return 'paid';
+  if (paidAmount > 0) return 'partial';
+  return 'unpaid';
+};
+
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 const KpiCard = ({ label, value, sub, color = 'text-slate-900', bgColor = '' }) => (
   <div className={`rounded-2xl border border-slate-100 bg-white p-5 shadow-sm ${bgColor}`}>
@@ -100,9 +111,9 @@ const AdminPayments = () => {
     const paidAmount = items.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
     const remaining = items.reduce((sum, i) => sum + (i.remaining || 0), 0);
     const overdue = items.filter(i => i.isOverdue).length;
-    const paid = items.filter(i => i.remaining === 0).length;
-    const partial = items.filter(i => i.remaining > 0 && i.paidAmount > 0).length;
-    const unpaid = items.filter(i => i.paidAmount === 0).length;
+    const paid = items.filter(i => getPaymentStatus(i) === 'paid').length;
+    const partial = items.filter(i => getPaymentStatus(i) === 'partial').length;
+    const unpaid = items.filter(i => getPaymentStatus(i) === 'unpaid').length;
 
     // This month
     const now = new Date();
@@ -169,11 +180,14 @@ const AdminPayments = () => {
     {
       key: 'remaining',
       title: 'Còn lại',
-      render: (_, row) => (
-        <span className={row.isOverdue ? 'text-red-600 font-bold' : 'text-amber-600 font-medium'}>
-          {fmt(row.remaining)}
-        </span>
-      ),
+      render: (_, row) => {
+        const status = getPaymentStatus(row);
+        return (
+          <span className={status === 'paid' ? 'text-emerald-600 font-medium' : row.isOverdue ? 'text-red-600 font-bold' : 'text-amber-600 font-medium'}>
+            {fmt(row.remaining)}
+          </span>
+        );
+      },
     },
   ];
 
@@ -206,7 +220,7 @@ const AdminPayments = () => {
       {/* Header */}
       <SectionHeader
         title="QUẢN LÝ HỌC PHÍ"
-        description="Quản lý học phí, theo dõi công nợ và gửi nhắc nhở"
+        description="Theo dõi tình trạng đóng phí của học viên và gửi nhắc nhở thanh toán"
       />
 
       {/* Stats Cards */}
