@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from '../../services/axios';
 import { useToast } from '../../context/ToastContext';
 import Pagination from '../../components/common/Pagination';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const AdminSystemHolidays = () => {
   const { showToast } = useToast();
@@ -20,6 +21,7 @@ const AdminSystemHolidays = () => {
     location: '' // null = toàn hệ thống, có giá trị = theo khu vực
   });
   const [editingId, setEditingId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
   useEffect(() => {
     fetchHolidays();
@@ -96,15 +98,17 @@ const AdminSystemHolidays = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Bạn có chắc muốn xóa lịch nghỉ này?')) return;
+  const handleDelete = async () => {
+    if (!deleteConfirm.id) return;
     try {
-      await axios.delete(`/system-holidays/${id}`);
+      await axios.delete(`/system-holidays/${deleteConfirm.id}`);
       showToast('Xóa lịch nghỉ thành công! Email thông báo đã được gửi đến giáo viên và học viên.', 'success');
-      setHolidays((prev) => prev.filter(h => h._id !== id));
+      setHolidays((prev) => prev.filter(h => h._id !== deleteConfirm.id));
     } catch (error) {
       console.error('Lỗi khi xóa:', error);
       showToast(error.response?.data?.message || error.message || 'Lỗi khi xóa lịch nghỉ', 'error');
+    } finally {
+      setDeleteConfirm({ open: false, id: null });
     }
   };
 
@@ -186,7 +190,7 @@ const AdminSystemHolidays = () => {
                     Sửa
                   </button>
                   <button
-                    onClick={() => handleDelete(holiday._id)}
+                    onClick={() => setDeleteConfirm({ open: true, id: holiday._id })}
                     className="text-red-600 hover:text-red-900"
                   >
                     Xóa
@@ -209,6 +213,15 @@ const AdminSystemHolidays = () => {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDelete}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa lịch nghỉ này?"
+        variant="danger"
+      />
 
       {/* Modal */}
       {showModal && (

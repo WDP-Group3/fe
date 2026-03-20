@@ -23,6 +23,8 @@ const AdminLearningLocations = () => {
   const [instructorRows, setInstructorRows] = useState([]);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, name: '' });
+  const [instructorDeleteConfirm, setInstructorDeleteConfirm] = useState({ open: false, idx: null, name: '' });
+  const [transferConfirm, setTransferConfirm] = useState({ open: false, message: '', confirmed: false });
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
   const [instructorSearchQueries, setInstructorSearchQueries] = useState({});
@@ -152,6 +154,36 @@ const AdminLearningLocations = () => {
     setOpenInstructorDropdown(null);
   };
 
+  const executeSave = async () => {
+    setSubmitLoading(true);
+    try {
+      const payload = {
+        areaName: form.areaName.trim(),
+        yardName: form.yardName.trim(),
+        googleMapAddress: form.googleMapAddress.trim(),
+        instructors: instructorRows
+          .map((r) => ({
+            instructorId: r.instructorId?._id || r.instructorId,
+            courseId: r.courseId?._id || r.courseId,
+          }))
+          .filter((r) => r.instructorId && r.courseId),
+      };
+      if (editing) {
+        await apiClient.put(`/learning-locations/${editing._id}`, payload);
+      } else {
+        await apiClient.post('/learning-locations', payload);
+      }
+      showToast(editing ? 'Đã cập nhật địa điểm học' : 'Đã tạo địa điểm học', 'success');
+      setModalOpen(false);
+      loadList();
+    } catch (err) {
+      showToast(err.response?.data?.message || err.message || 'Có lỗi', 'error');
+    } finally {
+      setSubmitLoading(false);
+      setTransferConfirm({ open: false, message: '', confirmed: false });
+    }
+  };
+
   const handleSave = async () => {
     if (!form.areaName.trim()) {
       showToast('Vui lòng nhập tên khu vực', 'error');
@@ -170,27 +202,37 @@ const AdminLearningLocations = () => {
       showToast('Vui lòng chọn đủ thầy và khóa học cho từng dòng', 'error');
       return;
     }
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        areaName: form.areaName.trim(),
-        yardName: form.yardName.trim(),
-        googleMapAddress: form.googleMapAddress.trim(),
-        instructors: instructorPayload,
-      };
-      if (editing) {
-        await apiClient.put(`/learning-locations/${editing._id}`, payload);
-      } else {
-        await apiClient.post('/learning-locations', payload);
+
+    let collidingInstructors = [];
+    if (list && list.length > 0) {
+      for (const row of instructorPayload) {
+        for (const loc of list) {
+          if (editing && loc._id === editing._id) continue;
+          const exists = (loc.instructors || []).some(
+            (inst) => String(inst.instructorId?._id || inst.instructorId) === String(row.instructorId)
+          );
+          if (exists) {
+            const foundInstructor = instructors.find(u => String(u._id) === String(row.instructorId));
+            const name = foundInstructor ? foundInstructor.fullName : 'Giáo viên';
+            const oldLocName = loc.areaName + (loc.yardName ? ` - ${loc.yardName}` : '');
+            collidingInstructors.push({ name, oldLocName });
+            break;
+          }
+        }
       }
-      showToast(editing ? 'Đã cập nhật địa điểm học' : 'Đã tạo địa điểm học', 'success');
-      setModalOpen(false);
-      loadList();
-    } catch (err) {
-      showToast(err.response?.data?.message || err.message || 'Có lỗi', 'error');
-    } finally {
-      setSubmitLoading(false);
     }
+
+    if (collidingInstructors.length > 0 && !transferConfirm.confirmed) {
+       const msgDetails = collidingInstructors.map(c => `- Thầy ${c.name} (ở sân ${c.oldLocName})`).join('\n');
+       setTransferConfirm({
+         open: true,
+         message: `Các giáo viên sau đang được phân công ở cơ sở khác:\n${msgDetails}\n\nBạn có đồng ý chuyển họ sang cơ sở này không? (Họ sẽ tự động bị xoá khỏi cơ sở cũ)`,
+         confirmed: false
+       });
+       return;
+    }
+
+    executeSave();
   };
 
   const addInstructorRow = () => {
@@ -435,7 +477,10 @@ const AdminLearningLocations = () => {
                     variant="danger"
                     size="sm"
                     className="shrink-0"
-                    onClick={() => removeInstructorRow(idx)}
+                    onClick={() => {
+                      const name = getInstructorDisplayName(row) || 'giáo viên chưa chọn';
+                      setInstructorDeleteConfirm({ open: true, idx, name });
+                    }}
                   >
                     Xóa
                   </Button>
@@ -458,6 +503,30 @@ const AdminLearningLocations = () => {
         title="Xóa địa điểm học"
         message={`Bạn có chắc muốn xóa "${deleteConfirm.name}"?`}
         variant="danger"
+        loading={submitLoading}
+      />
+
+      <ConfirmDialog
+        isOpen={instructorDeleteConfirm.open}
+        onClose={() => setInstructorDeleteConfirm({ open: false, idx: null, name: '' })}
+        onConfirm={() => {
+          removeInstructorRow(instructorDeleteConfirm.idx);
+          setInstructorDeleteConfirm({ open: false, idx: null, name: '' });
+        }}
+        title="Xóa giáo viên khỏi sân"
+        message={`Bạn có chắc chắn muốn xóa "${instructorDeleteConfirm.name}" khỏi địa điểm này? Hành động này sẽ được lưu khi bạn cập nhật địa điểm.`}
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={transferConfirm.open}
+        onClose={() => setTransferConfirm({ open: false, message: '', confirmed: false })}
+        onConfirm={executeSave}
+        title="Xác nhận chuyển sân"
+        message={
+          <div className="whitespace-pre-wrap">{transferConfirm.message}</div>
+        }
+        variant="warning"
         loading={submitLoading}
       />
     </div>

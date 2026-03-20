@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { SectionHeader, FileUpload } from "../../components/ui";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { FormGroup } from "../../components/forms";
 import StatusBadge from "../../components/ui/StatusBadge";
 import apiClient from "../../services/apiClient";
@@ -7,6 +8,7 @@ import { formatCurrency } from "../../utils/formatters";
 import config from "../../config";
 import { useToast } from "../../context/ToastContext";
 import Pagination from "../../components/common/Pagination";
+import AdminBatchDetailsModal from "./AdminBatchDetailsModal";
 
 const AdminCourses = () => {
   const [activeTab, setActiveTab] = useState("courses"); // 'courses' or 'batches'
@@ -18,6 +20,12 @@ const AdminCourses = () => {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [editingBatch, setEditingBatch] = useState(null);
+
+  const [courseDeleteConfirm, setCourseDeleteConfirm] = useState({ open: false, id: null });
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState({ open: false, id: null });
+  const [batchModalDeleteConfirm, setBatchModalDeleteConfirm] = useState({ open: false, id: null });
+  const [autoEnrollModalParams, setAutoEnrollModalParams] = useState({ isOpen: false, batch: null });
+  const [viewingBatch, setViewingBatch] = useState(null);
 
   // Filter states for batches
   const [filters, setFilters] = useState({
@@ -139,6 +147,28 @@ const AdminCourses = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAutoEnroll = (batch) => {
+    setAutoEnrollModalParams({ isOpen: true, batch });
+  };
+
+  const confirmAutoEnroll = async () => {
+    const batch = autoEnrollModalParams.batch;
+    if (!batch) return;
+    try {
+      const res = await apiClient.post(`/batches/${batch._id}/auto-enroll`);
+      if (res.data?.success) {
+        showToast(res.message || 'Xếp lớp tự động thành công', 'success');
+        loadAllBatches();
+      } else {
+        showToast(res.data?.message || res.message || 'Có lỗi xảy ra', 'info');
+      }
+    } catch (error) {
+      showToast(error.response?.data?.message || error.message || 'Lỗi xếp lớp tự động', 'error');
+    } finally {
+      setAutoEnrollModalParams({ isOpen: false, batch: null });
     }
   };
 
@@ -311,16 +341,17 @@ const AdminCourses = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xoá khoá học này?")) {
-      try {
-        await apiClient.delete(`/courses/${id}`);
-        showToast("Xoá khoá học thành công!", "success");
-        loadCourses();
-      } catch (deleteError) {
-        console.error(deleteError);
-        showToast(deleteError.message || "Lỗi khi xoá khoá học", "error");
-      }
+  const handleDelete = async () => {
+    if (!courseDeleteConfirm.id) return;
+    try {
+      await apiClient.delete(`/courses/${courseDeleteConfirm.id}`);
+      showToast("Xoá khoá học thành công!", "success");
+      loadCourses();
+    } catch (deleteError) {
+      console.error(deleteError);
+      showToast(deleteError.message || "Lỗi khi xoá khoá học", "error");
+    } finally {
+      setCourseDeleteConfirm({ open: false, id: null });
     }
   };
 
@@ -386,15 +417,17 @@ const AdminCourses = () => {
     setShowBatchModal(true);
   };
 
-  const handleDeleteBatch = async (batchId) => {
-    if (!window.confirm("Bạn có chắc muốn xoá lớp này?")) return;
+  const handleDeleteBatch = async () => {
+    if (!batchDeleteConfirm.id) return;
     try {
-      await apiClient.delete(`/batches/${batchId}`);
+      await apiClient.delete(`/batches/${batchDeleteConfirm.id}`);
       showToast("Xoá lớp học thành công!", "success");
       loadAllBatches();
     } catch (deleteError) {
       console.error(deleteError);
       showToast(deleteError.message || "Lỗi khi xoá lớp học", "error");
+    } finally {
+      setBatchDeleteConfirm({ open: false, id: null });
     }
   };
 
@@ -501,17 +534,18 @@ const AdminCourses = () => {
     }
   };
 
-  const handleDeleteBatchInModal = async (batchId) => {
-    if (!window.confirm("Bạn có chắc muốn xoá lớp này?")) return;
+  const handleDeleteBatchInModal = async () => {
+    if (!batchModalDeleteConfirm.id) return;
     try {
       setBatchLoading(true);
-      await apiClient.delete(`/batches/${batchId}`);
+      await apiClient.delete(`/batches/${batchModalDeleteConfirm.id}`);
       await loadCourseBatches(editingCourse._id);
     } catch (deleteBatchError) {
       console.error(deleteBatchError);
       showToast(deleteBatchError.message || "Xóa lớp thất bại");
     } finally {
       setBatchLoading(false);
+      setBatchModalDeleteConfirm({ open: false, id: null });
     }
   };
 
@@ -997,7 +1031,7 @@ const AdminCourses = () => {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(course._id)}
+                          onClick={() => setCourseDeleteConfirm({ open: true, id: course._id })}
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded-full"
                           title="Xóa"
                         >
@@ -1373,6 +1407,26 @@ const AdminCourses = () => {
                             + Học viên
                           </button>
                           <button
+                            onClick={() => handleAutoEnroll(batch)}
+                            className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100"
+                            title="Tự động xếp lớp"
+                          >
+                            <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Xếp lớp
+                          </button>
+                          <button
+                            onClick={() => setViewingBatch(batch)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded bg-slate-50 hover:bg-slate-100 transition-colors"
+                            title="Xem chi tiết"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                          <button
                             onClick={() => handleEditBatch(batch)}
                             className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
                             title="Sửa"
@@ -1392,7 +1446,7 @@ const AdminCourses = () => {
                             </svg>
                           </button>
                           <button
-                            onClick={() => handleDeleteBatch(batch._id)}
+                            onClick={() => setBatchDeleteConfirm({ open: true, id: batch._id })}
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                             title="Xóa"
                           >
@@ -1677,6 +1731,54 @@ const AdminCourses = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        isOpen={courseDeleteConfirm.open}
+        onClose={() => setCourseDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDelete}
+        title="Xóa khóa học"
+        message="Bạn có chắc chắn muốn xóa khóa học này? Hành động này không thể hoàn tác."
+        variant="danger"
+      />
+      
+      <ConfirmDialog
+        isOpen={batchDeleteConfirm.open}
+        onClose={() => setBatchDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteBatch}
+        title="Xóa lớp học"
+        message="Bạn có chắc muốn xóa lớp này? Hành động này không thể hoàn tác."
+        variant="danger"
+      />
+      
+      <ConfirmDialog
+        isOpen={batchModalDeleteConfirm.open}
+        onClose={() => setBatchModalDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteBatchInModal}
+        title="Xóa lớp học"
+        message="Bạn có chắc muốn xóa lớp này?"
+        variant="danger"
+        loading={batchLoading}
+      />
+
+      <ConfirmDialog
+        isOpen={autoEnrollModalParams.isOpen}
+        onClose={() => setAutoEnrollModalParams({ isOpen: false, batch: null })}
+        onConfirm={confirmAutoEnroll}
+        title="Xếp lớp tự động"
+        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${
+          autoEnrollModalParams.batch?.name || "này"
+        }?`}
+        variant="primary"
+      />
+
+      {/* Batch Details Modal */}
+      <AdminBatchDetailsModal
+        isOpen={!!viewingBatch}
+        onClose={() => setViewingBatch(null)}
+        batch={viewingBatch}
+        onLearnerRemoved={loadAllBatches}
+      />
     </div>
   );
 };
