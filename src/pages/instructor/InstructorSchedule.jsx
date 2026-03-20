@@ -3,6 +3,8 @@ import { SectionHeader, Button, Loading, Modal } from '../../components/ui';
 import WeekScheduler from '../../components/scheduler/WeekScheduler';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
+import { useAuthContext } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 
 const SLOTS = [
   { id: 1, label: 'Ca 1 (07:00 - 08:00)', startHour: 7, isBreak: false },
@@ -27,6 +29,9 @@ const getMonday = (d) => {
 
 const InstructorSchedule = () => {
   const { showToast } = useToast();
+  const { user } = useAuthContext();
+  const socket = useSocket();
+
   const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState([]);
   const [currentMonday, setCurrentMonday] = useState(getMonday(new Date()));
@@ -62,6 +67,25 @@ const InstructorSchedule = () => {
 
   useEffect(() => { fetchSchedule(); }, [currentMonday]);
   useEffect(() => { fetchEmergencyLeaveInfo(); fetchMonthlyStats(); }, []);
+
+  // [MỚI] Socket lắng nghe cập nhật lịch Realtime
+  useEffect(() => {
+    if (!socket || !user?.id) return;
+
+    const handleScheduleUpdate = (payload) => {
+      // Nếu có người vừa đặt/hủy lịch của chính giảng viên này -> Tải lại danh sách
+      if (payload.instructorId === user.id) {
+        console.log('📅 Có thay đổi lịch từ học viên (Realtime):', payload);
+        fetchSchedule();
+      }
+    };
+
+    socket.on('schedule-updated', handleScheduleUpdate);
+
+    return () => {
+      socket.off('schedule-updated', handleScheduleUpdate);
+    };
+  }, [socket, user?.id, currentMonday]);
 
   const fetchEmergencyLeaveInfo = async () => {
     try {

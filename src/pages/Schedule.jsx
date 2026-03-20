@@ -4,7 +4,9 @@ import { SocialIcons } from '../components/common';
 import WeekScheduler from '../components/scheduler/WeekScheduler';
 import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
+import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 
 const getMonday = (d) => {
   const date = new Date(d);
@@ -45,6 +47,8 @@ const Schedule = () => {
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, bookingId: null, rating: 5, comment: '' });
   const [detailModal, setDetailModal] = useState({ isOpen: false, data: null });
 
+  const socket = useSocket();
+
   const consultantInfo = {
     name: 'Ngô Trần Minh Hòa',
     zalo: 'https://zalo.me/0966881862',
@@ -58,6 +62,29 @@ const Schedule = () => {
     fetchBookingStatus();
     fetchEnrolledCourses();
   }, []);
+
+  // [MỚI] Socket lắng nghe cập nhật lịch Realtime
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleScheduleUpdate = (payload) => {
+      console.log('📅 Có người vừa cập nhật lịch (Realtime):', payload);
+      // 1. Chỉ tải lại lịch nếu user đang xem đúng luồng của Giáo viên bị cập nhật
+      if (selectedInstructor && payload.instructorId === selectedInstructor) {
+        fetchInstructorSchedule();
+      }
+      
+      // 2. Tải lại MySessions nếu đó là thay đổi liên quan đến lịch riêng của học viên 
+      //    (Ví dụ giáo viên hủy gấp schedule của chính học viên này)
+      loadMySessions();
+    };
+
+    socket.on('schedule-updated', handleScheduleUpdate);
+
+    return () => {
+      socket.off('schedule-updated', handleScheduleUpdate);
+    };
+  }, [socket, selectedInstructor, currentMonday]);
 
   useEffect(() => {
     if (selectedLocation) {
