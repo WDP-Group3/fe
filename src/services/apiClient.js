@@ -11,27 +11,20 @@ const getHeaders = () => {
     'Content-Type': 'application/json',
   };
 
-  // Lấy token trực tiếp từ localStorage (không qua JSON.parse vì token là string)
   let token = localStorage.getItem('token');
-
-  // Nếu token bị wrap trong JSON (do useLocalStorage), parse nó
   if (token) {
     try {
-      // Thử parse xem có phải JSON string không
       const parsed = JSON.parse(token);
       if (typeof parsed === 'string') {
         token = parsed;
       }
     } catch {
-      // Nếu không parse được, token đã là string rồi, giữ nguyên
+      // token đã là string
     }
   }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
-    console.log('✅ Token found, sending in Authorization header');
-  } else {
-    console.warn('⚠️ No token found in localStorage');
   }
 
   return headers;
