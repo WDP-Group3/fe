@@ -104,7 +104,7 @@ const Profile = () => {
       setLoading(false);
       setError('Vui lòng đăng nhập để xem thông tin');
     }
-  }, [targetUserId, currentUser?.id]);
+  }, [targetUserId, currentUser?.id, isOwnProfile]);
 
   // Check permissions
   const canEdit = profileUser ? canEditProfile(currentUser, profileUser) : false;
@@ -112,7 +112,8 @@ const Profile = () => {
 
   useEffect(() => {
     const loadlearnerDocument = async () => {
-      if (!profileUser || profileUser.role !== 'learner' || !isOwnProfile) return;
+      if (!profileUser || !isOwnProfile) return;
+      if (profileUser.role !== 'learner' && profileUser.role !== 'USER') return;
       try {
         setLoadinglearnerDocument(true);
         const response = await apiClient.get('/documents/me');
@@ -454,7 +455,7 @@ const Profile = () => {
         </Card>
 
         {/* Role-specific Information */}
-        {profileUser?.role === 'learner' && (
+        {(profileUser?.role === 'learner' || profileUser?.role === 'USER') && profileUser?.role === 'learner' && (
           <>
             <Card title="Thông tin học viên">
               <Grid cols={2} gap={4}>
@@ -468,58 +469,60 @@ const Profile = () => {
                 </div>
               </Grid>
             </Card>
-
-            <Card title="Hồ sơ cá nhân đã nộp">
-              {loadinglearnerDocument ? (
-                <p className="text-sm text-slate-500">Đang tải hồ sơ...</p>
-              ) : !learnerDocument ? (
-                <p className="text-sm text-slate-500">Chưa có hồ sơ cá nhân.</p>
-              ) : (
-                <Grid cols={2} gap={4}>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Số CMND/CCCD</p>
-                    <p className="mt-1 text-slate-900">{learnerDocument?.cccdNumber || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Trạng thái duyệt</p>
-                    <p className="mt-1 text-slate-900">{learnerDocument?.status || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">CCCD mặt trước</p>
-                    {learnerDocument?.cccdImageFront ? (
-                      <a href={learnerDocument.cccdImageFront} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
-                        Xem file
-                      </a>
-                    ) : <p className="mt-1 text-slate-900">-</p>}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">CCCD mặt sau</p>
-                    {learnerDocument?.cccdImageBack ? (
-                      <a href={learnerDocument.cccdImageBack} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
-                        Xem file
-                      </a>
-                    ) : <p className="mt-1 text-slate-900">-</p>}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Giấy khám sức khỏe</p>
-                    {learnerDocument?.healthCertificate ? (
-                      <a href={learnerDocument.healthCertificate} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
-                        Xem file
-                      </a>
-                    ) : <p className="mt-1 text-slate-900">-</p>}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Ảnh 3x4</p>
-                    {learnerDocument?.photo ? (
-                      <a href={learnerDocument.photo} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
-                        Xem file
-                      </a>
-                    ) : <p className="mt-1 text-slate-900">-</p>}
-                  </div>
-                </Grid>
-              )}
-            </Card>
           </>
+        )}
+
+        {(profileUser?.role === 'learner' || profileUser?.role === 'USER') && (
+          <Card title="Hồ sơ cá nhân đã nộp">
+            {loadinglearnerDocument ? (
+              <p className="text-sm text-slate-500">Đang tải hồ sơ...</p>
+            ) : !learnerDocument ? (
+              <p className="text-sm text-slate-500">Chưa có hồ sơ cá nhân.</p>
+            ) : (
+              <Grid cols={2} gap={4}>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Số CMND/CCCD</p>
+                  <p className="mt-1 text-slate-900">{learnerDocument?.cccdNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Trạng thái duyệt</p>
+                  <p className="mt-1 text-slate-900">{learnerDocument?.status || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">CCCD mặt trước</p>
+                  {learnerDocument?.cccdImageFront ? (
+                    <a href={learnerDocument.cccdImageFront} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                      Xem file
+                    </a>
+                  ) : <p className="mt-1 text-slate-900">-</p>}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">CCCD mặt sau</p>
+                  {learnerDocument?.cccdImageBack ? (
+                    <a href={learnerDocument.cccdImageBack} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                      Xem file
+                    </a>
+                  ) : <p className="mt-1 text-slate-900">-</p>}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Giấy khám sức khỏe</p>
+                  {learnerDocument?.healthCertificate ? (
+                    <a href={learnerDocument.healthCertificate} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                      Xem file
+                    </a>
+                  ) : <p className="mt-1 text-slate-900">-</p>}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Ảnh 3x4</p>
+                  {learnerDocument?.photo ? (
+                    <a href={learnerDocument.photo} target="_blank" rel="noreferrer" className="mt-1 inline-block text-indigo-600 hover:underline">
+                      Xem file
+                    </a>
+                  ) : <p className="mt-1 text-slate-900">-</p>}
+                </div>
+              </Grid>
+            )}
+          </Card>
         )}
 
         {profileUser?.role === 'INSTRUCTOR' && (
