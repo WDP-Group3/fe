@@ -87,7 +87,7 @@ const AdminSalary = () => {
         role: filters.role || '',
         search: debouncedSearch || '',
         page: currentPage,
-        limit: 20
+        limit: 10
       });
 
       // Gọi song song: salary summary + config + courses + leave config
