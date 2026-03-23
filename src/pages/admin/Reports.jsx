@@ -147,7 +147,7 @@ const Reports = () => {
                             icon="✅"
                         />
                         <KpiCard
-                            label="Công nợ còn lại"
+                            label="Học phí chưa thu"
                             value={fmt(debt.totalDebt)}
                             sub="Chưa thanh toán"
                             color={debt.totalDebt > 0 ? 'text-red-500' : 'text-slate-900'}

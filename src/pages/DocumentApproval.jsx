@@ -194,7 +194,7 @@ const DocumentApproval = () => {
             {!d.cccdImageFront && !d.cccdImageBack && !d.healthCertificate && !d.photo ? <span className="text-xs text-slate-500">—</span> : null}
           </div>
         ),
-        action: user?.role === 'CONSULTANT' ? (
+        action: (user?.role === 'CONSULTANT' || user?.role === 'INSTRUCTOR') ? (
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => handleUpdateStatus(d, 'APPROVED')} disabled={d.status === 'APPROVED'}>
               Duyệt
