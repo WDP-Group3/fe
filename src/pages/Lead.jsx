@@ -6,9 +6,11 @@ import apiClient from '../services/apiClient';
 import { Button } from '../components/ui';
 import { useAuthContext } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
+import { useToast } from '../context/ToastContext';
 
 const Leads = () => {
     const { user: currentUser } = useAuthContext();
+    const { showToast } = useToast();
     const [leads, setLeads] = useState([]);
     const [consultants, setConsultants] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -79,10 +81,10 @@ const Leads = () => {
                 return lead;
             }));
 
-            alert('Đã gán thành công!');
+            showToast('Đã gán thành công!', 'success');
         } catch (err) {
             console.error('Error assigning lead:', err);
-            alert('Lỗi: ' + err.message);
+            showToast('Lỗi: ' + err.message, 'error');
         }
     };
 
@@ -95,10 +97,10 @@ const Leads = () => {
                 lead._id === leadId ? { ...lead, status: newStatus } : lead
             ));
 
-            alert('Cập nhật trạng thái thành công!');
+            showToast('Cập nhật trạng thái thành công!', 'success');
         } catch (err) {
             console.error('Error updating status:', err);
-            alert('Lỗi: ' + err.message);
+            showToast('Lỗi: ' + err.message, 'error');
         }
     };
 

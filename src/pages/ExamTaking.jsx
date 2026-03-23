@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../services/axios';
 import Button from '../components/ui/Button';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const ExamTaking = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthContext();
+  const { showToast } = useToast();
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -60,7 +62,7 @@ const ExamTaking = () => {
       }
     } catch (error) {
       console.error('Error loading questions:', error);
-      alert('Không thể tải đề thi. Vui lòng thử lại!');
+      showToast('Không thể tải đề thi. Vui lòng thử lại!', 'error');
       navigate(user ? '/portal/exams' : '/exams');
     } finally {
       setLoading(false);
@@ -166,7 +168,7 @@ const ExamTaking = () => {
       }
     } catch (error) {
       console.error('Error submitting exam:', error);
-      alert('Không thể nộp bài. Vui lòng thử lại!');
+      showToast('Không thể nộp bài. Vui lòng thử lại!', 'error');
     } finally {
       setSubmitting(false);
     }

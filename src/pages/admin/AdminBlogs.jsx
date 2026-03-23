@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { SectionHeader } from "../../components/ui";
 import apiClient from "../../services/apiClient";
 import Pagination from "../../components/common/Pagination";
+import { useToast } from "../../context/ToastContext";
 
 const CATEGORIES = [
     "Những lỗi thường gặp",
@@ -18,6 +19,7 @@ const initialFormState = {
 };
 
 const AdminBlogs = () => {
+    const { showToast } = useToast();
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -91,7 +93,7 @@ const AdminBlogs = () => {
             loadBlogs();
         } catch (err) {
             console.error("Error saving blog:", err);
-            alert("Lỗi lưu bài viết: " + (err.message || "Thử lại sau"));
+            showToast("Lỗi lưu bài viết: " + (err.message || "Thử lại sau"), "error");
         } finally {
             setSaving(false);
         }
@@ -108,7 +110,7 @@ const AdminBlogs = () => {
             loadBlogs();
         } catch (err) {
             console.error("Error toggling visibility:", err);
-            alert("Lỗi thay đổi trạng thái: " + (err.message || "Thử lại sau"));
+            showToast("Lỗi thay đổi trạng thái: " + (err.message || "Thử lại sau"), "error");
         } finally {
             setTogglingId(null);
         }

@@ -6,9 +6,11 @@ import DataTable from '../components/ui/DataTable';
 import apiClient from '../services/apiClient';
 import { formatCurrency } from '../utils/formatters';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const Payments = () => {
   const { user } = useAuthContext();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [payments, setPayments] = useState([]);
@@ -158,7 +160,7 @@ const Payments = () => {
   const handleAdminUpsertDueDate = async (e) => {
     e.preventDefault();
     if (!adminDueDateForm.registrationId || !adminDueDateForm.dueDate) {
-      alert('Vui lòng chọn hồ sơ và nhập hạn thanh toán');
+      showToast('Vui lòng chọn hồ sơ và nhập hạn thanh toán', 'error');
       return;
     }
 
@@ -174,10 +176,10 @@ const Payments = () => {
         note: adminDueDateForm.note,
       });
       await loadData();
-      alert('Đã cập nhật hạn thanh toán');
+      showToast('Đã cập nhật hạn thanh toán', 'success');
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Cập nhật hạn thất bại');
+      showToast(error.message || 'Cập nhật hạn thất bại', 'error');
     } finally {
       setDueDateSubmitting(false);
     }
@@ -189,7 +191,7 @@ const Payments = () => {
 
     const parsedDays = Math.max(1, Math.min(Number(days) || 0, 30));
     if (!parsedDays) {
-      alert('Số ngày không hợp lệ');
+      showToast('Số ngày không hợp lệ', 'error');
       return;
     }
 
@@ -202,10 +204,10 @@ const Payments = () => {
         note: `Admin gia hạn ${parsedDays} ngày`,
       });
       await loadData();
-      alert('Đã gia hạn hạn thanh toán');
+      showToast('Đã gia hạn hạn thanh toán', 'success');
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Gia hạn thất bại');
+      showToast(error.message || 'Gia hạn thất bại', 'error');
     } finally {
       setDueDateSubmitting(false);
     }
@@ -218,10 +220,10 @@ const Payments = () => {
     try {
       await apiClient.delete(`/payments/${paymentId}`);
       await loadData();
-      alert('Đã xóa giao dịch thành công');
+      showToast('Đã xóa giao dịch thành công', 'success');
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Xóa giao dịch thất bại');
+      showToast(error.message || 'Xóa giao dịch thất bại', 'error');
     }
   };
 
@@ -229,7 +231,7 @@ const Payments = () => {
     e.preventDefault();
 
     if (!notifyForm.userId || !notifyForm.message.trim()) {
-      alert('Vui lòng nhập nội dung thông báo');
+      showToast('Vui lòng nhập nội dung thông báo', 'error');
       return;
     }
 
@@ -244,10 +246,10 @@ const Payments = () => {
       });
 
       setNotifyForm({ userId: '', registrationId: '', scheduleIndex: '', message: '' });
-      alert('Đã gửi thông báo đến học viên');
+      showToast('Đã gửi thông báo đến học viên', 'success');
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Gửi thông báo thất bại');
+      showToast(error.message || 'Gửi thông báo thất bại', 'error');
     } finally {
       setNotifySubmitting(false);
     }
@@ -270,7 +272,7 @@ const Payments = () => {
           clearInterval(pollRef.current);
           pollRef.current = null;
           await loadData();
-          alert('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí và tự động gán lớp (nếu có lớp OPEN).');
+          showToast('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí và tự động gán lớp (nếu có lớp OPEN).', 'success');
         }
       } catch (e) {
         // ignore single polling errors
@@ -282,12 +284,12 @@ const Payments = () => {
     e.preventDefault();
 
     if (!selectedRegistrationForQr || selectedScheduleIndex === '') {
-      alert('Vui lòng chọn khóa học và đợt thanh toán');
+      showToast('Vui lòng chọn khóa học và đợt thanh toán', 'error');
       return;
     }
 
     if (!qrForm.amount || Number(qrForm.amount) <= 0) {
-      alert('Vui lòng nhập số tiền hợp lệ');
+      showToast('Vui lòng nhập số tiền hợp lệ', 'error');
       return;
     }
 
@@ -341,11 +343,11 @@ const Payments = () => {
           },
         });
       } else {
-        alert('Đã tạo QR nhưng không đọc được đường dẫn thanh toán.');
+        showToast('Đã tạo QR nhưng không đọc được đường dẫn thanh toán.', 'error');
       }
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Tạo QR thanh toán thất bại');
+      showToast(error.message || 'Tạo QR thanh toán thất bại', 'error');
     } finally {
       setCreatingQr(false);
     }
@@ -372,7 +374,7 @@ const Payments = () => {
 
     autoQrCreatedRef.current = true;
     // simulate a form submit without needing the event object
-    handleCreateQr({ preventDefault: () => {} });
+    handleCreateQr({ preventDefault: () => { } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tuitionInfo, selectedRegistrationForQr, selectedScheduleIndex, qrForm.amount]);
 
@@ -383,10 +385,10 @@ const Payments = () => {
         setTransactionStatus('completed');
       }
       await loadData();
-      alert('Đã xác nhận giao dịch thành công');
+      showToast('Đã xác nhận giao dịch thành công', 'success');
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Xác nhận giao dịch thất bại');
+      showToast(error.message || 'Xác nhận giao dịch thất bại', 'error');
     }
   };
 
@@ -484,7 +486,7 @@ const Payments = () => {
                   {formatCurrency(tuitionInfo?.remaining || 0)}
                 </p>
               </div>
-             
+
             </div>
 
             <div className="mb-2 flex items-center justify-between text-sm">
@@ -588,28 +590,28 @@ const Payments = () => {
                           })}
 
                           {canCollect && (
-                          <form onSubmit={handleSendNotification} className="mt-3 grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs">
-                            <p className="text-xs font-semibold text-indigo-700">Gửi thông báo nhắc đóng</p>
-                            <textarea
-                              rows={2}
-                              placeholder="Nội dung thông báo"
-                              className="w-full rounded-lg border border-indigo-200 px-3 py-2 text-xs"
-                              value={notifyForm.registrationId === item.registrationId ? notifyForm.message : ''}
-                              onChange={(e) => setNotifyForm((prev) => ({
-                                ...prev,
-                                userId: item.learnerId,
-                                registrationId: item.registrationId,
-                                message: e.target.value,
-                              }))}
-                            />
-                            <button
-                              type="submit"
-                              disabled={notifySubmitting || notifyForm.registrationId !== item.registrationId}
-                              className="w-full rounded-full bg-indigo-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
-                            >
-                              {notifySubmitting ? 'Đang gửi...' : 'Gửi thông báo'}
-                            </button>
-                          </form>
+                            <form onSubmit={handleSendNotification} className="mt-3 grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs">
+                              <p className="text-xs font-semibold text-indigo-700">Gửi thông báo nhắc đóng</p>
+                              <textarea
+                                rows={2}
+                                placeholder="Nội dung thông báo"
+                                className="w-full rounded-lg border border-indigo-200 px-3 py-2 text-xs"
+                                value={notifyForm.registrationId === item.registrationId ? notifyForm.message : ''}
+                                onChange={(e) => setNotifyForm((prev) => ({
+                                  ...prev,
+                                  userId: item.learnerId,
+                                  registrationId: item.registrationId,
+                                  message: e.target.value,
+                                }))}
+                              />
+                              <button
+                                type="submit"
+                                disabled={notifySubmitting || notifyForm.registrationId !== item.registrationId}
+                                className="w-full rounded-full bg-indigo-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                              >
+                                {notifySubmitting ? 'Đang gửi...' : 'Gửi thông báo'}
+                              </button>
+                            </form>
                           )}
                         </div>
                       )}
