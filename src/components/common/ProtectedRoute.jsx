@@ -19,9 +19,10 @@ const ProtectedRoute = ({ requiredRole, allowedRoles, redirectTo }) => {
 
   const role = user?.role || "USER";
 
-  // Hàm lấy đường dẫn mặc định theo role
   const getDefaultPath = (userRole) => {
     if (userRole === "ADMIN") return "/admin";
+    if (userRole === "CONSULTANT") return "/portal/document-approval";
+    if (userRole === "INSTRUCTOR") return "/portal/instructor-schedule";
     return "/portal";
   };
 

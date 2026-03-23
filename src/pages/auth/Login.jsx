@@ -39,6 +39,10 @@ const Login = () => {
 
       if (user?.role === "ADMIN") {
         navigate("/admin");
+      } else if (user?.role === "CONSULTANT") {
+        navigate("/portal/document-approval");
+      } else if (user?.role === "INSTRUCTOR") {
+        navigate("/portal/instructor-schedule");
       } else {
         navigate("/portal");
       }
@@ -79,6 +83,10 @@ const Login = () => {
 
       if (mappedUser?.role === "ADMIN") {
         navigate("/admin");
+      } else if (mappedUser?.role === "CONSULTANT") {
+        navigate("/portal/document-approval");
+      } else if (mappedUser?.role === "INSTRUCTOR") {
+        navigate("/portal/instructor-schedule");
       } else {
         navigate("/portal");
       }
