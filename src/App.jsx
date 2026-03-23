@@ -61,8 +61,16 @@ const NotFoundRedirect = () => {
   if (!isAuthenticated) return <Navigate to="/" replace />;
 
   return (
-    <Navigate to={user?.role === "ADMIN" ? "/admin" : "/portal"} replace />
+    <Navigate to={user?.role === "ADMIN" ? "/admin" : user?.role === "CONSULTANT" ? "/portal/document-approval" : user?.role === "INSTRUCTOR" ? "/portal/instructor-schedule" : "/portal"} replace />
   );
+};
+
+const PortalIndexRedirect = () => {
+  const { user } = useAuthContext();
+  if (user?.role === "ADMIN") return <Navigate to="/admin" replace />;
+  if (user?.role === "CONSULTANT") return <Navigate to="document-approval" replace />;
+  if (user?.role === "INSTRUCTOR") return <Navigate to="instructor-schedule" replace />;
+  return <Navigate to="overview" replace />;
 };
 
 function App() {
@@ -105,8 +113,10 @@ function App() {
                 }
               >
                 <Route path="/portal" element={<PortalLayout />}>
-                  <Route index element={<Navigate to="overview" replace />} />
-                  <Route path="overview" element={<Overview />} />
+                  <Route index element={<PortalIndexRedirect />} />
+                  <Route element={<ProtectedRoute allowedRoles={["learner", "USER"]} />}>
+                    <Route path="overview" element={<Overview />} />
+                  </Route>
                   <Route path="courses" element={<Courses />} />
                   <Route path="enrollment" element={<Enrollment />} />
                   <Route path="payments" element={<Payments />} />
