@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -34,6 +35,7 @@ const getLastMonth = () => {
 // ── Main Component ────────────────────────────────────────────────────────────
 const MySalary = () => {
   const { user } = useAuthContext();
+  const { showToast } = useToast();
   const lastMonth = getLastMonth();
 
   // State
@@ -88,7 +90,7 @@ const MySalary = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error exporting:', err);
-      alert('Lỗi khi xuất file: ' + (err.response?.data?.message || err.message));
+      showToast('Lỗi khi xuất file: ' + (err.response?.data?.message || err.message), 'error');
     }
   };
 

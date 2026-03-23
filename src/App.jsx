@@ -71,124 +71,124 @@ function App() {
       <SocketProvider>
         <ToastProvider>
           <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/courses/:id" element={<CourseDetail />} />
-            <Route path="/courses" element={<CourseUser />} />
-            <Route
-              path="/exams"
-              element={
-                <PortalLayout>
-                  <Exams />
-                </PortalLayout>
-              }
-            />
-            <Route path="/exam-taking" element={<ExamTaking />} />
-            <Route path="/exam-result/:id" element={<ExamResult />} />
-            <Route path="/blogs" element={<Blogs />} />
-            <Route path="/blogs/:id" element={<BlogDetails />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/courses/:id" element={<CourseDetail />} />
+              <Route path="/courses" element={<CourseUser />} />
+              <Route
+                path="/exams"
+                element={
+                  <PortalLayout>
+                    <Exams />
+                  </PortalLayout>
+                }
+              />
+              <Route path="/exam-taking" element={<ExamTaking />} />
+              <Route path="/exam-result/:id" element={<ExamResult />} />
+              <Route path="/blogs" element={<Blogs />} />
+              <Route path="/blogs/:id" element={<BlogDetails />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            <Route
-              element={
-                <ProtectedRoute
-                  allowedRoles={[
-                    "ADMIN",
-                    "learner",
-                    "INSTRUCTOR",
-                    "CONSULTANT",
-                    "USER",
-                  ]}
-                />
-              }
-            >
-              <Route path="/portal" element={<PortalLayout />}>
-                <Route index element={<Navigate to="overview" replace />} />
-                <Route path="overview" element={<Overview />} />
-                <Route path="courses" element={<Courses />} />
-                <Route path="enrollment" element={<Enrollment />} />
-                <Route path="payments" element={<Payments />} />
-                <Route path="payments/qr" element={<PaymentQr />} />
-                <Route path="schedule" element={<Schedule />} />
-                <Route
-                  path="admin"
-                  element={
-                    <ProtectedRoute requiredRole="ADMIN">
-                      <UserManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="letter" element={<LetterRequest />} />
-                <Route path="leads" element={<Leads />} />
-
-                <Route
-                  element={
-                    <ProtectedRoute allowedRoles={["ADMIN", "CONSULTANT"]} />
-                  }
-                >
-                  <Route
-                    path="document-approval"
-                    element={<DocumentApproval />}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "ADMIN",
+                      "learner",
+                      "INSTRUCTOR",
+                      "CONSULTANT",
+                      "USER",
+                    ]}
                   />
-                </Route>
-                <Route element={<ProtectedRoute requiredRole="INSTRUCTOR" />}>
+                }
+              >
+                <Route path="/portal" element={<PortalLayout />}>
+                  <Route index element={<Navigate to="overview" replace />} />
+                  <Route path="overview" element={<Overview />} />
+                  <Route path="courses" element={<Courses />} />
+                  <Route path="enrollment" element={<Enrollment />} />
+                  <Route path="payments" element={<Payments />} />
+                  <Route path="payments/qr" element={<PaymentQr />} />
+                  <Route path="schedule" element={<Schedule />} />
                   <Route
-                    path="instructor-schedule"
-                    element={<InstructorSchedule />}
+                    path="admin"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <UserManagement />
+                      </ProtectedRoute>
+                    }
                   />
+                  <Route path="letter" element={<LetterRequest />} />
+                  <Route path="leads" element={<Leads />} />
+
+                  <Route
+                    element={
+                      <ProtectedRoute allowedRoles={["ADMIN", "CONSULTANT"]} />
+                    }
+                  >
+                    <Route
+                      path="document-approval"
+                      element={<DocumentApproval />}
+                    />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredRole="INSTRUCTOR" />}>
+                    <Route
+                      path="instructor-schedule"
+                      element={<InstructorSchedule />}
+                    />
+                  </Route>
+                  <Route path="exams" element={<Exams />} />
+                  <Route path="exam-taking" element={<ExamTaking />} />
+                  <Route path="exam-result/:id" element={<ExamResult />} />
+                  <Route path="notifications" element={<Notifications />} />
+                  <Route path="feedback" element={<Feedback />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route
+                    path="learner-dashboard"
+                    element={<LearnerDashboard />}
+                  />
+                  <Route path="salary" element={<Salary />} />
+                  <Route path="my-salary" element={<Salary />} />
+                  <Route path="fee-submissions" element={<FeeSubmissions />} />
+                  <Route path="profile/:id" element={<Profile />} />
                 </Route>
-                <Route path="exams" element={<Exams />} />
-                <Route path="exam-taking" element={<ExamTaking />} />
-                <Route path="exam-result/:id" element={<ExamResult />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="feedback" element={<Feedback />} />
-                <Route path="profile" element={<Profile />} />
-                <Route
-                  path="learner-dashboard"
-                  element={<LearnerDashboard />}
-                />
-                <Route path="salary" element={<Salary />} />
-                <Route path="my-salary" element={<Salary />} />
-                <Route path="fee-submissions" element={<FeeSubmissions />} />
-                <Route path="profile/:id" element={<Profile />} />
               </Route>
-            </Route>
 
-            <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route
-                  index
-                  element={<Navigate to="/admin/reports" replace />}
-                />{" "}
-                <Route path="documents" element={<DocumentApproval />} />
-                <Route path="users" element={<UserManagement />} />
-                <Route path="letter" element={<LetterRequestManagement />} />
-                <Route path="courses" element={<AdminCourses />} />
-                <Route path="payments" element={<AdminPayments />} />
-                <Route path="notifications" element={<AdminNotifications />} />
-                <Route path="feedbacks" element={<AdminFeedbacks />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="leads" element={<Leads />} />
-                <Route path="blogs" element={<AdminBlogs />} />
-                <Route
-                  path="system-holidays"
-                  element={<AdminSystemHolidays />}
-                />
-                <Route
-                  path="learning-locations"
-                  element={<AdminLearningLocations />}
-                />
-                <Route path="exam-locations" element={<AdminExamLocations />} />
-                <Route path="salary" element={<AdminSalary />} />
-                <Route path="fee-submissions" element={<FeeSubmissions />} />
+              <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route
+                    index
+                    element={<Navigate to="/admin/reports" replace />}
+                  />{" "}
+                  <Route path="documents" element={<DocumentApproval />} />
+                  <Route path="users" element={<UserManagement />} />
+                  <Route path="letter" element={<LetterRequestManagement />} />
+                  <Route path="courses" element={<AdminCourses />} />
+                  <Route path="payments" element={<AdminPayments />} />
+                  <Route path="notifications" element={<AdminNotifications />} />
+                  <Route path="feedbacks" element={<AdminFeedbacks />} />
+                  <Route path="reports" element={<Reports />} />
+                  <Route path="leads" element={<Leads />} />
+                  <Route path="blogs" element={<AdminBlogs />} />
+                  <Route
+                    path="system-holidays"
+                    element={<AdminSystemHolidays />}
+                  />
+                  <Route
+                    path="learning-locations"
+                    element={<AdminLearningLocations />}
+                  />
+                  <Route path="exam-locations" element={<AdminExamLocations />} />
+                  <Route path="salary" element={<AdminSalary />} />
+                  <Route path="fee-submissions" element={<FeeSubmissions />} />
+                </Route>
               </Route>
-            </Route>
 
-            <Route path="*" element={<NotFoundRedirect />} />
-          </Routes>
-        </BrowserRouter>
+              <Route path="*" element={<NotFoundRedirect />} />
+            </Routes>
+          </BrowserRouter>
         </ToastProvider>
       </SocketProvider>
     </AuthProvider>

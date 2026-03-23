@@ -13,6 +13,7 @@ const FileUpload = ({
   disabled = false,
   value,
   onChange,
+  onError,
   className = '',
   ...props
 }) => {
@@ -27,7 +28,9 @@ const FileUpload = ({
     if (maxSize) {
       const invalidFiles = newFiles.filter(file => file.size > maxSize);
       if (invalidFiles.length > 0) {
-        alert(`Một số file vượt quá kích thước tối đa ${(maxSize / 1024 / 1024).toFixed(2)}MB`);
+        const msg = `Một số file vượt quá kích thước tối đa ${(maxSize / 1024 / 1024).toFixed(2)}MB`;
+        if (onError) onError(msg);
+        else console.warn(msg);
         return;
       }
     }

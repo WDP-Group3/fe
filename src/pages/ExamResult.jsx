@@ -3,12 +3,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from '../services/axios';
 import Button from '../components/ui/Button';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const ExamResult = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthContext();
+  const { showToast } = useToast();
   const isUSER = id === 'USER';
   const examsRoute = user ? '/portal/exams' : '/exams';
   const examTakingRoute = user ? '/portal/exam-taking' : '/exam-taking';
@@ -30,7 +32,7 @@ const ExamResult = () => {
       }
     } catch (error) {
       console.error('Error loading result:', error);
-      alert('Không thể tải kết quả thi!');
+      showToast('Không thể tải kết quả thi!', 'error');
       navigate(examsRoute);
     } finally {
       setLoading(false);

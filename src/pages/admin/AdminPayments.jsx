@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import apiClient from '../../services/apiClient';
 import { formatCurrency } from '../../utils/formatters';
 import Pagination from '../../components/common/Pagination';
+import { useToast } from '../../context/ToastContext';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) => formatCurrency(n || 0);
@@ -32,6 +33,7 @@ const KpiCard = ({ label, value, sub, color = 'text-slate-900', bgColor = '' }) 
 
 // ── Main Component ───────────────────────────────────────────────────────────
 const AdminPayments = () => {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [tuitionData, setTuitionData] = useState({ items: [], summary: {} });
   const [transactions, setTransactions] = useState([]);
@@ -207,9 +209,9 @@ const AdminPayments = () => {
       });
       await loadData();
       setShowNotifyModal(false);
-      alert('Đã gửi thông báo');
+      showToast('Đã gửi thông báo', 'success');
     } catch (error) {
-      alert(error.message || 'Gửi thất bại');
+      showToast(error.message || 'Gửi thất bại', 'error');
     } finally {
       setSubmitting(false);
     }
