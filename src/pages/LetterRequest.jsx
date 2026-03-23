@@ -21,6 +21,8 @@ const LetterRequest = () => {
     const [paymentBatch, setPaymentBatch] = useState('');
     const [batchCourse, setBatchCourse] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    // Max date dựa trên dueDate + 30 ngày của đợt đã chọn
+    const [latePayMaxDate, setLatePayMaxDate] = useState('');
 
     // LATE_PAYMENT: Registrations của learner (có batch + course + feePlanSnapshot)
     const [myRegistrations, setMyRegistrations] = useState([]);
@@ -75,8 +77,35 @@ const LetterRequest = () => {
     const handleCourseChange = (registrationId) => {
         setBatchCourse(registrationId);
         setPaymentBatch('');
+        setLatePayMaxDate('');
+        setExpectedPayDate('');
         const reg = myRegistrations.find((r) => r._id === registrationId);
         setFeePayments(reg?.feePlanSnapshot || []);
+    };
+
+    // LATE_PAYMENT: Khi chọn đợt nộp → tính maxDate = dueDate + 30 ngày
+    const handlePaymentBatchChange = (batchName) => {
+        setPaymentBatch(batchName);
+        setExpectedPayDate('');
+        const fp = feePayments.find((f) => (f.name || '') === batchName);
+        if (fp?.dueDate) {
+            const due = new Date(fp.dueDate);
+            due.setDate(due.getDate() + 30);
+            setLatePayMaxDate(due.toISOString().split('T')[0]);
+        } else {
+            setLatePayMaxDate('');
+        }
+    };
+
+    // Helper: kiểm tra đợt nộp đã có đơn LATE_PAYMENT PENDING/APPROVED chưa
+    const isBatchAlreadyRequested = (regId, batchName) => {
+        return requests.some(
+            (r) =>
+                r.type === 'LATE_PAYMENT' &&
+                r.registrationId === regId &&
+                r.paymentBatch === batchName &&
+                (r.status === 'PENDING' || r.status === 'APPROVED')
+        );
     };
 
     const resetForm = () => {
@@ -85,6 +114,7 @@ const LetterRequest = () => {
         setPaymentBatch('');
         setBatchCourse('');
         setFeePayments([]);
+        setLatePayMaxDate('');
     };
 
     const handleSubmit = async (e) => {
@@ -267,18 +297,27 @@ const LetterRequest = () => {
                                     <select
                                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
                                         value={paymentBatch}
-                                        onChange={(e) => setPaymentBatch(e.target.value)}
+                                        onChange={(e) => handlePaymentBatchChange(e.target.value)}
                                         disabled={submitting || !batchCourse}
                                     >
                                         <option value="">
                                             {!batchCourse ? 'Chọn khóa học trước' : feePayments.length === 0 ? 'Không có đợt nộp' : '-- Chọn đợt nộp --'}
                                         </option>
-                                        {feePayments.map((fp, idx) => (
-                                            <option key={fp._id || idx} value={fp.name || `Đợt ${idx + 1}`}>
-                                                {fp.name || `Đợt ${idx + 1}`}{fp.amount ? ` – ${fp.amount.toLocaleString('vi-VN')}đ` : ''}
-                                            </option>
-                                        ))}
+                                        {feePayments.map((fp, idx) => {
+                                            const batchName = fp.name || `Đợt ${idx + 1}`;
+                                            const alreadyRequested = isBatchAlreadyRequested(batchCourse, batchName);
+                                            return (
+                                                <option key={fp._id || idx} value={batchName} disabled={alreadyRequested}>
+                                                    {batchName}{fp.amount ? ` – ${fp.amount.toLocaleString('vi-VN')}đ` : ''}
+                                                    {fp.dueDate ? ` (Hạn: ${new Date(fp.dueDate).toLocaleDateString('vi-VN')})` : ''}
+                                                    {alreadyRequested ? ' ✓ Đã xin' : ''}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
+                                    {paymentBatch && isBatchAlreadyRequested(batchCourse, paymentBatch) && (
+                                        <p className="mt-1 text-xs text-red-500">Bạn đã có đơn xin nộp muộn cho đợt này rồi.</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-slate-700">Thời gian sẽ nộp</label>
@@ -287,11 +326,14 @@ const LetterRequest = () => {
                                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
                                         value={expectedPayDate}
                                         onChange={(e) => setExpectedPayDate(e.target.value)}
-                                        disabled={submitting}
+                                        disabled={submitting || !paymentBatch}
                                         required
                                         min={minDate}
-                                        max={maxDateString}
+                                        max={latePayMaxDate || maxDateString}
                                     />
+                                    {latePayMaxDate && (
+                                        <p className="mt-1 text-xs text-slate-500">⏱ Hạn tối đa: {new Date(latePayMaxDate).toLocaleDateString('vi-VN')} (30 ngày từ hạn nộp)</p>
+                                    )}
                                 </div>
                             </>)}
 
