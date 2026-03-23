@@ -9,7 +9,7 @@ import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const Payments = () => {
-  const { user } = useAuthContext();
+  const { user, getProfile } = useAuthContext();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,11 +55,32 @@ const Payments = () => {
   const incomingRegistrationIdRef = useRef('');
 
   const canCollect = ['ADMIN', 'CONSULTANT'].includes(user?.role);
-  const islearner = user?.role === 'learner';
+  const islearner = user?.role === 'learner' || user?.role === 'USER';
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Poll for role change after payment (USER → learner)
+  const roleCheckRef = useRef(null);
+  useEffect(() => {
+    if (user?.role === 'USER') {
+      roleCheckRef.current = setInterval(async () => {
+        try {
+          const updatedUser = await getProfile();
+          if (updatedUser?.role === 'learner') {
+            clearInterval(roleCheckRef.current);
+            window.location.reload();
+          }
+        } catch {
+          // ignore
+        }
+      }, 3000);
+      return () => {
+        if (roleCheckRef.current) clearInterval(roleCheckRef.current);
+      };
+    }
+  }, [user?.role]);
 
   useEffect(() => {
     const incomingRegistration = location.state?.registration;
@@ -87,8 +108,8 @@ const Payments = () => {
         if (pending.length !== currentPending.length) {
           await loadData();
         }
-      } catch (error) {
-        // ignore polling error
+      } catch {
+        // ignore
       }
     }, 8000);
 
@@ -99,6 +120,20 @@ const Payments = () => {
       }
     };
   }, [islearner, transactions]);
+
+  // Khi transaction hoàn thành → reload trang để cập nhật role (USER → learner)
+  useEffect(() => {
+    if (user?.role !== 'USER') return;
+    const hasCompleted = transactions.some((t) => t.status === 'completed');
+    if (hasCompleted) {
+      getProfile().then((updated) => {
+        if (updated?.role === 'learner') {
+          showToast('Bạn đã trở thành Học viên!', 'success');
+          window.location.reload();
+        }
+      });
+    }
+  }, [transactions, user?.role]);
 
   useEffect(() => {
     return () => {
@@ -273,9 +308,12 @@ const Payments = () => {
           pollRef.current = null;
           await loadData();
           showToast('Thanh toán đã được xác nhận. Hệ thống đã cập nhật học phí và tự động gán lớp (nếu có lớp OPEN).', 'success');
+          if (user?.role === 'USER') {
+            window.location.reload();
+          }
         }
-      } catch (e) {
-        // ignore single polling errors
+      } catch {
+        // ignore
       }
     }, 5000);
   };

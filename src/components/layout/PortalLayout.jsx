@@ -17,10 +17,10 @@ const PUBLIC_NAV_ITEMS = [
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
-    { label: 'Tổng quan', to: '/portal/overview', roles: ['learner', 'USER'] },
-    { label: 'Khóa học', to: '/portal/courses', roles: ['learner', 'USER'] },
-    { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['learner'] },
-    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'learner'] },
+    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
+    { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'learner', 'USER'] },
+    { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['learner', 'USER'] },
+    { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'learner', 'USER'] },
     { label: 'Thi thử', to: '/portal/exams', roles: ['learner', 'USER'] },
     { label: 'Lịch dạy & Báo bận', to: '/portal/instructor-schedule', roles: ['INSTRUCTOR'] },
     { label: 'Duyệt hồ sơ', to: '/portal/document-approval', roles: ['ADMIN', 'CONSULTANT', 'INSTRUCTOR'] },
@@ -83,7 +83,7 @@ const PortalLayout = ({ children, hideNav = false }) => {
         if (response.status === 'success') {
           setUnreadCount(response.unreadCount || 0);
         }
-      } catch (error) {
+      } catch {
         // ignore badge errors
       }
     };
