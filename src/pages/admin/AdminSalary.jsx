@@ -1,14 +1,14 @@
- import { useState, useEffect, useMemo, useCallback } from 'react';
-import SectionHeader from '../../components/ui/SectionHeader';
-import useDebounce from '../../hooks/useDebounce';
-import { useToast } from '../../context/ToastContext';
-import apiClient from '../../services/apiClient';
-import { formatCurrency } from '../../utils/formatters';
-import Pagination from '../../components/common/Pagination';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import SectionHeader from "../../components/ui/SectionHeader";
+import useDebounce from "../../hooks/useDebounce";
+import { useToast } from "../../context/ToastContext";
+import apiClient from "../../services/apiClient";
+import { formatCurrency } from "../../utils/formatters";
+import Pagination from "../../components/common/Pagination";
 
 const fmt = (n) => formatCurrency(n || 0);
 
-const KpiCard = ({ label, value, sub, color = 'text-slate-900' }) => (
+const KpiCard = ({ label, value, sub, color = "text-slate-900" }) => (
   <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
     <p className="text-sm font-medium text-slate-500">{label}</p>
     <p className={`text-2xl font-bold ${color} mt-1`}>{value}</p>
@@ -24,7 +24,14 @@ const AdminSalary = () => {
   const [courses, setCourses] = useState([]);
   const [activeCourses, setActiveCourses] = useState([]);
   const [noConfig, setNoConfig] = useState(false);
-  const [stats, setStats] = useState({ totalSalary: 0, totalHours: 0, totalCommission: 0, totalDocuments: 0, instructorCount: 0, consultantCount: 0 });
+  const [stats, setStats] = useState({
+    totalSalary: 0,
+    totalHours: 0,
+    totalCommission: 0,
+    totalDocuments: 0,
+    instructorCount: 0,
+    consultantCount: 0,
+  });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
@@ -33,8 +40,8 @@ const AdminSalary = () => {
   const [filters, setFilters] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    role: '', // '', 'INSTRUCTOR', 'CONSULTANT'
-    search: '',
+    role: "", // '', 'INSTRUCTOR', 'CONSULTANT'
+    search: "",
   });
 
   // Debounced search value — prevents API call on every keystroke
@@ -43,7 +50,11 @@ const AdminSalary = () => {
   // Modals
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showAddCommissionModal, setShowAddCommissionModal] = useState(false);
-  const [addCommissionForm, setAddCommissionForm] = useState({ courseId: '', commissionAmount: '', effectiveFrom: '' });
+  const [addCommissionForm, setAddCommissionForm] = useState({
+    courseId: "",
+    commissionAmount: "",
+    effectiveFrom: "",
+  });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -52,14 +63,20 @@ const AdminSalary = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const [overrideForm, setOverrideForm] = useState({
-    salaryHourlyRate: '',
+    salaryHourlyRate: "",
     commissionOverrides: [],
   });
 
   // Leave config
-  const [leaveConfig, setLeaveConfig] = useState({ paidLeaveDaysPerYear: 12, leaveDeductionPerDay: 0 });
+  const [leaveConfig, setLeaveConfig] = useState({
+    paidLeaveDaysPerYear: 12,
+    leaveDeductionPerDay: 0,
+  });
   const [showLeaveConfig, setShowLeaveConfig] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({ paidLeaveDaysPerYear: 12, leaveDeductionPerDay: 0 });
+  const [leaveForm, setLeaveForm] = useState({
+    paidLeaveDaysPerYear: 12,
+    leaveDeductionPerDay: 0,
+  });
   const [leaveUsage, setLeaveUsage] = useState(null);
   const [showLeavePanel, setShowLeavePanel] = useState(false);
 
@@ -67,9 +84,9 @@ const AdminSalary = () => {
   const [configForm, setConfigForm] = useState({
     instructorHourlyRate: 80000,
     courseCommissions: [],
-    effectiveFrom: new Date().toISOString().split('T')[0],
-    effectiveTo: '',
-    note: '',
+    effectiveFrom: new Date().toISOString().split("T")[0],
+    effectiveTo: "",
+    note: "",
   });
 
   useEffect(() => {
@@ -84,17 +101,17 @@ const AdminSalary = () => {
       const query = new URLSearchParams({
         month: filters.month,
         year: filters.year,
-        role: filters.role || '',
-        search: debouncedSearch || '',
+        role: filters.role || "",
+        search: debouncedSearch || "",
         page: currentPage,
-        limit: 10
+        limit: 10,
       });
 
       // Gọi song song: salary summary + config + courses + leave config
       const [summaryRes, configRes, coursesRes, leaveRes] = await Promise.all([
         apiClient.get(`/salary/monthly-summary?${query.toString()}`),
-        apiClient.get('/salary/config'),
-        apiClient.get('/salary/courses'),
+        apiClient.get("/salary/config"),
+        apiClient.get("/salary/courses"),
         apiClient.get(`/salary/leave-config?year=${filters.year}`),
       ]);
 
@@ -103,7 +120,7 @@ const AdminSalary = () => {
       if (summaryRes?.data?.pagination) {
         setPagination({
           total: summaryRes.data.pagination.total,
-          totalPages: summaryRes.data.pagination.pages
+          totalPages: summaryRes.data.pagination.pages,
         });
       }
       setConfig(configRes?.data || null);
@@ -117,7 +134,7 @@ const AdminSalary = () => {
       }
       // Extract active courses from the summary response for dynamic columns
       const coursesFromSummary = summaryRes?.data?.courses || [];
-      console.log('[AdminSalary] coursesFromSummary:', coursesFromSummary);
+      console.log("[AdminSalary] coursesFromSummary:", coursesFromSummary);
       setActiveCourses(coursesFromSummary);
 
       // Stats tổng hợp từ backend (tính trên toàn bộ users, không phân trang)
@@ -133,13 +150,13 @@ const AdminSalary = () => {
 
       setNoConfig(false);
     } catch (error) {
-      console.error('Error loading salary data:', error);
-      const msg = error?.message || '';
-      if (msg.includes('cấu hình lương') || msg.includes('Chưa có cấu hình')) {
+      console.error("Error loading salary data:", error);
+      const msg = error?.message || "";
+      if (msg.includes("cấu hình lương") || msg.includes("Chưa có cấu hình")) {
         setNoConfig(true);
-        showToast('Vui lòng tạo cấu hình lương trước', 'warning');
+        showToast("Vui lòng tạo cấu hình lương trước", "warning");
       } else {
-        showToast(`Lỗi: ${msg || 'Không tải được dữ liệu'}`, 'error');
+        showToast(`Lỗi: ${msg || "Không tải được dữ liệu"}`, "error");
       }
     } finally {
       setLoading(false);
@@ -151,48 +168,56 @@ const AdminSalary = () => {
       setConfigForm({
         instructorHourlyRate: config.instructorHourlyRate || 80000,
         courseCommissions: config.courseCommissions || [],
-        effectiveFrom: config.effectiveFrom ? config.effectiveFrom.split('T')[0] : '',
-        effectiveTo: config.effectiveTo ? config.effectiveTo.split('T')[0] : '',
-        note: config.note || '',
+        effectiveFrom: config.effectiveFrom
+          ? config.effectiveFrom.split("T")[0]
+          : "",
+        effectiveTo: config.effectiveTo ? config.effectiveTo.split("T")[0] : "",
+        note: config.note || "",
       });
     }
     setShowConfigModal(true);
   };
 
-  const handleOpenOverride = useCallback(async (user) => {
-    const userId = user._id || user.userId;
-    if (!userId) {
-      showToast('Không tìm được thông tin user', 'error');
-      return;
-    }
-    setSelectedUser(user);
-    setShowOverrideModal(true);
-    try {
-      const res = await apiClient.get(`/salary/users/${userId}/override`);
-      const data = res?.data?.data;
-      setOverrideForm({
-        salaryHourlyRate: data?.salaryHourlyRate ?? '',
-        commissionOverrides: data?.commissionOverrides || [],
-      });
-    } catch {
-      showToast('Không tải được cấu hình lương cá nhân', 'error');
-    }
-  }, [showToast]);
+  const handleOpenOverride = useCallback(
+    async (user) => {
+      const userId = user._id || user.userId;
+      if (!userId) {
+        showToast("Không tìm được thông tin user", "error");
+        return;
+      }
+      setSelectedUser(user);
+      setShowOverrideModal(true);
+      try {
+        const res = await apiClient.get(`/salary/users/${userId}/override`);
+        const data = res?.data?.data;
+        setOverrideForm({
+          salaryHourlyRate: data?.salaryHourlyRate ?? "",
+          commissionOverrides: data?.commissionOverrides || [],
+        });
+      } catch {
+        showToast("Không tải được cấu hình lương cá nhân", "error");
+      }
+    },
+    [showToast],
+  );
 
   const handleSaveOverride = async (e) => {
     e.preventDefault();
     const userId = selectedUser?._id || selectedUser?.userId;
     if (!selectedUser || !userId) {
-      showToast('Không tìm được thông tin user', 'error');
+      showToast("Không tìm được thông tin user", "error");
       return;
     }
     try {
       setSubmitting(true);
       const payload = {
-        salaryHourlyRate: overrideForm.salaryHourlyRate === '' ? null : Number(overrideForm.salaryHourlyRate),
+        salaryHourlyRate:
+          overrideForm.salaryHourlyRate === ""
+            ? null
+            : Number(overrideForm.salaryHourlyRate),
         commissionOverrides: overrideForm.commissionOverrides
-          .filter(c => c.courseId)
-          .map(c => ({
+          .filter((c) => c.courseId)
+          .map((c) => ({
             courseId: c.courseId?._id || c.courseId,
             commissionAmount: Number(c.commissionAmount || 0),
           })),
@@ -200,30 +225,35 @@ const AdminSalary = () => {
       await apiClient.put(`/salary/users/${userId}/override`, payload);
       setShowOverrideModal(false);
       await loadData();
-      showToast('Đã cập nhật lương cá nhân', 'success');
+      showToast("Đã cập nhật lương cá nhân", "success");
     } catch (error) {
-      showToast(error.message || 'Cập nhật thất bại', 'error');
+      showToast(error.message || "Cập nhật thất bại", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
   const updateOverrideCommission = (courseId, value) => {
-    setOverrideForm(prev => {
-      const exists = prev.commissionOverrides.find(c => (c.courseId?._id || c.courseId) === courseId);
+    setOverrideForm((prev) => {
+      const exists = prev.commissionOverrides.find(
+        (c) => (c.courseId?._id || c.courseId) === courseId,
+      );
       if (exists) {
         return {
           ...prev,
-          commissionOverrides: prev.commissionOverrides.map(c =>
+          commissionOverrides: prev.commissionOverrides.map((c) =>
             (c.courseId?._id || c.courseId) === courseId
               ? { ...c, commissionAmount: value }
-              : c
+              : c,
           ),
         };
       }
       return {
         ...prev,
-        commissionOverrides: [...prev.commissionOverrides, { courseId, commissionAmount: value }],
+        commissionOverrides: [
+          ...prev.commissionOverrides,
+          { courseId, commissionAmount: value },
+        ],
       };
     });
   };
@@ -231,18 +261,21 @@ const AdminSalary = () => {
   const handleSaveConfig = async (e) => {
     e.preventDefault();
     if (!configForm.effectiveFrom) {
-      showToast('Vui lòng chọn ngày hiệu lực', 'error');
+      showToast("Vui lòng chọn ngày hiệu lực", "error");
       return;
     }
-    if (!configForm.instructorHourlyRate || configForm.instructorHourlyRate <= 0) {
-      showToast('Vui lòng nhập lương/giờ hợp lệ', 'error');
+    if (
+      !configForm.instructorHourlyRate ||
+      configForm.instructorHourlyRate <= 0
+    ) {
+      showToast("Vui lòng nhập lương/giờ hợp lệ", "error");
       return;
     }
     try {
       setSubmitting(true);
       const payload = {
         ...configForm,
-        courseCommissions: configForm.courseCommissions.map(c => ({
+        courseCommissions: configForm.courseCommissions.map((c) => ({
           courseId: c.courseId,
           commissionAmount: Number(c.commissionAmount),
           effectiveFrom: c.effectiveFrom || null,
@@ -252,14 +285,14 @@ const AdminSalary = () => {
       if (config?._id) {
         await apiClient.put(`/salary/config/${config._id}`, payload);
       } else {
-        await apiClient.post('/salary/config', payload);
+        await apiClient.post("/salary/config", payload);
       }
 
       await loadData();
       setShowConfigModal(false);
-      showToast('Đã lưu cấu hình', 'success');
+      showToast("Đã lưu cấu hình", "success");
     } catch (error) {
-      showToast(error.message || 'Lưu thất bại', 'error');
+      showToast(error.message || "Lưu thất bại", "error");
     } finally {
       setSubmitting(false);
     }
@@ -269,185 +302,237 @@ const AdminSalary = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await apiClient.put('/salary/leave-config', {
+      await apiClient.put("/salary/leave-config", {
         ...leaveForm,
         year: filters.year,
       });
       setShowLeaveConfig(false);
-      showToast('Đã lưu cấu hình nghỉ phép', 'success');
+      showToast("Đã lưu cấu hình nghỉ phép", "success");
       await loadData();
     } catch (error) {
-      showToast(error.message || 'Lưu thất bại', 'error');
+      showToast(error.message || "Lưu thất bại", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleViewDetail = useCallback((user) => {
-    const userId = user._id || user.userId;
-    if (!userId) {
-      showToast('Không tìm được thông tin user', 'error');
-      return;
-    }
-    setSelectedUser(user);
-    setDetailLoading(true);
-    setShowDetailModal(true);
+  const handleViewDetail = useCallback(
+    (user) => {
+      const userId = user._id || user.userId;
+      if (!userId) {
+        showToast("Không tìm được thông tin user", "error");
+        return;
+      }
+      setSelectedUser(user);
+      setDetailLoading(true);
+      setShowDetailModal(true);
 
-    apiClient.get(`/salary/detail?${new URLSearchParams({ month: filters.month, year: filters.year, userId })}`)
-      .then(res => setDetailData(res?.data || null))
-      .catch(error => console.error('Error loading detail:', error))
-      .finally(() => setDetailLoading(false));
-  }, [filters.month, filters.year, showToast]);
+      apiClient
+        .get(
+          `/salary/detail?${new URLSearchParams({ month: filters.month, year: filters.year, userId })}`,
+        )
+        .then((res) => setDetailData(res?.data || null))
+        .catch((error) => console.error("Error loading detail:", error))
+        .finally(() => setDetailLoading(false));
+    },
+    [filters.month, filters.year, showToast],
+  );
 
   const handleExport = async () => {
     try {
       const params = new URLSearchParams({
         month: filters.month,
         year: filters.year,
-        role: filters.role || '',
+        role: filters.role || "",
       });
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/salary/export-all?${params}`;
+      const url = `${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/salary/export-all?${params}`;
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${(() => {
-            let token = localStorage.getItem('token');
-            if (!token) return '';
-            try { const p = JSON.parse(token); return typeof p === 'string' ? p : p; } catch { return token; }
-          })()}`
-        }
+            let token = localStorage.getItem("token");
+            if (!token) return "";
+            try {
+              const p = JSON.parse(token);
+              return typeof p === "string" ? p : p;
+            } catch {
+              return token;
+            }
+          })()}`,
+        },
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        showToast(err.message || 'Xuất file thất bại', 'error');
+        showToast(err.message || "Xuất file thất bại", "error");
         return;
       }
 
       const blob = await res.blob();
       const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = blobUrl;
-      link.setAttribute('download', `luong_tong_hop_${filters.month}_${filters.year}.xlsx`);
+      link.setAttribute(
+        "download",
+        `luong_tong_hop_${filters.month}_${filters.year}.xlsx`,
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
     } catch {
-      showToast('Xuất file thất bại', 'error');
+      showToast("Xuất file thất bại", "error");
     }
   };
 
   const updateCommission = (courseId, field, value) => {
-    setConfigForm(prev => ({
+    setConfigForm((prev) => ({
       ...prev,
-      courseCommissions: prev.courseCommissions.map(c =>
-        c.courseId === courseId ? { ...c, [field]: value } : c
+      courseCommissions: prev.courseCommissions.map((c) =>
+        c.courseId === courseId ? { ...c, [field]: value } : c,
       ),
     }));
   };
 
-  const addCommission = (courseId, effectiveFrom = '') => {
-    if (configForm.courseCommissions.find(c => c.courseId === courseId)) return;
-    setConfigForm(prev => ({
+  const addCommission = (courseId, effectiveFrom = "") => {
+    if (configForm.courseCommissions.find((c) => c.courseId === courseId))
+      return;
+    setConfigForm((prev) => ({
       ...prev,
-      courseCommissions: [...prev.courseCommissions, { courseId, commissionAmount: 0, effectiveFrom }],
+      courseCommissions: [
+        ...prev.courseCommissions,
+        { courseId, commissionAmount: 0, effectiveFrom },
+      ],
     }));
   };
 
   const removeCommission = (courseId) => {
-    setConfigForm(prev => ({
+    setConfigForm((prev) => ({
       ...prev,
-      courseCommissions: prev.courseCommissions.filter(c => c.courseId !== courseId),
+      courseCommissions: prev.courseCommissions.filter(
+        (c) => c.courseId !== courseId,
+      ),
     }));
   };
 
   const handleOpenAddCommission = () => {
-    setAddCommissionForm({ courseId: '', commissionAmount: '', effectiveFrom: '' });
+    setAddCommissionForm({
+      courseId: "",
+      commissionAmount: "",
+      effectiveFrom: "",
+    });
     setShowAddCommissionModal(true);
   };
 
   const handleConfirmAddCommission = () => {
     if (!addCommissionForm.courseId) {
-      showToast('Vui lòng chọn khóa học', 'warning');
+      showToast("Vui lòng chọn khóa học", "warning");
       return;
     }
-    if (addCommissionForm.commissionAmount === '' || Number(addCommissionForm.commissionAmount) < 0) {
-      showToast('Vui lòng nhập số tiền hợp lệ', 'warning');
+    if (
+      addCommissionForm.commissionAmount === "" ||
+      Number(addCommissionForm.commissionAmount) < 0
+    ) {
+      showToast("Vui lòng nhập số tiền hợp lệ", "warning");
       return;
     }
     addCommission(addCommissionForm.courseId, addCommissionForm.effectiveFrom);
-    updateCommission(addCommissionForm.courseId, 'commissionAmount', addCommissionForm.commissionAmount);
+    updateCommission(
+      addCommissionForm.courseId,
+      "commissionAmount",
+      addCommissionForm.commissionAmount,
+    );
     setShowAddCommissionModal(false);
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split("T")[0];
 
   const columns = useMemo(() => {
     // Dynamic course-specific columns
-    const courseCols = activeCourses.map(course => ({
+    const courseCols = activeCourses.map((course) => ({
       key: `course_${course._id}`,
       title: course.code || course.name,
       render: (_, row) => {
-        const count = row.courseCounts?.[course._id?.toString()] ||
-          row.courseCounts?.[course.code] || 0;
+        const count =
+          row.courseCounts?.[course._id?.toString()] ||
+          row.courseCounts?.[course.code] ||
+          0;
         return count > 0 ? (
           <span className="font-medium text-indigo-600">{count}</span>
-        ) : '—';
+        ) : (
+          "—"
+        );
       },
     }));
 
     return [
       {
-        key: 'userName',
-        title: 'Nhân viên',
+        key: "userName",
+        title: "Nhân viên",
         render: (_, row) => (
           <div className="flex items-center gap-1">
-            <p className="font-medium text-slate-900">{row.fullName || row.userName || '—'}</p>
+            <p className="font-medium text-slate-900">
+              {row.fullName || row.userName || "—"}
+            </p>
             {row.hasOverride && (
-              <span title="Có cấu hình lương riêng" className="text-amber-500 text-xs">★</span>
+              <span
+                title="Có cấu hình lương riêng"
+                className="text-amber-500 text-xs"
+              >
+                ★
+              </span>
             )}
           </div>
         ),
       },
       {
-        key: 'totalTeachingSessions',
-        title: 'Số buổi dạy',
+        key: "totalTeachingSessions",
+        title: "Số buổi dạy",
         render: (_, row) => row.totalTeachingSessions || 0,
       },
       {
-        key: 'totalTeachingHours',
-        title: 'Giờ dạy',
+        key: "totalTeachingHours",
+        title: "Giờ dạy",
         render: (_, row) => row.totalTeachingHours || 0,
       },
       ...courseCols,
       {
-        key: 'totalDocuments',
-        title: 'Tổng hồ sơ',
+        key: "totalDocuments",
+        title: "Tổng hồ sơ",
         render: (_, row) => row.totalDocuments || 0,
       },
       {
-        key: 'hourlyRate',
-        title: 'Lương/giờ',
+        key: "hourlyRate",
+        title: "Lương/giờ",
         render: (_, row) => fmt(row.hourlyRate || 0),
       },
       {
-        key: 'teachingSalary',
-        title: 'Lương giờ',
-        render: (_, row) => <span className="font-medium">{fmt(row.teachingSalary || 0)}</span>,
+        key: "teachingSalary",
+        title: "Lương giờ",
+        render: (_, row) => (
+          <span className="font-medium">{fmt(row.teachingSalary || 0)}</span>
+        ),
       },
       {
-        key: 'totalCommission',
-        title: 'Hoa hồng',
-        render: (_, row) => <span className="text-indigo-600 font-medium">{fmt(row.totalCommission || 0)}</span>,
+        key: "totalCommission",
+        title: "Hoa hồng",
+        render: (_, row) => (
+          <span className="text-indigo-600 font-medium">
+            {fmt(row.totalCommission || 0)}
+          </span>
+        ),
       },
       {
-        key: 'totalSalary',
-        title: 'Tổng lương',
-        render: (_, row) => <span className="font-bold text-emerald-600">{fmt(row.totalSalary || 0)}</span>,
+        key: "totalSalary",
+        title: "Tổng lương",
+        render: (_, row) => (
+          <span className="font-bold text-emerald-600">
+            {fmt(row.totalSalary || 0)}
+          </span>
+        ),
       },
       {
-        key: 'actions',
-        title: 'Thao tác',
+        key: "actions",
+        title: "Thao tác",
         render: (_, row) => (
           <div className="flex flex-wrap gap-2">
             <button
@@ -473,7 +558,10 @@ const AdminSalary = () => {
     label: `Tháng ${i + 1}`,
   }));
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const years = Array.from(
+    { length: 5 },
+    (_, i) => new Date().getFullYear() - 2 + i,
+  );
 
   return (
     <div className="space-y-6">
@@ -484,9 +572,23 @@ const AdminSalary = () => {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Tổng lương" value={fmt(stats.totalSalary)} sub="Tháng này" color="text-emerald-600" />
-        <KpiCard label="Tổng giờ dạy" value={stats.totalHours} sub="Giảng viên" />
-        <KpiCard label="Tổng hồ sơ" value={stats.totalDocuments} sub="Tư vấn viên" color="text-indigo-600" />
+        <KpiCard
+          label="Tổng lương"
+          value={fmt(stats.totalSalary)}
+          sub="Tháng này"
+          color="text-emerald-600"
+        />
+        <KpiCard
+          label="Tổng giờ dạy"
+          value={stats.totalHours}
+          sub="Giảng viên"
+        />
+        <KpiCard
+          label="Tổng hồ sơ"
+          value={stats.totalDocuments}
+          sub="Tư vấn viên"
+          color="text-indigo-600"
+        />
         <KpiCard
           label="Nhân viên"
           value={stats.instructorCount + stats.consultantCount}
@@ -499,27 +601,37 @@ const AdminSalary = () => {
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={filters.month}
-            onChange={(e) => setFilters(f => ({ ...f, month: Number(e.target.value) }))}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, month: Number(e.target.value) }))
+            }
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           >
-            {months.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+            {months.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
 
           <select
             value={filters.year}
-            onChange={(e) => setFilters(f => ({ ...f, year: Number(e.target.value) }))}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, year: Number(e.target.value) }))
+            }
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           >
-            {years.map(y => (
-              <option key={y} value={y}>{y}</option>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
 
           <select
             value={filters.role}
-            onChange={(e) => setFilters(f => ({ ...f, role: e.target.value }))}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, role: e.target.value }))
+            }
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           >
             <option value="">Tất cả</option>
@@ -531,12 +643,21 @@ const AdminSalary = () => {
             type="text"
             placeholder="Tìm tên..."
             value={filters.search}
-            onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, search: e.target.value }))
+            }
             className="flex-1 min-w-[150px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
 
           <button
-            onClick={() => setFilters({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), role: '', search: '' })}
+            onClick={() =>
+              setFilters({
+                month: new Date().getMonth() + 1,
+                year: new Date().getFullYear(),
+                role: "",
+                search: "",
+              })
+            }
             className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200"
           >
             Xóa lọc
@@ -568,7 +689,6 @@ const AdminSalary = () => {
           >
             Cấu hình nghỉ phép
           </button>
-
         </div>
       </div>
 
@@ -576,29 +696,50 @@ const AdminSalary = () => {
       {showLeaveConfig && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Cấu hình nghỉ phép {filters.year}</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-4">
+              Cấu hình nghỉ phép {filters.year}
+            </h3>
             <form onSubmit={handleSaveLeaveConfig} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Số ngày nghỉ phép có lương / năm</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Số ngày nghỉ phép có lương / năm
+                </label>
                 <input
                   type="number"
                   min="0"
                   value={leaveForm.paidLeaveDaysPerYear}
-                  onChange={(e) => setLeaveForm(f => ({ ...f, paidLeaveDaysPerYear: Number(e.target.value) }))}
+                  onChange={(e) =>
+                    setLeaveForm((f) => ({
+                      ...f,
+                      paidLeaveDaysPerYear: Number(e.target.value),
+                    }))
+                  }
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
-                <p className="mt-1 text-xs text-slate-500">Số ngày nghỉ phép được phép trong năm mà không bị trừ lương.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Số ngày nghỉ phép được phép trong năm mà không bị trừ lương.
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Số tiền khấu trừ / ngày vượt quá</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Số tiền khấu trừ / ngày vượt quá
+                </label>
                 <input
                   type="number"
                   min="0"
                   value={leaveForm.leaveDeductionPerDay}
-                  onChange={(e) => setLeaveForm(f => ({ ...f, leaveDeductionPerDay: Number(e.target.value) }))}
+                  onChange={(e) =>
+                    setLeaveForm((f) => ({
+                      ...f,
+                      leaveDeductionPerDay: Number(e.target.value),
+                    }))
+                  }
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
-                <p className="mt-1 text-xs text-slate-500">Khấu trừ cho mỗi ngày nghỉ vượt quá số ngày được phép (chỉ áp dụng cho giảng viên).</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Khấu trừ cho mỗi ngày nghỉ vượt quá số ngày được phép (chỉ áp
+                  dụng cho giảng viên).
+                </p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button
@@ -613,7 +754,7 @@ const AdminSalary = () => {
                   disabled={submitting}
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                  {submitting ? 'Đang lưu...' : 'Lưu'}
+                  {submitting ? "Đang lưu..." : "Lưu"}
                 </button>
               </div>
             </form>
@@ -621,77 +762,20 @@ const AdminSalary = () => {
         </div>
       )}
 
-
-      {/* Table */}
-      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-          </div>
-        ) : noConfig ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <div className="text-6xl">⚙️</div>
-            <h3 className="text-lg font-semibold text-slate-700">Chưa có cấu hình lương</h3>
-            <p className="text-sm text-slate-500 text-center max-w-md">
-              Vui lòng tạo cấu hình lương trước khi xem báo cáo lương. Cấu hình sẽ áp dụng cho các tháng có ngày hiệu lực nằm trong tháng được chọn.
-            </p>
-            <button
-              onClick={handleOpenConfig}
-              className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              Tạo cấu hình lương
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    {columns.map(col => (
-                      <th key={col.key} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        {col.title}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {salaryData.map((row, idx) => (
-                    <tr key={row.id || row.userId || idx} className="hover:bg-slate-50">
-                      {columns.map(col => (
-                        <td key={col.key} className="px-4 py-3 text-sm text-slate-800">
-                          {col.render ? col.render(null, row) : (row[col.key] ?? '')}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {pagination.totalPages > 1 && (
-              <div className="px-4 py-3 border-t border-slate-100">
-                <Pagination 
-                  currentPage={currentPage}
-                  totalPages={pagination.totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
       {/* Leave Usage Panel */}
       <div className="rounded-2xl border border-amber-200 bg-amber-50 shadow-sm overflow-hidden">
         <button
           className="w-full flex items-center justify-between px-5 py-4 hover:bg-amber-100 transition-colors"
           onClick={() => {
             if (!leaveUsage) {
-              apiClient.get(`/salary/leave-usage?year=${filters.year}`)
-                .then(res => setLeaveUsage(res?.data?.data))
-                .catch(err => console.error('Error loading leave usage:', err));
+              apiClient
+                .get(`/salary/leave-usage?year=${filters.year}`)
+                .then((res) => setLeaveUsage(res?.data?.data))
+                .catch((err) =>
+                  console.error("Error loading leave usage:", err),
+                );
             }
-            setShowLeavePanel(prev => !prev);
+            setShowLeavePanel((prev) => !prev);
           }}
         >
           <div className="flex items-center gap-2">
@@ -700,9 +784,21 @@ const AdminSalary = () => {
               {leaveConfig?.paidLeaveDaysPerYear ?? 12} ngày/năm
             </span>
           </div>
-          <span className={`transition-transform ${showLeavePanel ? 'rotate-180' : ''}`}>
-            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <span
+            className={`transition-transform ${showLeavePanel ? "rotate-180" : ""}`}
+          >
+            <svg
+              className="w-5 h-5 text-amber-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </span>
         </button>
@@ -714,19 +810,27 @@ const AdminSalary = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <div className="bg-white rounded-lg p-3 text-center">
                   <p className="text-xs text-slate-500">Tổng giáo viên</p>
-                  <p className="text-lg font-bold text-slate-800">{leaveUsage.summary?.totalInstructors ?? 0}</p>
+                  <p className="text-lg font-bold text-slate-800">
+                    {leaveUsage.summary?.totalInstructors ?? 0}
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center">
                   <p className="text-xs text-slate-500">Tổng ngày nghỉ</p>
-                  <p className="text-lg font-bold text-slate-800">{leaveUsage.summary?.totalLeaves ?? 0}</p>
+                  <p className="text-lg font-bold text-slate-800">
+                    {leaveUsage.summary?.totalLeaves ?? 0}
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center">
                   <p className="text-xs text-slate-500">Ngày vượt quá</p>
-                  <p className="text-lg font-bold text-amber-600">{leaveUsage.summary?.totalExtraDays ?? 0}</p>
+                  <p className="text-lg font-bold text-amber-600">
+                    {leaveUsage.summary?.totalExtraDays ?? 0}
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center">
                   <p className="text-xs text-slate-500">Tổng khấu trừ</p>
-                  <p className="text-lg font-bold text-red-600">{fmt(leaveUsage.summary?.totalDeduction ?? 0)}</p>
+                  <p className="text-lg font-bold text-red-600">
+                    {fmt(leaveUsage.summary?.totalDeduction ?? 0)}
+                  </p>
                 </div>
               </div>
             )}
@@ -738,29 +842,52 @@ const AdminSalary = () => {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-600">Giáo viên</th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-600">Ngày nghỉ</th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-600">Miễn phí</th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-600">Vượt quá</th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-600">Khấu trừ</th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-600">
+                          Giáo viên
+                        </th>
+                        <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                          Ngày nghỉ
+                        </th>
+                        <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                          Miễn phí
+                        </th>
+                        <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                          Vượt quá
+                        </th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                          Khấu trừ
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {leaveUsage.instructors.map((inst, idx) => (
-                        <tr key={inst.userId || idx} className="border-t border-slate-50 hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium text-slate-800">{inst.fullName}</td>
-                          <td className="px-4 py-3 text-center">{inst.emergencyLeaveCount ?? 0}</td>
-                          <td className="px-4 py-3 text-center text-slate-500">{inst.paidLeaveDays ?? 12}</td>
+                        <tr
+                          key={inst.userId || idx}
+                          className="border-t border-slate-50 hover:bg-slate-50"
+                        >
+                          <td className="px-4 py-3 font-medium text-slate-800">
+                            {inst.fullName}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {inst.emergencyLeaveCount ?? 0}
+                          </td>
+                          <td className="px-4 py-3 text-center text-slate-500">
+                            {inst.paidLeaveDays ?? 12}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             {inst.extraLeaveDays > 0 ? (
-                              <span className="text-amber-600 font-semibold">{inst.extraLeaveDays}</span>
+                              <span className="text-amber-600 font-semibold">
+                                {inst.extraLeaveDays}
+                              </span>
                             ) : (
                               <span className="text-slate-400">0</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">
                             {inst.leaveDeduction > 0 ? (
-                              <span className="text-red-600 font-semibold">{fmt(inst.leaveDeduction)}</span>
+                              <span className="text-red-600 font-semibold">
+                                {fmt(inst.leaveDeduction)}
+                              </span>
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
@@ -780,29 +907,119 @@ const AdminSalary = () => {
         )}
       </div>
 
+      {/* Table */}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+          </div>
+        ) : noConfig ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <div className="text-6xl">⚙️</div>
+            <h3 className="text-lg font-semibold text-slate-700">
+              Chưa có cấu hình lương
+            </h3>
+            <p className="text-sm text-slate-500 text-center max-w-md">
+              Vui lòng tạo cấu hình lương trước khi xem báo cáo lương. Cấu hình
+              sẽ áp dụng cho các tháng có ngày hiệu lực nằm trong tháng được
+              chọn.
+            </p>
+            <button
+              onClick={handleOpenConfig}
+              className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Tạo cấu hình lương
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {columns.map((col) => (
+                      <th
+                        key={col.key}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"
+                      >
+                        {col.title}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {salaryData.map((row, idx) => (
+                    <tr
+                      key={row.id || row.userId || idx}
+                      className="hover:bg-slate-50"
+                    >
+                      {columns.map((col) => (
+                        <td
+                          key={col.key}
+                          className="px-4 py-3 text-sm text-slate-800"
+                        >
+                          {col.render
+                            ? col.render(null, row)
+                            : (row[col.key] ?? "")}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {pagination.totalPages > 1 && (
+              <div className="px-4 py-3 border-t border-slate-100">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Config Modal */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Cấu hình lương</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-4">
+              Cấu hình lương
+            </h3>
             <form onSubmit={handleSaveConfig} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Lương/giờ (VNĐ)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Lương/giờ (VNĐ)
+                  </label>
                   <input
                     type="number"
                     value={configForm.instructorHourlyRate}
-                    onChange={(e) => setConfigForm(f => ({ ...f, instructorHourlyRate: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        instructorHourlyRate: Number(e.target.value),
+                      }))
+                    }
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Ngày hiệu lực</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Ngày hiệu lực
+                  </label>
                   <input
                     type="date"
                     value={configForm.effectiveFrom}
                     min={todayStr}
-                    onChange={(e) => setConfigForm(f => ({ ...f, effectiveFrom: e.target.value }))}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        effectiveFrom: e.target.value,
+                      }))
+                    }
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
@@ -810,7 +1027,9 @@ const AdminSalary = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-slate-700">Hoa hồng theo khóa học</label>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Hoa hồng theo khóa học
+                  </label>
                   <button
                     type="button"
                     onClick={handleOpenAddCommission}
@@ -821,26 +1040,48 @@ const AdminSalary = () => {
                 </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {configForm.courseCommissions.length === 0 && (
-                    <p className="text-sm text-slate-400 italic text-center py-2">Chưa có hoa hồng nào. Nhấn "+ Thêm hoa hồng theo khóa" để thêm.</p>
+                    <p className="text-sm text-slate-400 italic text-center py-2">
+                      Chưa có hoa hồng nào. Nhấn "+ Thêm hoa hồng theo khóa" để
+                      thêm.
+                    </p>
                   )}
-                  {configForm.courseCommissions.map(commission => {
-                    const course = courses.find(c => c._id === commission.courseId);
+                  {configForm.courseCommissions.map((commission) => {
+                    const course = courses.find(
+                      (c) => c._id === commission.courseId,
+                    );
                     if (!course) return null;
                     return (
-                      <div key={commission.courseId} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
-                        <span className="flex-1 text-sm">{course.name} ({course.code})</span>
+                      <div
+                        key={commission.courseId}
+                        className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg"
+                      >
+                        <span className="flex-1 text-sm">
+                          {course.name} ({course.code})
+                        </span>
                         <input
                           type="number"
                           placeholder="Số tiền"
-                          value={commission?.commissionAmount ?? ''}
-                          onChange={(e) => updateCommission(commission.courseId, 'commissionAmount', e.target.value)}
+                          value={commission?.commissionAmount ?? ""}
+                          onChange={(e) =>
+                            updateCommission(
+                              commission.courseId,
+                              "commissionAmount",
+                              e.target.value,
+                            )
+                          }
                           className="w-28 rounded-lg border border-slate-200 px-2 py-1 text-sm"
                         />
                         <input
                           type="date"
-                          value={commission?.effectiveFrom || ''}
+                          value={commission?.effectiveFrom || ""}
                           min={todayStr}
-                          onChange={(e) => updateCommission(commission.courseId, 'effectiveFrom', e.target.value)}
+                          onChange={(e) =>
+                            updateCommission(
+                              commission.courseId,
+                              "effectiveFrom",
+                              e.target.value,
+                            )
+                          }
                           className="w-36 rounded-lg border border-slate-200 px-2 py-1 text-sm"
                         />
                         <button
@@ -857,10 +1098,14 @@ const AdminSalary = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Ghi chú
+                </label>
                 <textarea
                   value={configForm.note}
-                  onChange={(e) => setConfigForm(f => ({ ...f, note: e.target.value }))}
+                  onChange={(e) =>
+                    setConfigForm((f) => ({ ...f, note: e.target.value }))
+                  }
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   rows={2}
                 />
@@ -879,7 +1124,7 @@ const AdminSalary = () => {
                   disabled={submitting}
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                  {submitting ? 'Đang lưu...' : 'Lưu'}
+                  {submitting ? "Đang lưu..." : "Lưu"}
                 </button>
               </div>
             </form>
@@ -888,40 +1133,70 @@ const AdminSalary = () => {
             {showAddCommissionModal && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
                 <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-                  <h4 className="text-base font-bold text-slate-900 mb-3">Thêm hoa hồng theo khóa</h4>
+                  <h4 className="text-base font-bold text-slate-900 mb-3">
+                    Thêm hoa hồng theo khóa
+                  </h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Khóa học</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Khóa học
+                      </label>
                       <select
                         value={addCommissionForm.courseId}
-                        onChange={(e) => setAddCommissionForm(f => ({ ...f, courseId: e.target.value }))}
+                        onChange={(e) =>
+                          setAddCommissionForm((f) => ({
+                            ...f,
+                            courseId: e.target.value,
+                          }))
+                        }
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                       >
                         <option value="">-- Chọn khóa học --</option>
                         {courses
-                          .filter(c => !configForm.courseCommissions.find(cc => cc.courseId === c._id))
-                          .map(c => (
-                            <option key={c._id} value={c._id}>{c.name} ({c.code})</option>
+                          .filter(
+                            (c) =>
+                              !configForm.courseCommissions.find(
+                                (cc) => cc.courseId === c._id,
+                              ),
+                          )
+                          .map((c) => (
+                            <option key={c._id} value={c._id}>
+                              {c.name} ({c.code})
+                            </option>
                           ))}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Số tiền hoa hồng (VNĐ)</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Số tiền hoa hồng (VNĐ)
+                      </label>
                       <input
                         type="number"
                         value={addCommissionForm.commissionAmount}
-                        onChange={(e) => setAddCommissionForm(f => ({ ...f, commissionAmount: e.target.value }))}
+                        onChange={(e) =>
+                          setAddCommissionForm((f) => ({
+                            ...f,
+                            commissionAmount: e.target.value,
+                          }))
+                        }
                         placeholder="0"
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Từ ngày</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Từ ngày
+                      </label>
                       <input
                         type="date"
                         value={addCommissionForm.effectiveFrom}
                         min={todayStr}
-                        onChange={(e) => setAddCommissionForm(f => ({ ...f, effectiveFrom: e.target.value }))}
+                        onChange={(e) =>
+                          setAddCommissionForm((f) => ({
+                            ...f,
+                            effectiveFrom: e.target.value,
+                          }))
+                        }
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                       />
                     </div>
@@ -953,9 +1228,14 @@ const AdminSalary = () => {
       {showDetailModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Chi tiết lương</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Chi tiết lương
+            </h3>
             <p className="text-sm text-slate-600 mb-4">
-              {selectedUser.fullName || selectedUser.userName} - {selectedUser.role === 'INSTRUCTOR' ? 'Giảng viên' : 'Tư vấn viên'}
+              {selectedUser.fullName || selectedUser.userName} -{" "}
+              {selectedUser.role === "INSTRUCTOR"
+                ? "Giảng viên"
+                : "Tư vấn viên"}
             </p>
 
             {detailLoading ? (
@@ -968,26 +1248,40 @@ const AdminSalary = () => {
                 <div className="grid grid-cols-3 gap-4 rounded-xl bg-slate-50 p-4">
                   <div>
                     <p className="text-xs text-slate-500">Lương giờ</p>
-                    <p className="text-lg font-bold">{fmt(detailData.teachingSalary || 0)}</p>
+                    <p className="text-lg font-bold">
+                      {fmt(detailData.teachingSalary || 0)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Hoa hồng</p>
-                    <p className="text-lg font-bold text-indigo-600">{fmt(detailData.totalCommission || 0)}</p>
+                    <p className="text-lg font-bold text-indigo-600">
+                      {fmt(detailData.totalCommission || 0)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Tổng lương</p>
-                    <p className="text-lg font-bold text-emerald-600">{fmt(detailData.totalSalary || 0)}</p>
+                    <p className="text-lg font-bold text-emerald-600">
+                      {fmt(detailData.totalSalary || 0)}
+                    </p>
                   </div>
                 </div>
 
                 {/* Teaching Details */}
                 {detailData.teachingDetails?.length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-slate-800 mb-2">Chi tiết giờ dạy</h4>
+                    <h4 className="font-semibold text-slate-800 mb-2">
+                      Chi tiết giờ dạy
+                    </h4>
                     <div className="space-y-1 max-h-48 overflow-y-auto">
                       {detailData.teachingDetails.map((t, idx) => (
-                        <div key={idx} className="flex justify-between text-sm p-2 bg-slate-50 rounded">
-                          <span>{new Date(t.date).toLocaleDateString('vi-VN')} - Ca {t.timeSlot} - {t.learnerName}</span>
+                        <div
+                          key={idx}
+                          className="flex justify-between text-sm p-2 bg-slate-50 rounded"
+                        >
+                          <span>
+                            {new Date(t.date).toLocaleDateString("vi-VN")} - Ca{" "}
+                            {t.timeSlot} - {t.learnerName}
+                          </span>
                           <span className="font-medium">{fmt(t.amount)}</span>
                         </div>
                       ))}
@@ -998,12 +1292,21 @@ const AdminSalary = () => {
                 {/* Commission Details */}
                 {detailData.commissionDetails?.length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-slate-800 mb-2">Chi tiết hoa hồng</h4>
+                    <h4 className="font-semibold text-slate-800 mb-2">
+                      Chi tiết hoa hồng
+                    </h4>
                     <div className="space-y-1 max-h-48 overflow-y-auto">
                       {detailData.commissionDetails.map((c, idx) => (
-                        <div key={idx} className="flex justify-between text-sm p-2 bg-indigo-50 rounded">
-                          <span>{c.courseName} - {c.learnerName}</span>
-                          <span className="font-medium text-indigo-600">{fmt(c.commissionAmount)}</span>
+                        <div
+                          key={idx}
+                          className="flex justify-between text-sm p-2 bg-indigo-50 rounded"
+                        >
+                          <span>
+                            {c.courseName} - {c.learnerName}
+                          </span>
+                          <span className="font-medium text-indigo-600">
+                            {fmt(c.commissionAmount)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -1011,7 +1314,9 @@ const AdminSalary = () => {
                 )}
               </div>
             ) : (
-              <p className="text-center text-slate-500 py-8">Không có dữ liệu</p>
+              <p className="text-center text-slate-500 py-8">
+                Không có dữ liệu
+              </p>
             )}
 
             <div className="mt-4 pt-4 border-t">
@@ -1030,21 +1335,28 @@ const AdminSalary = () => {
       {showOverrideModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Chỉnh lương cá nhân</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Chỉnh lương cá nhân
+            </h3>
             <p className="text-sm text-slate-600 mb-4">
-              {selectedUser.fullName || selectedUser.userName} - {selectedUser.role === 'INSTRUCTOR' ? 'Giảng viên' : 'Tư vấn viên'}
+              {selectedUser.fullName || selectedUser.userName} -{" "}
+              {selectedUser.role === "INSTRUCTOR"
+                ? "Giảng viên"
+                : "Tư vấn viên"}
             </p>
 
             <form onSubmit={handleSaveOverride} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Lương/giờ (để trống = dùng cấu hình chung)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Lương/giờ (để trống = dùng cấu hình chung)
+                </label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={overrideForm.salaryHourlyRate}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/[^0-9]/g, '');
-                    setOverrideForm(f => ({ ...f, salaryHourlyRate: raw }));
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    setOverrideForm((f) => ({ ...f, salaryHourlyRate: raw }));
                   }}
                   placeholder="Để trống = dùng cấu hình chung"
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -1052,25 +1364,38 @@ const AdminSalary = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Hoa hồng theo khóa học</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Hoa hồng theo khóa học
+                </label>
                 <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {courses.map(course => {
-                    const ov = overrideForm.commissionOverrides.find(c => (c.courseId?._id || c.courseId) === course._id);
+                  {courses.map((course) => {
+                    const ov = overrideForm.commissionOverrides.find(
+                      (c) => (c.courseId?._id || c.courseId) === course._id,
+                    );
                     return (
-                      <div key={course._id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
-                        <span className="flex-1 text-sm">{course.name} ({course.code})</span>
+                      <div
+                        key={course._id}
+                        className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg"
+                      >
+                        <span className="flex-1 text-sm">
+                          {course.name} ({course.code})
+                        </span>
                         <input
                           type="number"
                           placeholder="Số tiền"
-                          value={ov?.commissionAmount ?? ''}
-                          onChange={(e) => updateOverrideCommission(course._id, e.target.value)}
+                          value={ov?.commissionAmount ?? ""}
+                          onChange={(e) =>
+                            updateOverrideCommission(course._id, e.target.value)
+                          }
                           className="w-32 rounded-lg border border-slate-200 px-2 py-1 text-sm"
                         />
                       </div>
                     );
                   })}
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Nếu để trống hoa hồng, hệ thống sẽ dùng cấu hình chung.</p>
+                <p className="text-xs text-slate-500 mt-2">
+                  Nếu để trống hoa hồng, hệ thống sẽ dùng cấu hình chung.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -1086,7 +1411,7 @@ const AdminSalary = () => {
                   disabled={submitting}
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                  {submitting ? 'Đang lưu...' : 'Lưu'}
+                  {submitting ? "Đang lưu..." : "Lưu"}
                 </button>
               </div>
             </form>
