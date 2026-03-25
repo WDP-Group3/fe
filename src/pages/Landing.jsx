@@ -19,7 +19,8 @@ const Landing = () => {
     name: '',
     phone: '',
     course: '',
-    timeToCall: ''
+    timeToCall: '',
+    note: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -290,6 +291,16 @@ const Landing = () => {
                     placeholder="Thời gian gọi lại *"
                     className="w-full rounded-xl border-none bg-slate-100 px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-shadow"
                     value={formData.timeToCall}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div>
+                  <textarea
+                    name="note"
+                    rows="2"
+                    placeholder="📝 Ghi chú thêm (Ví dụ: Thời gian rảnh, yêu cầu riêng...)"
+                    className="w-full rounded-xl border-none bg-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow resize-none"
+                    value={formData.note}
                     onChange={handleInputChange}
                   />
                 </div>

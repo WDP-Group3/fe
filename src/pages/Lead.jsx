@@ -135,6 +135,12 @@ const Leads = () => {
             render: (date) => date ? new Date(date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'
         },
         {
+            key: 'note',
+            title: 'Ghi chú',
+            dataIndex: 'note',
+            render: (note) => <span className="max-w-xs break-words">{note || 'Không có'}</span>
+        },
+        {
             key: 'status',
             title: 'Trạng thái',
             dataIndex: 'status',
@@ -171,6 +177,12 @@ const Leads = () => {
             title: 'Ngày tư vấn',
             dataIndex: 'timeToCall',
             render: (date) => date ? new Date(date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'
+        },
+        {
+            key: 'note',
+            title: 'Ghi chú',
+            dataIndex: 'note',
+            render: (note) => <span className="max-w-xs break-words">{note || 'Không có'}</span>
         },
         {
             key: 'status',
