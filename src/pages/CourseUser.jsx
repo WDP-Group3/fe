@@ -145,7 +145,7 @@ const CourseUSER = () => {
                             {courses.map((course) => (
                                 <div
                                     key={course.id}
-                                    className="relative rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm"
+                                    className="relative h-full flex flex-col rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm"
                                 >
                                     <div className="flex items-center justify-between">
                                         <StatusBadge status="done" label="Mở đăng ký" />
@@ -191,44 +191,46 @@ const CourseUSER = () => {
                                         )}
                                     </div>
 
-                                    {/* Duration */}
-                                    <div className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
-                                        <p className="font-semibold text-indigo-700">
-                                            Thời lượng:{' '}
-                                            {course.estimatedDuration
-                                                ? `${course.estimatedDuration} tháng`
-                                                : 'Chưa cập nhật'}
-                                        </p>
-                                    </div>
-
-                                    {/* Locations */}
-                                    {course.location && course.location.length > 0 && (
-                                        <div className="mt-2 flex flex-wrap gap-1">
-                                            {course.location.map((loc, i) => (
-                                                <span
-                                                    key={i}
-                                                    className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs"
-                                                >
-                                                    {loc}
-                                                </span>
-                                            ))}
+                                    <div className="mt-auto flex flex-col">
+                                        {/* Duration */}
+                                        <div className="mt-4 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
+                                            <p className="font-semibold text-indigo-700">
+                                                Thời lượng:{' '}
+                                                {course.estimatedDuration
+                                                    ? `${course.estimatedDuration} tháng`
+                                                    : 'Chưa cập nhật'}
+                                            </p>
                                         </div>
-                                    )}
 
-                                    {/* Actions */}
-                                    <div className="mt-4 flex gap-2">
-                                        <button
-                                            onClick={() => navigate(`/courses/${course.id}`)}
-                                            className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
-                                        >
-                                            Xem chi tiết
-                                        </button>
-                                        <button
-                                            onClick={scrollToConsultForm}
-                                            className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
-                                        >
-                                            Đăng ký tư vấn
-                                        </button>
+                                        {/* Locations */}
+                                        {course.location && course.location.length > 0 && (
+                                            <div className="mt-2 flex flex-wrap gap-1">
+                                                {course.location.map((loc, i) => (
+                                                    <span
+                                                        key={i}
+                                                        className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs"
+                                                    >
+                                                        {loc}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Actions */}
+                                        <div className="mt-4 flex gap-2 w-full">
+                                            <button
+                                                onClick={() => navigate(`/courses/${course.id}`)}
+                                                className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                            <button
+                                                onClick={scrollToConsultForm}
+                                                className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+                                            >
+                                                Đăng ký tư vấn
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
