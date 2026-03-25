@@ -17,7 +17,7 @@ const PUBLIC_NAV_ITEMS = [
 // Navigation items based on role
 const getNavItems = (userRole) => {
   const allItems = [
-    { label: 'Tổng quan', to: '/portal/overview', roles: ['ADMIN', 'learner', 'INSTRUCTOR', 'CONSULTANT', 'USER'] },
+    { label: 'Tổng quan', to: '/portal/overview', roles: ['learner', 'USER'] },
     { label: 'Khóa học', to: '/portal/courses', roles: ['ADMIN', 'learner', 'USER'] },
     { label: 'Hồ sơ', to: '/portal/enrollment', roles: ['learner', 'USER'] },
     { label: 'Học phí', to: '/portal/payments', roles: ['ADMIN', 'learner', 'USER'] },
@@ -57,14 +57,14 @@ const PortalLayout = ({ children, hideNav = false }) => {
       label: 'Thông tin cá nhân',
       onClick: () => navigate('/portal/profile'),
     },
-    ...(user?.role === 'learner'
-      ? [
-        {
-          label: 'learner Dashboard',
-          onClick: () => navigate('/portal/learner-dashboard'),
-        },
-      ]
-      : []),
+    // ...(user?.role === 'learner'
+    //   ? [
+    //     {
+    //       label: 'learner Dashboard',
+    //       onClick: () => navigate('/portal/learner-dashboard'),
+    //     },
+    //   ]
+    //   : []),
     { divider: true },
     {
       label: 'Đăng xuất',
