@@ -113,71 +113,73 @@ const Exams = () => {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-        <SectionHeader
-          title="Lịch sử thi thử"
-          description="Lưu kết quả, thống kê câu sai để ôn tập"
-        />
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-          </div>
-        ) : examResults.length === 0 ? (
-          <div className="py-8 text-center text-slate-500">
-            <p>Bạn chưa có lịch sử thi thử nào</p>
-            <Button
-              variant="primary"
-              className="mt-4"
-              onClick={() => navigate(examTakingBase)}
-            >
-              Bắt đầu thi thử
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {examResults.map((result, idx) => (
-              <div
-                key={result._id || idx}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 p-4"
+      {user && (
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+          <SectionHeader
+            title="Lịch sử thi thử"
+            description="Lưu kết quả, thống kê câu sai để ôn tập"
+          />
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+            </div>
+          ) : examResults.length === 0 ? (
+            <div className="py-8 text-center text-slate-500">
+              <p>Bạn chưa có lịch sử thi thử nào</p>
+              <Button
+                variant="primary"
+                className="mt-4"
+                onClick={() => navigate(examTakingBase)}
               >
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {result.category || 'Đề ngẫu nhiên'} #{examResults.length - idx}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {formatDate(result.createdAt)}
-                  </p>
+                Bắt đầu thi thử
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {examResults.map((result, idx) => (
+                <div
+                  key={result._id || idx}
+                  className="flex items-center justify-between rounded-2xl border border-slate-100 p-4"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {result.category || 'Đề ngẫu nhiên'} #{examResults.length - idx}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(result.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p
+                      className={`text-2xl font-bold ${result.score >= 80
+                        ? 'text-emerald-700'
+                        : 'text-rose-700'
+                        }`}
+                    >
+                      {result.correctAnswers}/{result.totalQuestions}
+                    </p>
+                    <p
+                      className={`text-lg font-semibold ${result.score >= 80
+                        ? 'text-emerald-600'
+                        : 'text-rose-600'
+                        }`}
+                    >
+                      ({result.score}%)
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(user ? `/portal/exam-result/${result._id}` : `/exam-result/${result._id}`)}
+                    >
+                      Xem chi tiết
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <p
-                    className={`text-2xl font-bold ${result.score >= 80
-                      ? 'text-emerald-700'
-                      : 'text-rose-700'
-                      }`}
-                  >
-                    {result.correctAnswers}/{result.totalQuestions}
-                  </p>
-                  <p
-                    className={`text-lg font-semibold ${result.score >= 80
-                      ? 'text-emerald-600'
-                      : 'text-rose-600'
-                      }`}
-                  >
-                    ({result.score}%)
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(user ? `/portal/exam-result/${result._id}` : `/exam-result/${result._id}`)}
-                  >
-                    Xem chi tiết
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
