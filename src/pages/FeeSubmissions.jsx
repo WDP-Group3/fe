@@ -317,9 +317,11 @@ const FeeSubmissions = () => {
     }
   }, [buildQuery]);
 
+  // Chỉ gọi loadData khi các filter thay đổi, KHÔNG phụ thuộc vào loadData
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, search, paymentStatus]);
 
   const handleSearch = (e) => {
     setSearch(e.target.value);

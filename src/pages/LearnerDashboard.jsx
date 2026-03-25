@@ -47,14 +47,19 @@ const learnerDashboard = () => {
     loadData();
   }, [user?.role]);
 
+  const joinedRegistrations = useMemo(
+    () => registrations.filter((r) => r.status !== 'DRAFT'),
+    [registrations]
+  );
+
   const stats = useMemo(() => {
-    const totalCourses = registrations.length;
-    const studyingCourses = registrations.filter((r) => r.status === 'STUDYING').length;
-    const completedCourses = registrations.filter((r) => r.status === 'COMPLETED').length;
+    const totalCourses = joinedRegistrations.length;
+    const studyingCourses = joinedRegistrations.filter((r) => r.status === 'STUDYING').length;
+    const completedCourses = joinedRegistrations.filter((r) => r.status === 'COMPLETED').length;
     const totalPaid = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
     return { totalCourses, studyingCourses, completedCourses, totalPaid };
-  }, [registrations, payments]);
+  }, [joinedRegistrations, payments]);
 
   if (user?.role !== 'learner') {
     return (
@@ -86,14 +91,14 @@ const learnerDashboard = () => {
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-slate-100 p-4">
                 <h4 className="text-sm font-semibold text-slate-900">Khóa học đã tham gia</h4>
-                {registrations.length === 0 ? (
+                {joinedRegistrations.length === 0 ? (
                   <p className="mt-2 text-sm text-slate-500">Bạn chưa tham gia khóa học nào.</p>
                 ) : (
                   <div className="mt-2 space-y-2">
-                    {registrations.map((r) => (
+                    {joinedRegistrations.map((r) => (
                       <div key={r._id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
                         <p className="font-medium text-slate-900">
-                          {r?.batchId?.courseId?.name || r?.batchId?.courseId?.code || 'Khóa học'}
+                          {r?.batchId?.courseId?.name || r?.courseId?.name || r?.batchId?.courseId?.code || r?.courseId?.code || 'Khóa học'}
                         </p>
                         <p className="text-xs text-slate-500">{r?.batchId?.location || '—'} · {r?.status || 'NEW'}</p>
                       </div>

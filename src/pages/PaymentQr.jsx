@@ -1,8 +1,8 @@
-import { useLocation, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import SectionHeader from '../components/ui/SectionHeader';
 import { formatCurrency } from '../utils/formatters';
-import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
 
@@ -11,11 +11,11 @@ const SEPAY_BANK_ACCOUNT = import.meta.env.VITE_SEPAY_BANK_ACCOUNT || '';
 
 const PaymentQr = () => {
   const location = useLocation();
-  const { fetchApi } = useApi();
+  const navigate = useNavigate();
   const socket = useSocket();
   const { showToast } = useToast();
+  const redirectRef = useRef(false);
   const [isPaid, setIsPaid] = useState(false);
-  const [countdown, setCountdown] = useState(30);
   const [txInfo, setTxInfo] = useState({
     paymentUrl: null,
     transferContent: null,
@@ -58,7 +58,7 @@ const PaymentQr = () => {
     const fetchTxInfo = async () => {
       setLoading(true);
       try {
-        const txRes = await fetchApi(`/api/payments/transaction-status/${txId}`, 'GET');
+        const txRes = await apiClient.get(`/payments/transaction-status/${txId}`);
         console.log('[PaymentQr] Fetch tx:', txRes);
         if (txRes?.data) {
           const tx = txRes.data;
@@ -75,7 +75,7 @@ const PaymentQr = () => {
 
           // Fetch registration để lấy course name
           if (tx.registrationId) {
-            const regRes = await fetchApi(`/api/registrations/${tx.registrationId}`, 'GET');
+            const regRes = await apiClient.get(`/registrations/${tx.registrationId}`);
             console.log('[PaymentQr] Fetch reg:', regRes);
             if (regRes?.data) {
               const course = regRes.data.batchId?.courseId || regRes.data.courseId;
@@ -95,7 +95,17 @@ const PaymentQr = () => {
     };
 
     fetchTxInfo();
-  }, [state.transactionId, state.paymentUrl, fetchApi]);
+  }, [state.transactionId, state.paymentUrl]);
+
+  const handlePaidSuccess = useCallback(() => {
+    if (redirectRef.current) return;
+    redirectRef.current = true;
+    showToast('Thanh toán thành công!', 'success');
+    setIsPaid(true);
+    setTimeout(() => {
+      navigate('/portal/payments', { replace: true });
+    }, 1200);
+  }, [navigate, showToast]);
 
   // Socket listener - redirect khi thanh toán thành công
   useEffect(() => {
@@ -103,16 +113,12 @@ const PaymentQr = () => {
 
     const handlePaymentSuccess = (data) => {
       console.log('[PaymentQr] Socket payment-success:', data);
-      showToast('Thanh toán thành công!', 'success');
-      setIsPaid(true);
-      setTimeout(() => {
-        window.location.href = '/portal/payments';
-      }, 2000);
+      handlePaidSuccess();
     };
 
     socket.on('payment-success', handlePaymentSuccess);
     return () => socket.off('payment-success', handlePaymentSuccess);
-  }, [socket, showToast]);
+  }, [socket, handlePaidSuccess]);
 
   // Polling kiểm tra trạng thái (fallback)
   useEffect(() => {
@@ -121,14 +127,10 @@ const PaymentQr = () => {
 
     const checkStatus = async () => {
       try {
-        const res = await fetchApi(`/api/payments/transaction-status/${txId}`, 'GET');
+        const res = await apiClient.get(`/payments/transaction-status/${txId}`);
         console.log('[PaymentQr] Poll:', res);
         if (res?.data?.paymentStatus === 'completed') {
-          showToast('Thanh toán thành công!', 'success');
-          setIsPaid(true);
-          setTimeout(() => {
-            window.location.href = '/portal/payments';
-          }, 2000);
+          handlePaidSuccess();
         }
       } catch (err) {
         console.error('[PaymentQr] Poll error:', err);
@@ -138,14 +140,8 @@ const PaymentQr = () => {
     checkStatus();
     const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
-  }, [txInfo.transactionId, state.transactionId, isPaid, fetchApi, showToast]);
+  }, [txInfo.transactionId, state.transactionId, isPaid, handlePaidSuccess]);
 
-  // Countdown
-  useEffect(() => {
-    if (isPaid || countdown <= 0) return;
-    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [countdown, isPaid]);
 
   if (loading) {
     return (
@@ -191,7 +187,6 @@ const PaymentQr = () => {
 
           <div className="space-y-4 text-sm">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              {!isPaid && <p className="mb-2 text-xs text-slate-500">Tự động kiểm tra sau {countdown}s...</p>}
               <p className="text-xs font-semibold text-slate-500">Nội dung chuyển khoản (bắt buộc đúng)</p>
               <p className="mt-2 inline-flex rounded-lg bg-white px-3 py-2 font-semibold text-indigo-700">
                 {txInfo.transferContent || '—'}

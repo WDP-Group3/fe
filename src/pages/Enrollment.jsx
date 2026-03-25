@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { FileUpload, Input, SectionHeader } from '../components/ui';
 import apiClient from '../services/apiClient';
 import config from '../config';
+import { validateCccd } from '../utils/validators';
 
 const Enrollment = () => {
   const { user } = useAuthContext();
@@ -19,6 +20,7 @@ const Enrollment = () => {
   const [healthFile, setHealthFile] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   const loadMyDocument = async () => {
     if (!user?.id) return;
@@ -96,10 +98,19 @@ const Enrollment = () => {
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
 
+    const errors = {};
     if (!cccdNumber.trim()) {
-      showToast('Vui lòng nhập số CMND/CCCD', 'error');
-      return;
+      errors.cccdNumber = 'Vui lòng nhập số CMND/CCCD';
+    } else if (!validateCccd(cccdNumber)) {
+      errors.cccdNumber = 'Số CMND/CCCD phải là 9 hoặc 12 chữ số';
     }
+
+    if (!cccdFrontFile) errors.cccdFrontFile = 'Vui lòng upload ảnh mặt trước CCCD';
+    if (!cccdBackFile) errors.cccdBackFile = 'Vui lòng upload ảnh mặt sau CCCD';
+    if (!photoFile) errors.photoFile = 'Vui lòng upload ảnh 3x4';
+
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
     try {
       setUploading(true);
@@ -147,6 +158,7 @@ const Enrollment = () => {
                 placeholder="Nhập số CMND/CCCD"
                 value={cccdNumber}
                 onChange={(e) => setCccdNumber(e.target.value)}
+                error={formErrors.cccdNumber}
                 required
               />
 
@@ -191,7 +203,8 @@ const Enrollment = () => {
                     accept=".jpg,.jpeg,.png"
                     multiple={false}
                     maxSize={5 * 1024 * 1024}
-                    onChange={setCccdFrontFile}
+                    onChange={(f) => { setCccdFrontFile(f); setFormErrors((e) => ({ ...e, cccdFrontFile: '' })); }}
+                    error={formErrors.cccdFrontFile}
                     helperText="Upload ảnh mặt trước CCCD"
                   />
                   <FileUpload
@@ -199,7 +212,8 @@ const Enrollment = () => {
                     accept=".jpg,.jpeg,.png"
                     multiple={false}
                     maxSize={5 * 1024 * 1024}
-                    onChange={setCccdBackFile}
+                    onChange={(f) => { setCccdBackFile(f); setFormErrors((e) => ({ ...e, cccdBackFile: '' })); }}
+                    error={formErrors.cccdBackFile}
                     helperText="Upload ảnh mặt sau CCCD"
                   />
                 </div>
@@ -217,7 +231,8 @@ const Enrollment = () => {
                     accept=".jpg,.jpeg,.png"
                     multiple={false}
                     maxSize={5 * 1024 * 1024}
-                    onChange={setPhotoFile}
+                    onChange={(f) => { setPhotoFile(f); setFormErrors((e) => ({ ...e, photoFile: '' })); }}
+                    error={formErrors.photoFile}
                     helperText="Ảnh nền sáng, rõ mặt"
                   />
                 </div>
