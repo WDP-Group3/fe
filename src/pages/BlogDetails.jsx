@@ -242,7 +242,7 @@ const BlogDetails = () => {
 
                             {/* Article Content */}
                             <div
-                                className="mt-4 prose prose-sm max-w-none text-slate-700 leading-relaxed"
+                                className="mt-4 prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-line"
                                 dangerouslySetInnerHTML={{ __html: blog.content }}
                             />
 
