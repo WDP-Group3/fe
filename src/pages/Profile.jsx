@@ -22,6 +22,7 @@ import {
   FileUpload,
 } from '../components/ui';
 import { FormGroup, FormRow } from '../components/forms';
+import { validatePhone } from '../utils/validators';
 
 const Profile = () => {
   const { id } = useParams();
@@ -199,7 +200,11 @@ const Profile = () => {
     const errors = {};
     if (!formData.name?.trim()) errors.name = 'Họ tên là bắt buộc';
     if (!formData.email?.trim()) errors.email = 'Email là bắt buộc';
-    if (!formData.phone?.trim()) errors.phone = 'Số điện thoại là bắt buộc';
+    if (!formData.phone?.trim()) {
+      errors.phone = 'Số điện thoại là bắt buộc';
+    } else if (!validatePhone(formData.phone)) {
+      errors.phone = 'Số điện thoại phải là 10 hoặc 11 chữ số';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

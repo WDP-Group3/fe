@@ -49,6 +49,12 @@ const UserManagement = () => {
   });
   const [submittingOffline, setSubmittingOffline] = useState(false);
 
+  // [MỚI] Hạng học viên
+  const [enrolledCoursesData, setEnrolledCoursesData] = useState([]); // list course objects
+  const [enrolledCourseCodes, setEnrolledCourseCodes] = useState([]); // codes đã tick
+  const [lockedCourseCodes, setLockedCourseCodes] = useState([]); // codes đang in-batch
+  const [loadingEnrolled, setLoadingEnrolled] = useState(false);
+
   useEffect(() => {
     loadUsers();
     loadStats();
@@ -125,35 +131,34 @@ const UserManagement = () => {
     e.preventDefault();
     try {
       if (!currentUser) return;
-      // Admin updates Email or Password
       const updateData = {};
       if (formData.email) updateData.email = formData.email;
       if (formData.password) updateData.password = formData.password;
-      // Maybe Role too?
       if (formData.role) updateData.role = formData.role;
-      if (formData.name) updateData.name = formData.name; // allow editing name too if needed
-
-      // Wait, use 'updateUser' endpoint?
-      // user.controller.js has updateUser which updates fullName, email, phone...
-      // It doesn't update password usually unless specifically handled?
-      // The `updateProfile` in auth controller handles self update.
-      // The `updateUser` in user controller handles Admin update.
-      // Let's check `updateUser` in user.controller.js. It does `User.findByIdAndUpdate(..., body, ...)`.
-      // If body has password, it won't be hashed automatically by findByIdAndUpdate!
-      // Major Issue: Admin changing password via `updateUser` won't hash it if backend doesn't handle it.
-      // I should check `user.controller.js` again.
-      // `updateUser` just does `findByIdAndUpdate`.
-      // So I can't update password via `updateUser` safely unless I fix backend `updateUser`.
-      // But User requirement is: "Admin sửa tài tài khoản và mâtk khẩu".
-      // So I SHOULD fix backend `updateUser` too. (I'll do that in a bit).
-      // Since I already modified backend User.js to hash password in pre-save if I wanted, but actually I'll stick to what's there.
+      if (formData.name) updateData.name = formData.name;
 
       await apiClient.patch(`/users/${currentUser.id}`, updateData);
+
+      // [MỚI] Cập nhật enrolled courses cho learner
+      if (currentUser.role === "learner") {
+        try {
+          await apiClient.patch(`/users/${currentUser.id}/enrolled-courses`, {
+            enrolledCourseCodes,
+          });
+        } catch (enrollErr) {
+          showToast(enrollErr.message || "Cập nhật hạng học thất bại", "error");
+          return;
+        }
+      }
 
       setShowEditModal(false);
       setCurrentUser(null);
       setFormData({ email: "", role: "INSTRUCTOR", password: "" });
+      setEnrolledCoursesData([]);
+      setEnrolledCourseCodes([]);
+      setLockedCourseCodes([]);
       loadUsers();
+      loadStats();
       showToast("Cập nhật người dùng thành công", "success");
     } catch (error) {
       showToast(error.message || "Cập nhật thất bại", "error");
@@ -200,7 +205,7 @@ const UserManagement = () => {
     }
   };
 
-  const openEditModal = (user) => {
+  const openEditModal = async (user) => {
     setCurrentUser(user);
     setFormData({
       email: user.email,
@@ -208,6 +213,30 @@ const UserManagement = () => {
       password: "",
       name: user.name,
     });
+
+    // [MỚI] Load enrolled courses cho learner
+    if (user.role === "learner") {
+      setLoadingEnrolled(true);
+      setEnrolledCoursesData([]);
+      setEnrolledCourseCodes([]);
+      setLockedCourseCodes([]);
+      try {
+        const resp = await apiClient.get(`/users/${user.id}/enrolled-courses`);
+        if (resp.status === "success") {
+          const courses = resp.data.courses || [];
+          setEnrolledCoursesData(courses);
+          // enrolled codes = courses có enrolled = true (đã thanh toán)
+          setEnrolledCourseCodes(courses.filter((c) => c.enrolled).map((c) => c.code));
+          // codes đang in-batch = đã thanh toán + đã vào lớp
+          setLockedCourseCodes(courses.filter((c) => c.inBatch).map((c) => c.code));
+        }
+      } catch (e) {
+        console.error("Lỗi load enrolled courses:", e);
+      } finally {
+        setLoadingEnrolled(false);
+      }
+    }
+
     setShowEditModal(true);
   };
 
@@ -418,6 +447,11 @@ const UserManagement = () => {
                   showCreateModal ? handleCreateSubmit : handleEditSubmit
                 }
                 className="space-y-4"
+                onReset={() => {
+                  setEnrolledCoursesData([]);
+                  setEnrolledCourseCodes([]);
+                  setLockedCourseCodes([]);
+                }}
               >
                 {showEditModal && (
                   <div>
@@ -469,6 +503,201 @@ const UserManagement = () => {
                   </select>
                 </div>
 
+                {/* [MỚI] Hạng học viên - chỉ hiện khi đang sửa learner */}
+                {showEditModal && currentUser?.role === "learner" && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Hạng học
+                    </label>
+                    {loadingEnrolled ? (
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></div>
+                        Đang tải...
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Nhóm Xe Máy (A*) */}
+                        {(() => {
+                          const xeMayCourses = enrolledCoursesData.filter(
+                            (c) => /^A[12]$/.test(c.code)
+                          );
+                          if (xeMayCourses.length === 0) return null;
+                          const selected = xeMayCourses.filter(
+                            (c) => enrolledCourseCodes.includes(c.code)
+                          );
+                          return (
+                            <div>
+                              <div className="mb-1.5 flex items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Xe Máy
+                                </span>
+                                <span className="h-px flex-1 bg-slate-200"></span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {xeMayCourses.map((course) => {
+                                  const isLocked = lockedCourseCodes.includes(
+                                    course.code
+                                  );
+                                  const isSelected = enrolledCourseCodes.includes(
+                                    course.code
+                                  );
+                                  const isPaid = course.paid;
+                                  return (
+                                    <label
+                                      key={course.code}
+                                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                        isLocked
+                                          ? "cursor-not-allowed border-slate-200 bg-slate-50"
+                                          : isSelected
+                                            ? "border-indigo-300 bg-indigo-50"
+                                            : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        disabled={isLocked}
+                                        onChange={() => {
+                                          if (isLocked) return;
+                                          setEnrolledCourseCodes((prev) => {
+                                            const others = prev.filter(
+                                              (code) =>
+                                                !xeMayCourses.some(
+                                                  (c) => c.code === code
+                                                )
+                                            );
+                                            return isSelected
+                                              ? others
+                                              : [...others, course.code];
+                                          });
+                                        }}
+                                        className="accent-indigo-600"
+                                      />
+                                      <span
+                                        className={
+                                          isLocked ? "text-slate-400" : ""
+                                        }
+                                      >
+                                        {course.code}
+                                      </span>
+                                      <span className="max-w-[120px] truncate text-xs text-slate-400">
+                                        {course.name}
+                                      </span>
+                                      {isLocked ? (
+                                        <span className="text-xs text-orange-500 font-medium">
+                                          (Đã vào lớp)
+                                        </span>
+                                      ) : isSelected && !isPaid ? (
+                                        <span className="text-xs text-amber-500 font-medium">
+                                          (Chưa thanh toán)
+                                        </span>
+                                      ) : null}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-1 text-xs text-slate-400">
+                                {selected.length === 0
+                                  ? `Chọn 1 hạng (${xeMayCourses.map((c) => c.code).join(', ')})`
+                                  : `✓ Đã chọn ${selected.map((c) => c.code).join(', ')}`}
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Nhóm Ô Tô (không phải A*) */}
+                        {(() => {
+                          const oToCourses = enrolledCoursesData.filter(
+                            (c) => !/^A[12]$/.test(c.code)
+                          );
+                          if (oToCourses.length === 0) return null;
+                          const selected = oToCourses.filter((c) =>
+                            enrolledCourseCodes.includes(c.code)
+                          );
+                          return (
+                            <div>
+                              <div className="mb-1.5 flex items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Ô Tô
+                                </span>
+                                <span className="h-px flex-1 bg-slate-200"></span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {oToCourses.map((course) => {
+                                  const isLocked = lockedCourseCodes.includes(
+                                    course.code
+                                  );
+                                  const isSelected = enrolledCourseCodes.includes(
+                                    course.code
+                                  );
+                                  const isPaid = course.paid;
+                                  return (
+                                    <label
+                                      key={course.code}
+                                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                        isLocked
+                                          ? "cursor-not-allowed border-slate-200 bg-slate-50"
+                                          : isSelected
+                                            ? "border-indigo-300 bg-indigo-50"
+                                            : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        disabled={isLocked}
+                                        onChange={() => {
+                                          if (isLocked) return;
+                                          setEnrolledCourseCodes((prev) => {
+                                            const others = prev.filter(
+                                              (code) =>
+                                                !oToCourses.some(
+                                                  (c) => c.code === code
+                                                )
+                                            );
+                                            return isSelected
+                                              ? others
+                                              : [...others, course.code];
+                                          });
+                                        }}
+                                        className="accent-indigo-600"
+                                      />
+                                      <span
+                                        className={
+                                          isLocked ? "text-slate-400" : ""
+                                        }
+                                      >
+                                        {course.code}
+                                      </span>
+                                      <span className="max-w-[120px] truncate text-xs text-slate-400">
+                                        {course.name}
+                                      </span>
+                                      {isLocked ? (
+                                        <span className="text-xs text-orange-500 font-medium">
+                                          (Đã vào lớp)
+                                        </span>
+                                      ) : isSelected && !isPaid ? (
+                                        <span className="text-xs text-amber-500 font-medium">
+                                          (Chưa thanh toán)
+                                        </span>
+                                      ) : null}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-1 text-xs text-slate-400">
+                                {selected.length === 0
+                                  ? `Chọn 1 hạng (${oToCourses.map((c) => c.code).join(', ')})`
+                                  : `✓ Đã chọn ${selected.map((c) => c.code).join(', ')}`}
+                              </p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!showEditModal && (
                   <div className="relative">
                     <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -510,6 +739,9 @@ const UserManagement = () => {
                     onClick={() => {
                       setShowCreateModal(false);
                       setShowEditModal(false);
+                      setEnrolledCoursesData([]);
+                      setEnrolledCourseCodes([]);
+                      setLockedCourseCodes([]);
                     }}
                     className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
                   >
