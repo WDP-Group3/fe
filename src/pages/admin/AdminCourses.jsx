@@ -360,6 +360,21 @@ const AdminCourses = () => {
   // Batch CRUD operations
   const handleSubmitBatch = async (e) => {
     e.preventDefault();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(batchForm.startDate);
+    const end = new Date(batchForm.estimatedEndDate);
+
+    if (start < today && !editingBatch) {
+      showToast("Ngày bắt đầu không được trong quá khứ", "error");
+      return;
+    }
+    if (end < start) {
+      showToast("Ngày kết thúc không được trước ngày bắt đầu", "error");
+      return;
+    }
+
     try {
       const payload = {
         ...batchForm,
@@ -1547,6 +1562,7 @@ const AdminCourses = () => {
                   <input
                     type="date"
                     required
+                    min={!editingBatch ? new Date().toISOString().split("T")[0] : undefined}
                     value={batchForm.startDate}
                     onChange={(e) =>
                       setBatchForm({ ...batchForm, startDate: e.target.value })
@@ -1561,6 +1577,7 @@ const AdminCourses = () => {
                   <input
                     type="date"
                     required
+                    min={batchForm.startDate || (!editingBatch ? new Date().toISOString().split("T")[0] : undefined)}
                     value={batchForm.estimatedEndDate}
                     onChange={(e) =>
                       setBatchForm({
