@@ -62,7 +62,8 @@ const InstructorSchedule = () => {
     slotId: null,
     slotLabel: '',
     isLoading: false,
-    mode: 'select' // 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
+    mode: 'select', // 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
+    isCancelMode: false
   });
 
   useEffect(() => { fetchSchedule(); }, [currentMonday]);
@@ -170,6 +171,7 @@ const InstructorSchedule = () => {
     });
     
     // Hiển modal chọn: báo bận ca hay cả ngày
+    const isCancelMode = existingData?.category === 'BUSY';
     setConfirmBusyModal({
       isOpen: true,
       date: date,
@@ -178,7 +180,8 @@ const InstructorSchedule = () => {
       slotId: slotId,
       slotLabel: slotLabel,
       isLoading: false,
-      mode: 'select' // Mode chọn: 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
+      mode: 'select', // Mode chọn: 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
+      isCancelMode: isCancelMode
     });
   };
 
@@ -190,7 +193,7 @@ const InstructorSchedule = () => {
     try {
       const res = await apiClient.post('/schedule/busy', { date: dateString, timeSlot: slotId });
       
-      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false });
       fetchSchedule();
       fetchEmergencyLeaveInfo();
 
@@ -201,7 +204,7 @@ const InstructorSchedule = () => {
       }
     } catch (error) { 
       showToast(error.message, 'error');
-      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false });
     }
   };
 
@@ -213,7 +216,7 @@ const InstructorSchedule = () => {
     try {
       const res = await apiClient.post('/schedule/busy-all-day', { date: dateString });
       
-      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false });
       fetchSchedule();
       fetchEmergencyLeaveInfo();
 
@@ -224,7 +227,7 @@ const InstructorSchedule = () => {
       }
     } catch (error) { 
       showToast(error.message, 'error');
-      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' });
+      setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false });
     }
   };
 
@@ -458,8 +461,8 @@ const InstructorSchedule = () => {
       {/* [MỚI] MODAL CHỌN BÁO BẬN CA HAY CẢ NGÀY */}
       <Modal 
         isOpen={confirmBusyModal.isOpen} 
-        onClose={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' })} 
-        title="⚠️ Báo bận"
+        onClose={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false })} 
+        title={confirmBusyModal.isCancelMode ? "⚠️ Hủy báo bận" : "⚠️ Báo bận"}
       >
         <div className="p-4 space-y-4">
           <div className="text-center">
@@ -472,7 +475,9 @@ const InstructorSchedule = () => {
 
           {/* Mode: Chọn báo bận ca hay cả ngày */}
           <div className="space-y-3">
-            <p className="text-slate-700 font-medium">Bạn muốn báo bận như thế nào?</p>
+            <p className="text-slate-700 font-medium">
+              {confirmBusyModal.isCancelMode ? "Bạn muốn hủy báo bận như thế nào?" : "Bạn muốn báo bận như thế nào?"}
+            </p>
             
             {/* Chọn báo bận ca */}
             <button
@@ -483,8 +488,12 @@ const InstructorSchedule = () => {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">📌</div>
                 <div>
-                  <p className="font-bold text-slate-800">Báo bận ca học này</p>
-                  <p className="text-sm text-slate-500">Chỉ báo bận {confirmBusyModal.slotLabel || 'ca được chọn'}</p>
+                  <p className="font-bold text-slate-800">
+                    {confirmBusyModal.isCancelMode ? "Hủy báo bận ca học này" : "Báo bận ca học này"}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {confirmBusyModal.isCancelMode ? `Chỉ hủy báo bận ${confirmBusyModal.slotLabel || 'ca được chọn'}` : `Chỉ báo bận ${confirmBusyModal.slotLabel || 'ca được chọn'}`}
+                  </p>
                 </div>
               </div>
             </button>
@@ -498,8 +507,12 @@ const InstructorSchedule = () => {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold">📅</div>
                 <div>
-                  <p className="font-bold text-slate-800">Báo bận cả ngày</p>
-                  <p className="text-sm text-slate-500">Báo bận tất cả các ca trong ngày</p>
+                  <p className="font-bold text-slate-800">
+                    {confirmBusyModal.isCancelMode ? "Hủy báo bận cả ngày" : "Báo bận cả ngày"}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {confirmBusyModal.isCancelMode ? "Hủy báo bận tất cả các ca trong ngày" : "Báo bận tất cả các ca trong ngày"}
+                  </p>
                 </div>
               </div>
             </button>
@@ -514,7 +527,7 @@ const InstructorSchedule = () => {
           <Button 
             className="w-full" 
             variant="outline"
-            onClick={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select' })}
+            onClick={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false })}
             disabled={confirmBusyModal.isLoading}
           >
             Hủy
