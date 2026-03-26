@@ -54,6 +54,8 @@ const UserManagement = () => {
   const [enrolledCourseCodes, setEnrolledCourseCodes] = useState([]); // codes đã tick
   const [lockedCourseCodes, setLockedCourseCodes] = useState([]); // codes đang in-batch
   const [loadingEnrolled, setLoadingEnrolled] = useState(false);
+  const [showEnrolmentModal, setShowEnrolmentModal] = useState(false);
+  const [savingEnrolled, setSavingEnrolled] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -91,6 +93,7 @@ const UserManagement = () => {
           role: user.role,
           phone: user.phone || "-",
           status: user.status === "ACTIVE" ? "active" : "inactive",
+          enrolledCourseCodes: user.enrolledCourseCodes || [],
         }));
         setUsers(mappedUsers);
         if (response.pagination) {
@@ -240,6 +243,47 @@ const UserManagement = () => {
     setShowEditModal(true);
   };
 
+  const openEnrolmentModal = async (user) => {
+    setCurrentUser(user);
+    setLoadingEnrolled(true);
+    setEnrolledCoursesData([]);
+    setEnrolledCourseCodes([]);
+    setLockedCourseCodes([]);
+    setShowEnrolmentModal(true);
+    try {
+      const resp = await apiClient.get(`/users/${user.id}/enrolled-courses`);
+      if (resp.status === "success") {
+        const courses = resp.data.courses || [];
+        setEnrolledCoursesData(courses);
+        setEnrolledCourseCodes(courses.filter((c) => c.enrolled).map((c) => c.code));
+        setLockedCourseCodes(courses.filter((c) => c.inBatch).map((c) => c.code));
+      }
+    } catch (e) {
+      console.error("Lỗi load enrolled courses:", e);
+      showToast("Lỗi khi tải danh sách hạng học", "error");
+    } finally {
+      setLoadingEnrolled(false);
+    }
+  };
+
+  const handleEnrolmentSubmit = async (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    try {
+      setSavingEnrolled(true);
+      await apiClient.patch(`/users/${currentUser.id}/enrolled-courses`, {
+        enrolledCourseCodes,
+      });
+      setShowEnrolmentModal(false);
+      loadUsers();
+      showToast("Cập nhật hạng học thành công", "success");
+    } catch (err) {
+      showToast(err.message || "Cập nhật hạng học thất bại", "error");
+    } finally {
+      setSavingEnrolled(false);
+    }
+  };
+
   const handleLock = (user) => {
     setConfirmDialog({
       isOpen: true,
@@ -320,6 +364,23 @@ const UserManagement = () => {
       ),
     },
     {
+      key: "enrolledCourses",
+      title: "Hạng học",
+      render: (_, record) => {
+        if (record.role !== "learner") return "-";
+        return (
+          <div className="flex flex-wrap gap-1">
+            {(record.enrolledCourseCodes || []).map((code) => (
+              <span key={code} className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-xs font-medium border border-indigo-100">
+                {code}
+              </span>
+            ))}
+            {(record.enrolledCourseCodes || []).length === 0 && <span className="text-slate-400 text-xs italic">Chưa chọn</span>}
+          </div>
+        );
+      }
+    },
+    {
       key: "actions",
       title: "Hành động",
       render: (_, record) => (
@@ -330,6 +391,14 @@ const UserManagement = () => {
           >
             Sửa
           </button>
+          {record.role === "learner" && record.status === "active" && (
+            <button
+              onClick={() => openEnrolmentModal(record)}
+              className="rounded-md bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600 hover:bg-indigo-100 transition-colors"
+            >
+              Hạng học
+            </button>
+          )}
           {record.role === "learner" && record.status === "active" && (
             <button
               onClick={() => openOfflinePaymentModal(record)}
@@ -503,200 +572,6 @@ const UserManagement = () => {
                   </select>
                 </div>
 
-                {/* [MỚI] Hạng học viên - chỉ hiện khi đang sửa learner */}
-                {showEditModal && currentUser?.role === "learner" && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Hạng học
-                    </label>
-                    {loadingEnrolled ? (
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></div>
-                        Đang tải...
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {/* Nhóm Xe Máy (A*) */}
-                        {(() => {
-                          const xeMayCourses = enrolledCoursesData.filter(
-                            (c) => /^A[12]$/.test(c.code)
-                          );
-                          if (xeMayCourses.length === 0) return null;
-                          const selected = xeMayCourses.filter(
-                            (c) => enrolledCourseCodes.includes(c.code)
-                          );
-                          return (
-                            <div>
-                              <div className="mb-1.5 flex items-center gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Xe Máy
-                                </span>
-                                <span className="h-px flex-1 bg-slate-200"></span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {xeMayCourses.map((course) => {
-                                  const isLocked = lockedCourseCodes.includes(
-                                    course.code
-                                  );
-                                  const isSelected = enrolledCourseCodes.includes(
-                                    course.code
-                                  );
-                                  const isPaid = course.paid;
-                                  return (
-                                    <label
-                                      key={course.code}
-                                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                                        isLocked
-                                          ? "cursor-not-allowed border-slate-200 bg-slate-50"
-                                          : isSelected
-                                            ? "border-indigo-300 bg-indigo-50"
-                                            : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50"
-                                      }`}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        disabled={isLocked}
-                                        onChange={() => {
-                                          if (isLocked) return;
-                                          setEnrolledCourseCodes((prev) => {
-                                            const others = prev.filter(
-                                              (code) =>
-                                                !xeMayCourses.some(
-                                                  (c) => c.code === code
-                                                )
-                                            );
-                                            return isSelected
-                                              ? others
-                                              : [...others, course.code];
-                                          });
-                                        }}
-                                        className="accent-indigo-600"
-                                      />
-                                      <span
-                                        className={
-                                          isLocked ? "text-slate-400" : ""
-                                        }
-                                      >
-                                        {course.code}
-                                      </span>
-                                      <span className="max-w-[120px] truncate text-xs text-slate-400">
-                                        {course.name}
-                                      </span>
-                                      {isLocked ? (
-                                        <span className="text-xs text-orange-500 font-medium">
-                                          (Đã vào lớp)
-                                        </span>
-                                      ) : isSelected && !isPaid ? (
-                                        <span className="text-xs text-amber-500 font-medium">
-                                          (Chưa thanh toán)
-                                        </span>
-                                      ) : null}
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                              <p className="mt-1 text-xs text-slate-400">
-                                {selected.length === 0
-                                  ? `Chọn 1 hạng (${xeMayCourses.map((c) => c.code).join(', ')})`
-                                  : `✓ Đã chọn ${selected.map((c) => c.code).join(', ')}`}
-                              </p>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Nhóm Ô Tô (không phải A*) */}
-                        {(() => {
-                          const oToCourses = enrolledCoursesData.filter(
-                            (c) => !/^A[12]$/.test(c.code)
-                          );
-                          if (oToCourses.length === 0) return null;
-                          const selected = oToCourses.filter((c) =>
-                            enrolledCourseCodes.includes(c.code)
-                          );
-                          return (
-                            <div>
-                              <div className="mb-1.5 flex items-center gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Ô Tô
-                                </span>
-                                <span className="h-px flex-1 bg-slate-200"></span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {oToCourses.map((course) => {
-                                  const isLocked = lockedCourseCodes.includes(
-                                    course.code
-                                  );
-                                  const isSelected = enrolledCourseCodes.includes(
-                                    course.code
-                                  );
-                                  const isPaid = course.paid;
-                                  return (
-                                    <label
-                                      key={course.code}
-                                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                                        isLocked
-                                          ? "cursor-not-allowed border-slate-200 bg-slate-50"
-                                          : isSelected
-                                            ? "border-indigo-300 bg-indigo-50"
-                                            : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50"
-                                      }`}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        disabled={isLocked}
-                                        onChange={() => {
-                                          if (isLocked) return;
-                                          setEnrolledCourseCodes((prev) => {
-                                            const others = prev.filter(
-                                              (code) =>
-                                                !oToCourses.some(
-                                                  (c) => c.code === code
-                                                )
-                                            );
-                                            return isSelected
-                                              ? others
-                                              : [...others, course.code];
-                                          });
-                                        }}
-                                        className="accent-indigo-600"
-                                      />
-                                      <span
-                                        className={
-                                          isLocked ? "text-slate-400" : ""
-                                        }
-                                      >
-                                        {course.code}
-                                      </span>
-                                      <span className="max-w-[120px] truncate text-xs text-slate-400">
-                                        {course.name}
-                                      </span>
-                                      {isLocked ? (
-                                        <span className="text-xs text-orange-500 font-medium">
-                                          (Đã vào lớp)
-                                        </span>
-                                      ) : isSelected && !isPaid ? (
-                                        <span className="text-xs text-amber-500 font-medium">
-                                          (Chưa thanh toán)
-                                        </span>
-                                      ) : null}
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                              <p className="mt-1 text-xs text-slate-400">
-                                {selected.length === 0
-                                  ? `Chọn 1 hạng (${oToCourses.map((c) => c.code).join(', ')})`
-                                  : `✓ Đã chọn ${selected.map((c) => c.code).join(', ')}`}
-                              </p>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {!showEditModal && (
                   <div className="relative">
@@ -759,7 +634,230 @@ const UserManagement = () => {
           </div>
         )}
 
-        {/* Offline Payment Modal */}
+        {/* Enrolment Management Modal */}
+        {showEnrolmentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-slate-900">
+                  Quản lý Hạng học
+                </h3>
+                <span className="text-sm font-medium text-slate-500">
+                  {currentUser?.name}
+                </span>
+              </div>
+
+              {loadingEnrolled ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+                  <p className="text-slate-500 font-medium">Đang tải danh sách hạng học...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleEnrolmentSubmit} className="space-y-6">
+                  <div className="space-y-6 max-h-[60vh] overflow-y-auto px-1">
+                    {/* Nhóm Xe Máy (A*) */}
+                    {(() => {
+                      const xeMayCourses = enrolledCoursesData.filter(
+                        (c) => /^A[12]$/.test(c.code)
+                      );
+                      if (xeMayCourses.length === 0) return null;
+                      
+                      // Kiểm tra xem có bất kỳ course nào trong nhóm này bị locked không
+                      const anyLocked = xeMayCourses.some(c => lockedCourseCodes.includes(c.code));
+                      const selected = xeMayCourses.filter(
+                        (c) => enrolledCourseCodes.includes(c.code)
+                      );
+
+                      return (
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                          <div className="mb-3 flex items-center gap-2">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                              Hạng Xe Máy (A1, A2)
+                            </span>
+                            <span className="h-px flex-1 bg-slate-200"></span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {xeMayCourses.map((course) => {
+                              const isCourseLocked = lockedCourseCodes.includes(course.code);
+                              // Disable nếu hạng này bị locked HOẶC hạng khác trong nhóm bị locked
+                              const isDisabled = anyLocked; 
+                              const isSelected = enrolledCourseCodes.includes(course.code);
+                              const isPaid = course.paid;
+                              
+                              return (
+                                <label
+                                  key={course.code}
+                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
+                                    isDisabled
+                                      ? "cursor-not-allowed border-slate-200 bg-slate-100/50 grayscale-[0.5]"
+                                      : isSelected
+                                        ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400"
+                                        : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
+                                  }`}
+                                >
+                                  <div className="relative flex h-5 w-5 items-center justify-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      disabled={isDisabled}
+                                      onChange={() => {
+                                        if (isDisabled) return;
+                                        setEnrolledCourseCodes((prev) => {
+                                          const others = prev.filter(
+                                            (code) => !xeMayCourses.some((c) => c.code === code)
+                                          );
+                                          // Toggle logic: chọn cái này thì bỏ tất cả cái khác cùng loại
+                                          return isSelected ? others : [...others, course.code];
+                                        });
+                                      }}
+                                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className={`text-sm font-bold ${isDisabled ? "text-slate-500" : "text-slate-900"}`}>
+                                      Hạng {course.code}
+                                    </span>
+                                    <span className="text-xs text-slate-500 line-clamp-1">
+                                      {course.name}
+                                    </span>
+                                  </div>
+                                  {isCourseLocked && (
+                                    <div className="ml-auto flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-600 uppercase">
+                                      In Class
+                                    </div>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {anyLocked && (
+                            <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1 font-medium">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                              Không thể đổi hạng Xe máy vì học viên đã vào lớp
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Nhóm Ô Tô (B1, B2) */}
+                    {(() => {
+                      // Ở đây tôi giả định Ô tô là B1/B2 theo yêu cầu, các hạng khác có thể thêm sau
+                      const oToCourses = enrolledCoursesData.filter(
+                        (c) => /^[BCD]/.test(c.code) // Lấy các hạng B, C, D... cho vào nhóm ô tô
+                      );
+                      if (oToCourses.length === 0) return null;
+
+                      const anyLocked = oToCourses.some(c => lockedCourseCodes.includes(c.code));
+                      const selected = oToCourses.filter((c) =>
+                        enrolledCourseCodes.includes(c.code)
+                      );
+
+                      return (
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                          <div className="mb-3 flex items-center gap-2">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                              Hạng Ô Tô (B1, B2, C, ...)
+                            </span>
+                            <span className="h-px flex-1 bg-slate-200"></span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {oToCourses.map((course) => {
+                              const isCourseLocked = lockedCourseCodes.includes(course.code);
+                              const isDisabled = anyLocked;
+                              const isSelected = enrolledCourseCodes.includes(course.code);
+                              
+                              return (
+                                <label
+                                  key={course.code}
+                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
+                                    isDisabled
+                                      ? "cursor-not-allowed border-slate-200 bg-slate-100/50 grayscale-[0.5]"
+                                      : isSelected
+                                        ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400"
+                                        : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
+                                  }`}
+                                >
+                                  <div className="relative flex h-5 w-5 items-center justify-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      disabled={isDisabled}
+                                      onChange={() => {
+                                        if (isDisabled) return;
+                                        setEnrolledCourseCodes((prev) => {
+                                          const others = prev.filter(
+                                            (code) => !oToCourses.some((c) => c.code === code)
+                                          );
+                                          return isSelected ? others : [...others, course.code];
+                                        });
+                                      }}
+                                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className={`text-sm font-bold ${isDisabled ? "text-slate-500" : "text-slate-900"}`}>
+                                      Hạng {course.code}
+                                    </span>
+                                    <span className="text-xs text-slate-500 line-clamp-1">
+                                      {course.name}
+                                    </span>
+                                  </div>
+                                  {isCourseLocked && (
+                                    <div className="ml-auto flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-600 uppercase">
+                                      In Class
+                                    </div>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {anyLocked && (
+                            <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1 font-medium">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                              Không thể đổi hạng Ô tô vì học viên đã vào lớp
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={savingEnrolled}
+                      onClick={() => {
+                        setShowEnrolmentModal(false);
+                      }}
+                      className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                    >
+                      Đóng
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingEnrolled}
+                      className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {savingEnrolled ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                          Đang lưu...
+                        </>
+                      ) : (
+                        "Lưu thay đổi"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
         {showOfflineModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
