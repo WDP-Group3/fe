@@ -26,16 +26,44 @@ const Register = () => {
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.name) newErrors.name = 'Họ tên là bắt buộc';
-    if (!formData.email) newErrors.email = 'Email là bắt buộc';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email không hợp lệ';
-    if (!formData.phone) newErrors.phone = 'Số điện thoại là bắt buộc';
-    else if (!/^[0-9]{10,11}$/.test(formData.phone)) newErrors.phone = 'Số điện thoại không hợp lệ';
-    if (!formData.password) newErrors.password = 'Mật khẩu là bắt buộc';
-    else if (formData.password.length < 8) newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
-    if (formData.password !== formData.confirmPassword) {
+
+    // Họ tên: bắt buộc, chỉ chữ cái + khoảng trắng, tối thiểu 2 từ
+    if (!formData.name.trim()) {
+      newErrors.name = 'Họ tên là bắt buộc';
+    } else if (!/^[a-zA-ZÀ-ỹ\s]+$/u.test(formData.name.trim())) {
+      newErrors.name = 'Họ tên chỉ được chứa chữ cái';
+    } else if (formData.name.trim().split(/\s+/).length < 2) {
+      newErrors.name = 'Vui lòng nhập đầy đủ họ và tên';
+    }
+
+    // Email: bắt buộc, đúng định dạng
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email là bắt buộc';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(formData.email.trim())) {
+      newErrors.email = 'Email không hợp lệ';
+    }
+
+    // Số điện thoại: bắt buộc, đúng chuẩn Việt Nam (bắt đầu 03/05/07/08/09, 10 số)
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Số điện thoại là bắt buộc';
+    } else if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Số điện thoại không hợp lệ (VD: 0912345678)';
+    }
+
+    // Mật khẩu: bắt buộc, tối thiểu 8 ký tự
+    if (!formData.password) {
+      newErrors.password = 'Mật khẩu là bắt buộc';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
+    }
+
+    // Xác nhận mật khẩu
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu không khớp';
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
