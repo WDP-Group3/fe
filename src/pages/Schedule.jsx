@@ -197,11 +197,11 @@ const Schedule = () => {
     
     // Thời gian bắt đầu ca học
     const SLOT_START_HOURS = { 
-      "1": 7, "2": 8.5, "3": 10, "4": 11.5, 
-      "5": 13, "6": 14.5, "7": 16, "8": 17.5, 
-      "9": 19, "10": 20.5 
+      "1": 7, "2": 8, "3": 9, "4": 10, 
+      "5": 11, "6": 13, "7": 14, "8": 15, 
+      "9": 16, "10": 17 
     };
-    const startHour = SLOT_START_HOURS[slotId] || 7;
+    const startHour = SLOT_START_HOURS[String(slotId)] || 7;
     slotDate.setHours(Math.floor(startHour), (startHour % 1) * 60, 0, 0);
     
     // Nếu ca đã bắt đầu (quá khứ) - không cho đăng ký
@@ -216,9 +216,16 @@ const Schedule = () => {
       return;
     }
 
+    // [MỚI] Kiểm tra giới hạn: Học viên chỉ được đăng ký tối đa 10 ca học (Active)
+    const activeSessions = mySessions.filter(s => s.status !== 'CANCELLED' && s.status !== 'REJECTED');
+    if (!data && activeSessions.length >= 10) {
+      showToast('Bạn đã đạt giới hạn tối đa 10 ca học. Không thể đăng ký thêm.', 'error');
+      return;
+    }
+
     // [MỚI] Kiểm tra nếu đã đủ giờ học thì không cho đăng ký
     const progress = courseProgress[selectedCourse] || {};
-    if (progress.remaining !== undefined && progress.remaining <= 0) {
+    if (!data && progress.remaining !== undefined && progress.remaining <= 0) {
       showToast(`Bạn đã hoàn thành đủ ${progress.required} giờ thực hành cho khóa này. Không thể đăng ký thêm.`, 'warning');
       return;
     }
@@ -433,9 +440,12 @@ const Schedule = () => {
         {selectedInstructor && (
           <div className="mt-6 space-y-4">
             <div className="flex justify-between items-center text-xs">
-              <div className="flex gap-4 font-medium">
-                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-white border"></div> Trống</span>
-                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-slate-200 border"></div> Đã có lịch</span>
+              <div className="flex flex-wrap gap-4 font-medium">
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-white border border-slate-300 border-dashed"></div> Trống</span>
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-100 border border-blue-200"></div> Của bạn</span>
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-slate-100"></div> Đã đặt / Quá hạn / Nghỉ trưa</span>
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-slate-500"></div> Giáo viên bận</span>
+                <span className="flex items-center gap-1"><div className="w-3 h-3 bg-purple-600"></div> Nghỉ lễ</span>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() - 7))))}>Tuần trước</Button>
