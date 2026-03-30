@@ -26,6 +26,7 @@ const AdminCourses = () => {
   const [batchModalDeleteConfirm, setBatchModalDeleteConfirm] = useState({ open: false, id: null });
   const [autoEnrollModalParams, setAutoEnrollModalParams] = useState({ isOpen: false, batch: null });
   const [viewingBatch, setViewingBatch] = useState(null);
+  const [priceChangeConfirm, setPriceChangeConfirm] = useState({ open: false, payload: null });
 
   // Filter states for batches
   const [filters, setFilters] = useState({
@@ -90,6 +91,7 @@ const AdminCourses = () => {
     status: "Active",
     maxlearners: 50,
     requiredPracticeHours: 0, // Số giờ thực hành bắt buộc (mặc định 0 = không giới hạn)
+    feeEffectiveDate: "", // Ngày áp dụng giá học phí mới
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -250,6 +252,36 @@ const AdminCourses = () => {
     }
   };
 
+  const saveCourse = async (payload) => {
+    try {
+      if (editingCourse) {
+        await apiClient.put(`/courses/${editingCourse._id}`, payload);
+        showToast("Cập nhật khoá học thành công!", "success");
+      } else {
+        await apiClient.post("/courses", payload);
+        showToast("Thêm khoá học thành công!", "success");
+      }
+      setShowModal(false);
+      setEditingCourse(null);
+      setFormData(initialFormState);
+      setCourseBatches([]);
+      loadCourses();
+    } catch (submitError) {
+      console.error(submitError);
+      showToast(submitError.message || "Lỗi khi lưu khoá học", "error");
+    }
+  };
+
+  const handleConfirmPriceChange = () => {
+    const payloadWithDate = {
+      ...priceChangeConfirm.payload,
+      // Nếu chưa có ngày thì gán mặc định là hôm nay, nếu có rồi thì giữ nguyên
+      feeEffectiveDate: priceChangeConfirm.payload.feeEffectiveDate || new Date().toISOString().split("T")[0]
+    };
+    setPriceChangeConfirm({ open: false, payload: null });
+    saveCourse(payloadWithDate);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -279,18 +311,55 @@ const AdminCourses = () => {
         })),
       };
 
-      if (editingCourse) {
-        await apiClient.put(`/courses/${editingCourse._id}`, payload);
-        showToast("Cập nhật khoá học thành công!", "success");
-      } else {
-        await apiClient.post("/courses", payload);
-        showToast("Thêm khoá học thành công!", "success");
+      // Tự động tính lại tổng tiền từ feePayments của payload
+      const calculatedCost = payload.feePayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      if (calculatedCost > 0) {
+        payload.estimatedCost = calculatedCost;
       }
-      setShowModal(false);
-      setEditingCourse(null);
-      setFormData(initialFormState);
-      setCourseBatches([]);
-      loadCourses();
+
+      // Kiểm tra xem có thay đổi gì không so với dữ liệu cũ
+      const checkChanges = () => {
+        if (!editingCourse) return true;
+        const oldEffectiveDate = editingCourse.feeEffectiveDate ? editingCourse.feeEffectiveDate.split("T")[0] : "";
+        
+        return (
+          payload.code !== editingCourse.code ||
+          payload.name !== editingCourse.name ||
+          payload.level !== editingCourse.level ||
+          payload.estimatedCost !== (editingCourse.estimatedCost || 0) ||
+          payload.description !== editingCourse.description ||
+          payload.image !== editingCourse.image ||
+          payload.estimatedDuration !== (editingCourse.estimatedDuration || "") ||
+          payload.feeEffectiveDate !== oldEffectiveDate ||
+          payload.maxlearners !== (editingCourse.maxlearners || 50) ||
+          payload.requiredPracticeHours !== (editingCourse.requiredPracticeHours || 0) ||
+          JSON.stringify(payload.feePayments) !== JSON.stringify((editingCourse.feePayments || []).map(p => ({
+            name: p.name,
+            amount: Number(p.amount),
+            note: p.note,
+            afterPreviousPaidDays: Number(p.afterPreviousPaidDays) || 0,
+          })))
+        );
+      };
+
+      if (editingCourse && !checkChanges()) {
+        setShowModal(false);
+        return;
+      }
+
+      const currentCost = editingCourse?.estimatedCost || 0;
+      const isPriceChanging = payload.estimatedCost !== currentCost;
+
+      // LUÔN hỏi xác nhận nếu giá thay đổi
+      if (isPriceChanging) {
+        setPriceChangeConfirm({
+          open: true,
+          payload: payload
+        });
+        return;
+      }
+
+      saveCourse(payload);
     } catch (submitError) {
       console.error(submitError);
       showToast(submitError.message || "Lỗi khi lưu khoá học", "error");
@@ -313,14 +382,15 @@ const AdminCourses = () => {
       note: course.note || "",
       feePayments: course.feePayments
         ? course.feePayments.map((p) => ({
-            name: p.name || "",
-            amount: p.amount || 0,
-            note: p.note || "",
-            afterPreviousPaidDays: p.afterPreviousPaidDays ?? 30,
-          }))
+          name: p.name || "",
+          amount: p.amount || 0,
+          note: p.note || "",
+          afterPreviousPaidDays: p.afterPreviousPaidDays ?? 30,
+        }))
         : [],
       maxlearners: course.maxlearners || 50,
       requiredPracticeHours: course.requiredPracticeHours || 0,
+      feeEffectiveDate: course.feeEffectiveDate ? course.feeEffectiveDate.split("T")[0] : "",
     });
 
     await loadCourseBatches(course._id);
@@ -669,21 +739,19 @@ const AdminCourses = () => {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab("courses")}
-            className={`${
-              activeTab === "courses"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
+            className={`${activeTab === "courses"
+              ? "border-indigo-500 text-indigo-600"
+              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
           >
             Quản lý khoá học
           </button>
           <button
             onClick={() => setActiveTab("batches")}
-            className={`${
-              activeTab === "batches"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
+            className={`${activeTab === "batches"
+              ? "border-indigo-500 text-indigo-600"
+              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
           >
             Quản lý lớp học
           </button>
@@ -799,6 +867,7 @@ const AdminCourses = () => {
                         Học phí (VND)
                       </label>
                       <input
+                        disabled
                         type="number"
                         required
                         value={formData.estimatedCost}
@@ -816,20 +885,37 @@ const AdminCourses = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Ngày áp dụng học phí mới
+                      </label>
+                      <input
+                        type="date"
+                        min={new Date().toISOString().split("T")[0]}
+                        value={formData.feeEffectiveDate || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, feeEffectiveDate: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                      />
+                      <p className="mt-1 text-[10px] text-slate-500 italic">
+                        * Để trống nếu áp dụng ngay lập tức
+                      </p>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
                         Số lượng học viên tối đa
                       </label>
                       <input
                         type="number"
                         value={formData.maxlearners}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maxlearners: parseInt(e.target.value) || 50,
-                          })
+                          setFormData({ ...formData, maxlearners: e.target.value })
                         }
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-700">
                         Thời lượng (tháng)
@@ -1200,13 +1286,13 @@ const AdminCourses = () => {
                 filters.status ||
                 filters.location ||
                 filters.search) && (
-                <button
-                  onClick={clearFilters}
-                  className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
-                >
-                  Xóa bộ lọc
-                </button>
-              )}
+                  <button
+                    onClick={clearFilters}
+                    className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
@@ -1396,11 +1482,10 @@ const AdminCourses = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            batch.learnerCount >= (batch.maxlearners || 30)
-                              ? "bg-red-100 text-red-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${batch.learnerCount >= (batch.maxlearners || 30)
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                            }`}
                         >
                           {batch.learnerCount || 0} / {batch.maxlearners || 30}
                         </span>
@@ -1418,11 +1503,10 @@ const AdminCourses = () => {
                               showToast("Lỗi cập nhật trạng thái", "error");
                             }
                           }}
-                          className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${
-                            batch.status === "OPEN"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
+                          className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${batch.status === "OPEN"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                            }`}
                         >
                           <option value="OPEN">Mở</option>
                           <option value="CLOSED">Đóng</option>
@@ -1774,7 +1858,7 @@ const AdminCourses = () => {
         message="Bạn có chắc chắn muốn xóa khóa học này? Hành động này không thể hoàn tác."
         variant="danger"
       />
-      
+
       <ConfirmDialog
         isOpen={batchDeleteConfirm.open}
         onClose={() => setBatchDeleteConfirm({ open: false, id: null })}
@@ -1783,7 +1867,7 @@ const AdminCourses = () => {
         message="Bạn có chắc muốn xóa lớp này? Hành động này không thể hoàn tác."
         variant="danger"
       />
-      
+
       <ConfirmDialog
         isOpen={batchModalDeleteConfirm.open}
         onClose={() => setBatchModalDeleteConfirm({ open: false, id: null })}
@@ -1799,10 +1883,24 @@ const AdminCourses = () => {
         onClose={() => setAutoEnrollModalParams({ isOpen: false, batch: null })}
         onConfirm={confirmAutoEnroll}
         title="Xếp lớp tự động"
-        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${
-          autoEnrollModalParams.batch?.name || "này"
-        }?`}
+        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${autoEnrollModalParams.batch?.name || "này"
+          }?`}
         variant="primary"
+      />
+
+      <ConfirmDialog
+        isOpen={priceChangeConfirm.open}
+        onClose={() => setPriceChangeConfirm({ open: false, payload: null })}
+        onConfirm={handleConfirmPriceChange}
+        title="Xác nhận đổi học phí"
+        message={
+          priceChangeConfirm.payload?.feeEffectiveDate
+            ? `Bạn xác nhận thay đổi học phí và áp dụng từ ngày ${new Date(
+                priceChangeConfirm.payload.feeEffectiveDate
+              ).toLocaleDateString("vi-VN")}?`
+            : "Bạn chưa chọn ngày áp dụng học phí mới. Bạn có muốn áp dụng ngay lập tức từ hôm nay không?"
+        }
+        variant="warning"
       />
 
       {/* Batch Details Modal */}

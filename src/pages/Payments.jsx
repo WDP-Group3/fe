@@ -503,6 +503,85 @@ const Payments = () => {
           description="Xem tổng phí, đã đóng, công nợ còn lại và lịch thanh toán"
         />
 
+        {(() => {
+          const now = new Date();
+          const itemsWithUpcomingIncrease = (tuitionInfo?.items || []).filter(item => {
+            const effective = item.feeEffectiveDate ? new Date(item.feeEffectiveDate) : null;
+            const scheduled = item.feeUpdateScheduledAt ? new Date(item.feeUpdateScheduledAt) : null;
+            // Scenario 1: Between scheduled change and effective date
+            return effective && scheduled && now < effective && now >= scheduled;
+          });
+
+          const itemsWithPassedIncrease = (tuitionInfo?.items || []).filter(item => {
+            const effective = item.feeEffectiveDate ? new Date(item.feeEffectiveDate) : null;
+            // Scenario 2: Post-effective date AND unpaid 1st installment
+            return effective && now >= effective && item.paymentSchedule?.[0]?.paymented === false;
+          });
+
+          if (itemsWithUpcomingIncrease.length > 0) {
+            return itemsWithUpcomingIncrease.map(item => {
+              const effective = new Date(item.feeEffectiveDate);
+              const diffDays = Math.ceil((effective - now) / (1000 * 60 * 60 * 24));
+              
+              return (
+                <div key={`upcoming-${item.registrationId}`} className="mb-6 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 border border-amber-200 shadow-sm animate-pulse">
+                  <div className="flex gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-inner">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-amber-900 leading-none">Sắp có thay đổi học phí!</h3>
+                      <div className="mt-2 space-y-2">
+                        <div className="rounded-2xl bg-white/60 p-4 border border-white shadow-sm">
+                          <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                            Chỉ còn <span className="text-xl font-black text-rose-600 px-1">{diffDays}</span> ngày nữa sẽ tăng học phí cho khóa <span className="font-bold">{item.courseName}</span> bắt đầu từ ngày <span className="font-bold text-indigo-700">{effective.toLocaleDateString('vi-VN')}</span>.
+                            <br />
+                            <span className="text-xs text-amber-700 mt-2 block font-semibold bg-amber-100/50 p-2 rounded-lg">
+                              ⚠️ Chú ý: Học viên cần nộp tiền học phí đợt 1 để giữ giá cũ như hiện tại. Nếu đến ngày đó mà chưa nộp học phí đợt 1 thì sẽ phải theo học phí mới.
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            });
+          }
+
+          if (itemsWithPassedIncrease.length > 0) {
+            return (
+              <div className="mb-6 rounded-3xl bg-gradient-to-br from-red-50 to-rose-50 p-6 border border-red-200 shadow-sm">
+                <div className="flex gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600 shadow-inner">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-red-900 leading-none">Thông báo về học phí</h3>
+                    <div className="mt-2 space-y-3">
+                      <div className="rounded-2xl bg-white/60 p-4 border border-white shadow-sm">
+                        <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                          Các khoá học chưa hoàn thành đợt đóng phí đầu tiên đã được áp dụng theo mức học phí mới nhất từ Trung tâm. 
+                          <br />
+                          <span className="text-xs text-red-600 mt-1 block font-semibold italic">
+                            Lưu ý: Vui lòng đóng phí đợt 1 ngay để chốt giá và giữ chỗ chính thức.
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
+
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
