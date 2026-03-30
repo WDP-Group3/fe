@@ -203,6 +203,22 @@ const AdminLearningLocations = () => {
       return;
     }
 
+    // [MỚI] Kiểm tra trùng lặp trên cùng 1 form
+    const uniqueInstructors = new Set();
+    let hasDuplicateInForm = false;
+    for (const row of instructorPayload) {
+      if (uniqueInstructors.has(row.instructorId)) {
+        hasDuplicateInForm = true;
+        break;
+      }
+      uniqueInstructors.add(row.instructorId);
+    }
+
+    if (hasDuplicateInForm) {
+      showToast('Không thể phân công cùng một giáo viên nhiều lần tại cùng một sân', 'error');
+      return;
+    }
+
     let collidingInstructors = [];
     if (list && list.length > 0) {
       for (const row of instructorPayload) {
