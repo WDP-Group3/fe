@@ -9,8 +9,11 @@ export const SocketProvider = ({ children }) => {
   const auth = useAuth();
 
   useEffect(() => {
-    // Connect to socket server
-    const socketInstance = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
+    // Lấy origin root từ VITE_API_URL (vd: http://localhost:3000/api -> http://localhost:3000)
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const socketUrl = apiUrl.replace(/\/api\/?$/, '');
+
+    const socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
     });
 
