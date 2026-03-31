@@ -68,12 +68,21 @@ const Schedule = () => {
 
     const handleScheduleUpdate = (payload) => {
       console.log('📅 Có người vừa cập nhật lịch (Realtime):', payload);
-      // 1. Chỉ tải lại lịch nếu user đang xem đúng luồng của Giáo viên bị cập nhật
+      
+      // 1. Tải lại nếu là sự kiện nghỉ lễ (không chứa instructorId)
+      if (payload.status && payload.status.startsWith('HOLIDAY_')) {
+        if (selectedInstructor) fetchInstructorSchedule();
+        fetchBookingStatus();
+        loadMySessions();
+        return;
+      }
+
+      // 2. Chỉ tải lại lịch nếu user đang xem đúng luồng của Giáo viên bị cập nhật
       if (selectedInstructor && payload.instructorId === selectedInstructor) {
         fetchInstructorSchedule();
       }
       
-      // 2. Tải lại MySessions nếu đó là thay đổi liên quan đến lịch riêng của học viên 
+      // 3. Tải lại MySessions nếu đó là thay đổi liên quan đến lịch riêng của học viên 
       //    (Ví dụ giáo viên hủy gấp schedule của chính học viên này)
       loadMySessions();
     };
@@ -257,7 +266,12 @@ const Schedule = () => {
       fetchInstructorSchedule();
       loadMySessions();
       fetchEnrolledCourses(); // Cập nhật lại tiến độ
-    } catch (e) { showToast(e.message, 'error'); }
+    } catch (e) {
+      showToast(e.message, 'error');
+      // [FIX] Tự động tải lại lịch để cập nhật màu ô trống thành màu xám (đã có người đặt)
+      fetchInstructorSchedule();
+      setConfirmBookingModal({ isOpen: false, data: null, type: 'PRACTICE' });
+    }
   };
 
   const handleCancel = async (id, date, timeSlot) => {
@@ -336,6 +350,9 @@ const Schedule = () => {
       return acc;
     }, {});
 
+  // [MỚI] Kiểm tra xem học viên đã được gán vào lớp nào chưa
+  const isAssignedToClass = enrolledCourses.length > 0 && enrolledCourses.some(c => c.batchLocation || c.startDate);
+
   return (
     <div className="space-y-10">
       {/* [MỚI] Banner thông báo trạng thái đăng ký tuần sau */}
@@ -348,6 +365,37 @@ const Schedule = () => {
               Bạn sẽ có thể đăng ký lịch tuần sau vào lúc <span className="font-bold">18:30 (6:30 tối) thứ 6</span>. 
               Vui lòng đăng ký lịch tuần này hoặc chờ đến thứ 6.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* [MỚI] Thông báo Trạng thái Lớp Học */}
+      {!isAssignedToClass ? (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 mt-4">
+          <div className="text-slate-500 text-xl">ℹ️</div>
+          <div>
+            <p className="font-bold text-slate-800">Bạn chưa được xếp lớp</p>
+            <p className="text-sm text-slate-600 mt-1">
+              Bạn chưa được phân giảng viên và lớp học nên chưa thể đăng ký lịch tập lái lúc này. 
+              Vui lòng chờ trung tâm mở lớp hoặc báo cáo tư vấn viên để được xếp lớp sớm nhất nhé!
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3 mt-4">
+          <div className="text-emerald-500 text-xl">✅</div>
+          <div>
+            <p className="font-bold text-emerald-800">Thông tin Lớp học của bạn</p>
+            <div className="text-sm text-emerald-700 mt-1">
+              <p>Bạn đã được xếp vào lớp học. Mời bạn chủ động theo dõi thời gian và chọn giáo viên để đăng ký lịch tập lái ngay bên dưới nhé!</p>
+              <div className="mt-2 space-y-1">
+                {enrolledCourses.filter(c => c.batchLocation || c.startDate).map((c, i) => (
+                  <p key={i} className="font-medium text-emerald-800">
+                    • Khóa: {c.name || c.code} {c.startDate ? `(Khai giảng: ${new Date(c.startDate).toLocaleDateString('vi-VN')})` : ''}
+                  </p>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -418,7 +466,14 @@ const Schedule = () => {
         <SectionHeader title="Đặt lịch học mới" description="Chọn khu vực → khóa học đã đăng ký → giáo viên dạy khóa đó tại khu vực đó" />
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4 max-w-4xl">
-          <Select label="1. Chọn Khu Vực" options={locations} value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)} placeholder="-- Chọn khu vực --" />
+          <Select 
+            label="1. Chọn Khu Vực" 
+            options={locations} 
+            value={selectedLocation} 
+            onChange={(e) => setSelectedLocation(e.target.value)} 
+            disabled={!isAssignedToClass}
+            placeholder={isAssignedToClass ? "-- Chọn khu vực --" : "Chưa có lớp"} 
+          />
           <Select 
             label="2. Chọn Khóa Học" 
             options={enrolledCourses.map(c => ({ value: c._id, label: c.name || c.code }))} 
