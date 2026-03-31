@@ -21,12 +21,27 @@ const AdminCourses = () => {
   const [editingCourse, setEditingCourse] = useState(null);
   const [editingBatch, setEditingBatch] = useState(null);
 
-  const [courseDeleteConfirm, setCourseDeleteConfirm] = useState({ open: false, id: null });
-  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState({ open: false, id: null });
-  const [batchModalDeleteConfirm, setBatchModalDeleteConfirm] = useState({ open: false, id: null });
-  const [autoEnrollModalParams, setAutoEnrollModalParams] = useState({ isOpen: false, batch: null });
+  const [courseDeleteConfirm, setCourseDeleteConfirm] = useState({
+    open: false,
+    id: null,
+  });
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState({
+    open: false,
+    id: null,
+  });
+  const [batchModalDeleteConfirm, setBatchModalDeleteConfirm] = useState({
+    open: false,
+    id: null,
+  });
+  const [autoEnrollModalParams, setAutoEnrollModalParams] = useState({
+    isOpen: false,
+    batch: null,
+  });
   const [viewingBatch, setViewingBatch] = useState(null);
-  const [priceChangeConfirm, setPriceChangeConfirm] = useState({ open: false, payload: null });
+  const [priceChangeConfirm, setPriceChangeConfirm] = useState({
+    open: false,
+    payload: null,
+  });
 
   // Filter states for batches
   const [filters, setFilters] = useState({
@@ -89,9 +104,7 @@ const AdminCourses = () => {
     note: "",
     feePayments: [],
     status: "Active",
-    maxlearners: 50,
     requiredPracticeHours: 0, // Số giờ thực hành bắt buộc (mặc định 0 = không giới hạn)
-    feeEffectiveDate: "", // Ngày áp dụng giá học phí mới
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -162,13 +175,16 @@ const AdminCourses = () => {
     try {
       const res = await apiClient.post(`/batches/${batch._id}/auto-enroll`);
       if (res.data?.success) {
-        showToast(res.message || 'Xếp lớp tự động thành công', 'success');
+        showToast(res.message || "Xếp lớp tự động thành công", "success");
         loadAllBatches();
       } else {
-        showToast(res.data?.message || res.message || 'Có lỗi xảy ra', 'info');
+        showToast(res.data?.message || res.message || "Có lỗi xảy ra", "info");
       }
     } catch (error) {
-      showToast(error.response?.data?.message || error.message || 'Lỗi xếp lớp tự động', 'error');
+      showToast(
+        error.response?.data?.message || error.message || "Lỗi xếp lớp tự động",
+        "error",
+      );
     } finally {
       setAutoEnrollModalParams({ isOpen: false, batch: null });
     }
@@ -273,13 +289,8 @@ const AdminCourses = () => {
   };
 
   const handleConfirmPriceChange = () => {
-    const payloadWithDate = {
-      ...priceChangeConfirm.payload,
-      // Nếu chưa có ngày thì gán mặc định là hôm nay, nếu có rồi thì giữ nguyên
-      feeEffectiveDate: priceChangeConfirm.payload.feeEffectiveDate || new Date().toISOString().split("T")[0]
-    };
     setPriceChangeConfirm({ open: false, payload: null });
-    saveCourse(payloadWithDate);
+    saveCourse(priceChangeConfirm.payload);
   };
 
   const handleSubmit = async (e) => {
@@ -294,7 +305,6 @@ const AdminCourses = () => {
       const payload = {
         ...formData,
         estimatedCost: Number(formData.estimatedCost),
-        maxlearners: Number(formData.maxlearners) || 50,
         estimatedDuration: formData.estimatedDuration
           ? Number(formData.estimatedDuration)
           : undefined,
@@ -312,7 +322,10 @@ const AdminCourses = () => {
       };
 
       // Tự động tính lại tổng tiền từ feePayments của payload
-      const calculatedCost = payload.feePayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const calculatedCost = payload.feePayments.reduce(
+        (sum, p) => sum + (p.amount || 0),
+        0,
+      );
       if (calculatedCost > 0) {
         payload.estimatedCost = calculatedCost;
       }
@@ -320,8 +333,7 @@ const AdminCourses = () => {
       // Kiểm tra xem có thay đổi gì không so với dữ liệu cũ
       const checkChanges = () => {
         if (!editingCourse) return true;
-        const oldEffectiveDate = editingCourse.feeEffectiveDate ? editingCourse.feeEffectiveDate.split("T")[0] : "";
-        
+
         return (
           payload.code !== editingCourse.code ||
           payload.name !== editingCourse.name ||
@@ -329,16 +341,19 @@ const AdminCourses = () => {
           payload.estimatedCost !== (editingCourse.estimatedCost || 0) ||
           payload.description !== editingCourse.description ||
           payload.image !== editingCourse.image ||
-          payload.estimatedDuration !== (editingCourse.estimatedDuration || "") ||
-          payload.feeEffectiveDate !== oldEffectiveDate ||
-          payload.maxlearners !== (editingCourse.maxlearners || 50) ||
-          payload.requiredPracticeHours !== (editingCourse.requiredPracticeHours || 0) ||
-          JSON.stringify(payload.feePayments) !== JSON.stringify((editingCourse.feePayments || []).map(p => ({
-            name: p.name,
-            amount: Number(p.amount),
-            note: p.note,
-            afterPreviousPaidDays: Number(p.afterPreviousPaidDays) || 0,
-          })))
+          payload.estimatedDuration !==
+            (editingCourse.estimatedDuration || "") ||
+          payload.requiredPracticeHours !==
+            (editingCourse.requiredPracticeHours || 0) ||
+          JSON.stringify(payload.feePayments) !==
+            JSON.stringify(
+              (editingCourse.feePayments || []).map((p) => ({
+                name: p.name,
+                amount: Number(p.amount),
+                note: p.note,
+                afterPreviousPaidDays: Number(p.afterPreviousPaidDays) || 0,
+              })),
+            )
         );
       };
 
@@ -354,7 +369,7 @@ const AdminCourses = () => {
       if (isPriceChanging) {
         setPriceChangeConfirm({
           open: true,
-          payload: payload
+          payload: payload,
         });
         return;
       }
@@ -382,15 +397,13 @@ const AdminCourses = () => {
       note: course.note || "",
       feePayments: course.feePayments
         ? course.feePayments.map((p) => ({
-          name: p.name || "",
-          amount: p.amount || 0,
-          note: p.note || "",
-          afterPreviousPaidDays: p.afterPreviousPaidDays ?? 30,
-        }))
+            name: p.name || "",
+            amount: p.amount || 0,
+            note: p.note || "",
+            afterPreviousPaidDays: p.afterPreviousPaidDays ?? 30,
+          }))
         : [],
-      maxlearners: course.maxlearners || 50,
       requiredPracticeHours: course.requiredPracticeHours || 0,
-      feeEffectiveDate: course.feeEffectiveDate ? course.feeEffectiveDate.split("T")[0] : "",
     });
 
     await loadCourseBatches(course._id);
@@ -649,7 +662,10 @@ const AdminCourses = () => {
   const handleAddPayment = () => {
     setFormData((prev) => ({
       ...prev,
-      feePayments: [...prev.feePayments, { name: "", amount: 0, note: "", afterPreviousPaidDays: 30 }],
+      feePayments: [
+        ...prev.feePayments,
+        { name: "", amount: 0, note: "", afterPreviousPaidDays: 30 },
+      ],
     }));
   };
 
@@ -739,19 +755,21 @@ const AdminCourses = () => {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab("courses")}
-            className={`${activeTab === "courses"
-              ? "border-indigo-500 text-indigo-600"
-              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
+            className={`${
+              activeTab === "courses"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
           >
             Quản lý khoá học
           </button>
           <button
             onClick={() => setActiveTab("batches")}
-            className={`${activeTab === "batches"
-              ? "border-indigo-500 text-indigo-600"
-              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
+            className={`${
+              activeTab === "batches"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
           >
             Quản lý lớp học
           </button>
@@ -849,7 +867,7 @@ const AdminCourses = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    {/* <div>
                       <label className="mb-1 block text-sm font-medium text-slate-700">
                         Hạng khoá học
                       </label>
@@ -861,6 +879,28 @@ const AdminCourses = () => {
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                         placeholder="VD: A1-A2, B1-B2, B2-C1"
                       />
+                    </div> */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Số giờ thực hành bắt buộc
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.requiredPracticeHours}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            requiredPracticeHours:
+                              parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="VD: 10 giờ (0 = không giới hạn)"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Số giờ thực hành mà học viên cần hoàn thành để hoàn
+                        thành khóa học
+                      </p>
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -885,39 +925,6 @@ const AdminCourses = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Ngày áp dụng học phí mới
-                      </label>
-                      <input
-                        type="date"
-                        min={new Date().toISOString().split("T")[0]}
-                        value={formData.feeEffectiveDate || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, feeEffectiveDate: e.target.value })
-                        }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                      />
-                      <p className="mt-1 text-[10px] text-slate-500 italic">
-                        * Để trống nếu áp dụng ngay lập tức
-                      </p>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Số lượng học viên tối đa
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.maxlearners}
-                        onChange={(e) =>
-                          setFormData({ ...formData, maxlearners: e.target.value })
-                        }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
                         Thời lượng (tháng)
                       </label>
                       <input
@@ -932,31 +939,6 @@ const AdminCourses = () => {
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                         placeholder="VD: 3"
                       />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Số giờ thực hành bắt buộc
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.requiredPracticeHours}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            requiredPracticeHours:
-                              parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-                        placeholder="VD: 10 giờ (0 = không giới hạn)"
-                      />
-                      <p className="text-xs text-slate-500 mt-1">
-                        Số giờ thực hành mà học viên cần hoàn thành để hoàn
-                        thành khóa học
-                      </p>
                     </div>
                   </div>
 
@@ -1148,7 +1130,12 @@ const AdminCourses = () => {
                           </svg>
                         </button>
                         <button
-                          onClick={() => setCourseDeleteConfirm({ open: true, id: course._id })}
+                          onClick={() =>
+                            setCourseDeleteConfirm({
+                              open: true,
+                              id: course._id,
+                            })
+                          }
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded-full"
                           title="Xóa"
                         >
@@ -1194,9 +1181,6 @@ const AdminCourses = () => {
                       )}
                     </div>
                     <div className="mt-1">
-                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                        Tối đa: {course.maxlearners || 50} học viên
-                      </span>
                       {course.requiredPracticeHours > 0 && (
                         <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                           {course.requiredPracticeHours} giờ thực hành
@@ -1286,13 +1270,13 @@ const AdminCourses = () => {
                 filters.status ||
                 filters.location ||
                 filters.search) && (
-                  <button
-                    onClick={clearFilters}
-                    className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
-                  >
-                    Xóa bộ lọc
-                  </button>
-                )}
+                <button
+                  onClick={clearFilters}
+                  className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  Xóa bộ lọc
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
@@ -1482,10 +1466,11 @@ const AdminCourses = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${batch.learnerCount >= (batch.maxlearners || 30)
-                            ? "bg-red-100 text-red-800"
-                            : "bg-green-100 text-green-800"
-                            }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            batch.learnerCount >= (batch.maxlearners || 30)
+                              ? "bg-red-100 text-red-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
                         >
                           {batch.learnerCount || 0} / {batch.maxlearners || 30}
                         </span>
@@ -1503,10 +1488,11 @@ const AdminCourses = () => {
                               showToast("Lỗi cập nhật trạng thái", "error");
                             }
                           }}
-                          className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${batch.status === "OPEN"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                            }`}
+                          className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${
+                            batch.status === "OPEN"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
                         >
                           <option value="OPEN">Mở</option>
                           <option value="CLOSED">Đóng</option>
@@ -1526,8 +1512,18 @@ const AdminCourses = () => {
                             className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100"
                             title="Tự động xếp lớp"
                           >
-                            <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            <svg
+                              className="w-3.5 h-3.5 inline mr-1 -mt-0.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 10V3L4 14h7v7l9-11h-7z"
+                              />
                             </svg>
                             Xếp lớp
                           </button>
@@ -1536,9 +1532,24 @@ const AdminCourses = () => {
                             className="p-1 text-slate-400 hover:text-indigo-600 rounded bg-slate-50 hover:bg-slate-100 transition-colors"
                             title="Xem chi tiết"
                           >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
                             </svg>
                           </button>
                           <button
@@ -1561,7 +1572,12 @@ const AdminCourses = () => {
                             </svg>
                           </button>
                           <button
-                            onClick={() => setBatchDeleteConfirm({ open: true, id: batch._id })}
+                            onClick={() =>
+                              setBatchDeleteConfirm({
+                                open: true,
+                                id: batch._id,
+                              })
+                            }
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                             title="Xóa"
                           >
@@ -1646,7 +1662,11 @@ const AdminCourses = () => {
                   <input
                     type="date"
                     required
-                    min={!editingBatch ? new Date().toISOString().split("T")[0] : undefined}
+                    min={
+                      !editingBatch
+                        ? new Date().toISOString().split("T")[0]
+                        : undefined
+                    }
                     value={batchForm.startDate}
                     onChange={(e) =>
                       setBatchForm({ ...batchForm, startDate: e.target.value })
@@ -1661,7 +1681,12 @@ const AdminCourses = () => {
                   <input
                     type="date"
                     required
-                    min={batchForm.startDate || (!editingBatch ? new Date().toISOString().split("T")[0] : undefined)}
+                    min={
+                      batchForm.startDate ||
+                      (!editingBatch
+                        ? new Date().toISOString().split("T")[0]
+                        : undefined)
+                    }
                     value={batchForm.estimatedEndDate}
                     onChange={(e) =>
                       setBatchForm({
@@ -1687,7 +1712,9 @@ const AdminCourses = () => {
                     examLocationId: selectedId,
                     // Ưu tiên lấy googleMapUrl, nếu không có thì lấy address, nếu không có nữa thì để trống
                     location: selectedLocation
-                      ? selectedLocation.googleMapUrl || selectedLocation.address || ""
+                      ? selectedLocation.googleMapUrl ||
+                        selectedLocation.address ||
+                        ""
                       : prev.location,
                   }));
                 }}
@@ -1883,8 +1910,9 @@ const AdminCourses = () => {
         onClose={() => setAutoEnrollModalParams({ isOpen: false, batch: null })}
         onConfirm={confirmAutoEnroll}
         title="Xếp lớp tự động"
-        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${autoEnrollModalParams.batch?.name || "này"
-          }?`}
+        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${
+          autoEnrollModalParams.batch?.name || "này"
+        }?`}
         variant="primary"
       />
 
@@ -1893,13 +1921,7 @@ const AdminCourses = () => {
         onClose={() => setPriceChangeConfirm({ open: false, payload: null })}
         onConfirm={handleConfirmPriceChange}
         title="Xác nhận đổi học phí"
-        message={
-          priceChangeConfirm.payload?.feeEffectiveDate
-            ? `Bạn xác nhận thay đổi học phí và áp dụng từ ngày ${new Date(
-                priceChangeConfirm.payload.feeEffectiveDate
-              ).toLocaleDateString("vi-VN")}?`
-            : "Bạn chưa chọn ngày áp dụng học phí mới. Bạn có muốn áp dụng ngay lập tức từ hôm nay không?"
-        }
+        message="Bạn có chắc chắn muốn thay đổi học phí của khóa học này? Lưu ý: Mức giá mới sẽ áp dụng ngay lập tức cho các học viên chưa hoàn thành đóng phí đợt 1."
         variant="warning"
       />
 
