@@ -6,6 +6,7 @@ import DataTable from '../../components/ui/DataTable';
 import apiClient from '../../services/apiClient';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Pagination from '../../components/common/Pagination';
+import { useSocket } from '../../context/SocketContext';
 
 const LetterRequestManagement = () => {
     const { showToast } = useToast();
@@ -26,6 +27,24 @@ const LetterRequestManagement = () => {
     const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
     const [instructorPagination, setInstructorPagination] = useState({ total: 0, totalPages: 0 });
     const [activeTab, setActiveTab] = useState('learner'); // 'learner' or 'instructor'
+    const socket = useSocket();
+    const [reloadTrigger, setReloadTrigger] = useState(0);
+
+    // Lắng nghe socket để realtime cập nhật danh sách đơn (Sạch sẽ, không dính cache closure)
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleScheduleUpdate = (payload) => {
+            if (payload.status === 'NEW_REQUEST' || payload.status === 'SCHEDULE_CANCELLED' || payload.status === 'SCHEDULE_RESTORED') {
+                setReloadTrigger(prev => prev + 1);
+            }
+        };
+
+        socket.on('schedule-updated', handleScheduleUpdate);
+        return () => {
+            socket.off('schedule-updated', handleScheduleUpdate);
+        };
+    }, [socket]);
 
     useEffect(() => {
         if (activeTab === 'learner') {
@@ -33,7 +52,7 @@ const LetterRequestManagement = () => {
         } else {
             loadInstructorRequests();
         }
-    }, [currentPage, currentInstructorPage, activeTab]);
+    }, [currentPage, currentInstructorPage, activeTab, reloadTrigger]);
 
     const loadRequests = async () => {
         try {
@@ -78,7 +97,11 @@ const LetterRequestManagement = () => {
             if (response.status === 'success') {
                 showToast(`Đã ${status === 'APPROVED' ? 'duyệt' : 'từ chối'} yêu cầu`, 'success');
                 setConfirmConfig(prev => ({ ...prev, isOpen: false }));
-                loadRequests();
+                if (activeTab === 'learner') {
+                    loadRequests();
+                } else {
+                    loadInstructorRequests();
+                }
             }
         } catch (err) {
             console.error('Error updating status:', err);
