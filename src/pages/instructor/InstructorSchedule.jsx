@@ -74,7 +74,14 @@ const InstructorSchedule = () => {
     if (!socket || !user?.id) return;
 
     const handleScheduleUpdate = (payload) => {
-      // Nếu có người vừa đặt/hủy lịch của chính giảng viên này -> Tải lại danh sách
+      // 1. Tải lại nếu là sự kiện nghỉ lễ (không chứa instructorId)
+      if (payload.status && payload.status.startsWith('HOLIDAY_')) {
+        console.log('📅 Admin cập nhật lịch nghỉ (Realtime):', payload);
+        fetchSchedule();
+        return;
+      }
+
+      // 2. Nếu có người vừa đặt/hủy lịch của chính giảng viên này -> Tải lại danh sách
       if (payload.instructorId === user.id) {
         console.log('📅 Có thay đổi lịch từ học viên (Realtime):', payload);
         fetchSchedule();
@@ -170,8 +177,13 @@ const InstructorSchedule = () => {
       year: 'numeric'
     });
     
-    // Hiển modal chọn: báo bận ca hay cả ngày
+    // MỚI: Đếm số ca bận trong ngày để phân biệt "Báo bận cả ngày" vs "Báo bận theo ca"
+    const busySlotsThatDay = schedules.filter(s => 
+      s.category === 'BUSY' && new Date(s.date).toDateString() === new Date(date).toDateString()
+    );
+    const isBusyAllDay = busySlotsThatDay.length === 10;
     const isCancelMode = existingData?.category === 'BUSY';
+
     setConfirmBusyModal({
       isOpen: true,
       date: date,
@@ -181,7 +193,8 @@ const InstructorSchedule = () => {
       slotLabel: slotLabel,
       isLoading: false,
       mode: 'select', // Mode chọn: 'select' = chọn ca/cả ngày, 'confirm' = xác nhận
-      isCancelMode: isCancelMode
+      isCancelMode: isCancelMode,
+      isBusyAllDay: isBusyAllDay
     });
   };
 
@@ -461,7 +474,7 @@ const InstructorSchedule = () => {
       {/* [MỚI] MODAL CHỌN BÁO BẬN CA HAY CẢ NGÀY */}
       <Modal 
         isOpen={confirmBusyModal.isOpen} 
-        onClose={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false })} 
+        onClose={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false, isBusyAllDay: false })} 
         title={confirmBusyModal.isCancelMode ? "⚠️ Hủy báo bận" : "⚠️ Báo bận"}
       >
         <div className="p-4 space-y-4">
@@ -476,46 +489,50 @@ const InstructorSchedule = () => {
           {/* Mode: Chọn báo bận ca hay cả ngày */}
           <div className="space-y-3">
             <p className="text-slate-700 font-medium">
-              {confirmBusyModal.isCancelMode ? "Bạn muốn hủy báo bận như thế nào?" : "Bạn muốn báo bận như thế nào?"}
+              {confirmBusyModal.isCancelMode ? "Bạn đang Hủy báo bận:" : "Bạn muốn báo bận như thế nào?"}
             </p>
             
             {/* Chọn báo bận ca */}
-            <button
-              onClick={confirmBusySlot}
-              disabled={confirmBusyModal.isLoading}
-              className="w-full p-4 border-2 border-blue-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">📌</div>
-                <div>
-                  <p className="font-bold text-slate-800">
-                    {confirmBusyModal.isCancelMode ? "Hủy báo bận ca học này" : "Báo bận ca học này"}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {confirmBusyModal.isCancelMode ? `Chỉ hủy báo bận ${confirmBusyModal.slotLabel || 'ca được chọn'}` : `Chỉ báo bận ${confirmBusyModal.slotLabel || 'ca được chọn'}`}
-                  </p>
+            {(!confirmBusyModal.isCancelMode || !confirmBusyModal.isBusyAllDay) && (
+              <button
+                onClick={confirmBusySlot}
+                disabled={confirmBusyModal.isLoading}
+                className="w-full p-4 border-2 border-blue-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">📌</div>
+                  <div>
+                    <p className="font-bold text-slate-800">
+                      {confirmBusyModal.isCancelMode ? "Hủy báo bận ca học này" : "Báo bận ca học này"}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {confirmBusyModal.isCancelMode ? `Chỉ hủy báo bận ${confirmBusyModal.slotLabel || 'ca được chọn'}` : `Chỉ báo bận ${confirmBusyModal.slotLabel || 'ca được chọn'}`}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
 
             {/* Chọn báo bận cả ngày */}
-            <button
-              onClick={confirmBusyDay}
-              disabled={confirmBusyModal.isLoading}
-              className="w-full p-4 border-2 border-amber-200 rounded-xl hover:border-amber-400 hover:bg-amber-50 transition-all text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold">📅</div>
-                <div>
-                  <p className="font-bold text-slate-800">
-                    {confirmBusyModal.isCancelMode ? "Hủy báo bận cả ngày" : "Báo bận cả ngày"}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {confirmBusyModal.isCancelMode ? "Hủy báo bận tất cả các ca trong ngày" : "Báo bận tất cả các ca trong ngày"}
-                  </p>
+            {(!confirmBusyModal.isCancelMode || confirmBusyModal.isBusyAllDay) && (
+              <button
+                onClick={confirmBusyDay}
+                disabled={confirmBusyModal.isLoading}
+                className="w-full p-4 border-2 border-amber-200 rounded-xl hover:border-amber-400 hover:bg-amber-50 transition-all text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold">📅</div>
+                  <div>
+                    <p className="font-bold text-slate-800">
+                      {confirmBusyModal.isCancelMode ? "Hủy báo bận cả ngày" : "Báo bận cả ngày"}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {confirmBusyModal.isCancelMode ? "Hủy báo bận tất cả các ca trong ngày" : "Báo bận tất cả các ca trong ngày"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -527,7 +544,7 @@ const InstructorSchedule = () => {
           <Button 
             className="w-full" 
             variant="outline"
-            onClick={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false })}
+            onClick={() => setConfirmBusyModal({ isOpen: false, date: null, dateString: '', dayLabel: '', slotId: null, slotLabel: '', isLoading: false, mode: 'select', isCancelMode: false, isBusyAllDay: false })}
             disabled={confirmBusyModal.isLoading}
           >
             Hủy
