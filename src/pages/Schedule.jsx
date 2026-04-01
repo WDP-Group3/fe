@@ -41,10 +41,15 @@ const Schedule = () => {
   // Dropdown Chi tiết các buổi học: chỉ 1 thứ mở tại một thời điểm (dateLabel hoặc null)
   const [expandedSessionDay, setExpandedSessionDay] = useState(null);
 
-  // Modals
   const [confirmBookingModal, setConfirmBookingModal] = useState({ isOpen: false, data: null, type: 'PRACTICE' });
+  const [cancelConfirmModal, setCancelConfirmModal] = useState({ isOpen: false, data: null }); // [MỚI] Modal Hủy Lịch
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, bookingId: null, rating: 5, comment: '' });
   const [detailModal, setDetailModal] = useState({ isOpen: false, data: null });
+
+  // Xác định xem khóa đang chọn có phải khóa Xe Máy không (A1, A2...)
+  const selectedCourseData = enrolledCourses.find(c => c._id === selectedCourse);
+  const selectedCourseCode = selectedCourseData ? (selectedCourseData.code || '').toUpperCase() : '';
+  const isMotorcycleCourse = selectedCourseCode.startsWith('A');
 
   const socket = useSocket();
 
@@ -288,19 +293,29 @@ const Schedule = () => {
     const now = new Date();
     const hoursUntilSession = (sessionDateTime - now) / (1000 * 60 * 60);
     
-    // If less than 12 hours until session, show warning about losing the hour
-    if (hoursUntilSession > 0 && hoursUntilSession < 12) {
-      const confirmMessage = "⚠️ Cảnh báo: Bạn đang hủy ca học trong vòng 12 giờ trước giờ học.\n\nNếu hủy, bạn sẽ MẤT 1 giờ thực hành (không được hoàn lại).\n\nBạn có chắc chắn muốn hủy không?";
-      if (!window.confirm(confirmMessage)) return;
-    } else {
-      if (!window.confirm("Bạn có chắc chắn muốn hủy lịch này?")) return;
-    }
-    
+    // Đóng popup chi tiết trước khi mở popup xác nhận hủy để tránh đè chéo
+    setDetailModal({ isOpen: false, data: null });
+
+    // Mở modal xác nhận thay vì dùng window.confirm
+    setCancelConfirmModal({
+      isOpen: true,
+      data: {
+        id,
+        isLate: hoursUntilSession > 0 && hoursUntilSession < 12,
+        hoursUntilSession
+      }
+    });
+  };
+
+  // Hàm gọi API thực tế sau khi người dùng bấm Xác nhận trên Modal Custom
+  const executeCancelBooking = async () => {
+    if (!cancelConfirmModal.data) return;
+    const { id, isLate } = cancelConfirmModal.data;
+
     try {
       const response = await apiClient.put(`/bookings/${id}`, { status: 'CANCELLED' });
       if (response.status === 'success') {
-        // Check if this was a late cancellation (within 12 hours)
-        if (hoursUntilSession > 0 && hoursUntilSession < 12) {
+        if (isLate) {
           showToast('Đã hủy lịch. Lưu ý: Bạn đã mất 1 giờ thực hành vì hủy trong vòng 12 giờ.', 'warning');
         } else {
           showToast('Hủy lịch thành công', 'success');
@@ -309,8 +324,11 @@ const Schedule = () => {
         fetchEnrolledCourses();
         if (selectedInstructor) fetchInstructorSchedule();
         setDetailModal({ isOpen: false, data: null });
+        setCancelConfirmModal({ isOpen: false, data: null }); // Đóng modal
       }
-    } catch (error) { showToast(error.message, 'error'); }
+    } catch (error) { 
+      showToast(error.message || 'Lỗi khi huỷ lịch', 'error'); 
+    }
   };
 
   const handleFeedback = async () => {
@@ -487,12 +505,25 @@ const Schedule = () => {
             options={instructors} 
             value={selectedInstructor} 
             onChange={(e) => setSelectedInstructor(e.target.value)} 
-            disabled={!selectedLocation || !selectedCourse} 
-            placeholder={!selectedLocation ? "Vui lòng chọn khu vực trước" : !selectedCourse ? "Vui lòng chọn khóa học trước" : "-- Chọn giáo viên --"} 
+            disabled={!selectedLocation || !selectedCourse || isMotorcycleCourse} 
+            placeholder={!selectedLocation ? "Vui lòng chọn khu vực trước" : !selectedCourse ? "Vui lòng chọn khóa học trước" : isMotorcycleCourse ? "Không áp dụng cho khóa Xe Máy" : "-- Chọn giáo viên --"} 
           />
         </div>
 
-        {selectedInstructor && (
+        {/* Thông báo chặn đăng ký lịch dành cho xe máy */}
+        {isMotorcycleCourse && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 mt-4">
+            <div className="text-amber-500 text-xl">⚠️</div>
+            <div>
+              <p className="font-bold text-amber-800">Thông báo từ trung tâm</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Khóa học bằng lái mô tô/xe máy hạng <strong>{selectedCourseCode}</strong> đã được sắp xếp lịch học cố định tại bãi tập. Bạn KHÔNG cần phải tự đăng ký lịch thực hành trên hệ thống. 
+              </p>
+            </div>
+          </div>
+        )}
+
+        {selectedInstructor && !isMotorcycleCourse && (
           <div className="mt-6 space-y-4">
             <div className="flex justify-between items-center text-xs">
               <div className="flex flex-wrap gap-4 font-medium">
@@ -621,6 +652,31 @@ const Schedule = () => {
                 <Button variant="secondary" onClick={() => setConfirmBookingModal({ ...confirmBookingModal, isOpen: false })}>Hủy</Button>
                 <Button onClick={handleBooking}>Xác nhận</Button>
              </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* [MỚI] Modal Xác nhận Hủy Lịch */}
+      <Modal isOpen={cancelConfirmModal.isOpen} onClose={() => setCancelConfirmModal({ isOpen: false, data: null })} title="Xác nhận hủy lịch">
+        <div className="p-4 space-y-4 text-center">
+          {cancelConfirmModal.data?.isLate ? (
+            <div className="bg-orange-50 text-orange-800 p-4 rounded-xl border border-orange-200">
+              <span className="text-3xl mb-2 block">⚠️</span>
+              <p className="font-bold text-lg mb-2">Cảnh báo hủy muộn</p>
+              <p className="text-sm">Bạn đang thao tác hủy ca học trong vòng <strong>12 giờ</strong> trước giờ lên lớp.</p>
+              <p className="text-sm mt-2 text-red-600 font-semibold underline">Nếu tiếp tục hủy, bạn sẽ bị TRỪ 1 giờ thực hành và KHÔNG được hoàn lại.</p>
+            </div>
+          ) : (
+            <div className="bg-slate-50 text-slate-700 p-4 rounded-xl border border-slate-200">
+               <span className="text-3xl mb-2 block">❓</span>
+               <p className="font-bold text-lg mb-2">Xác nhận hủy</p>
+               <p className="text-sm">Bạn có chắc chắn muốn hủy lịch học này không?</p>
+            </div>
+          )}
+          
+          <div className="flex justify-center gap-3 mt-4">
+             <Button variant="secondary" onClick={() => setCancelConfirmModal({ isOpen: false, data: null })}>Đóng, không hủy</Button>
+             <Button variant="danger" onClick={executeCancelBooking}>Đồng ý hủy lịch</Button>
           </div>
         </div>
       </Modal>
