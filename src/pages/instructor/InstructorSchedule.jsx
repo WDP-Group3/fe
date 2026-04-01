@@ -283,7 +283,8 @@ const InstructorSchedule = () => {
 
   return (
     <div className="space-y-10">
-      {/* [MỚI] Thông tin nghỉ phép khẩn cấp */}
+      {/* [MỚI] Thông tin nghỉ phép khẩn cấp (Tạm Ẩn theo yêu cầu) */}
+      {false && (
       <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 overflow-hidden min-w-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -309,6 +310,8 @@ const InstructorSchedule = () => {
           ⚠️ Lưu ý: Báo bận vượt deadline (sau thứ 6, 18:00) sẽ tính là nghỉ phép khẩn cấp. Tối đa 2 lần/tháng.
         </p>
       </div>
+      )}
+
 
       {/* [MỚI] Thống kê tổng thời gian dạy theo tháng */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-4">
