@@ -116,9 +116,11 @@ const AdminBlogs = () => {
         }
     };
 
-    const formatDate = (dateStr) => {
-        if (!dateStr) return "—";
-        return new Date(dateStr).toLocaleDateString("vi-VN", {
+    const formatDate = (dateStr, id) => {
+        // Fallback: rút timestamp từ MongoDB ObjectId nếu createdAt không có
+        const date = dateStr ? new Date(dateStr) : (id ? new Date(parseInt(id.substring(0, 8), 16) * 1000) : null);
+        if (!date || isNaN(date.getTime())) return "—";
+        return date.toLocaleDateString("vi-VN", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
@@ -335,7 +337,7 @@ const AdminBlogs = () => {
                                             {blog.author || <span className="text-slate-400 italic">Ẩn danh</span>}
                                         </td>
                                         <td className="px-4 py-3 text-slate-500 hidden lg:table-cell">
-                                            {formatDate(blog.createdAt)}
+                                            {formatDate(blog.createdAt, blog._id)}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             {blog.status === "VISIBLE" ? (
