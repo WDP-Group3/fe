@@ -15,7 +15,7 @@ const AdminCourses = () => {
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -93,7 +93,7 @@ const AdminCourses = () => {
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignForm, setAssignForm] = useState({ learnerId: "" });
 
-  const [courseBatches, setCourseBatches] = useState([]);
+  const [_courseBatches, setCourseBatches] = useState([]);
   const [batchLoading, setBatchLoading] = useState(false);
 
   const initialFormState = {
@@ -607,7 +607,7 @@ const AdminCourses = () => {
     }
   };
 
-  const handleCreateBatch = async (e) => {
+  const _handleCreateBatch = async (e) => {
     e.preventDefault();
     if (!editingCourse?._id) return;
 
@@ -673,7 +673,7 @@ const AdminCourses = () => {
     }
   };
 
-  const handleUpdateBatchStatus = async (batchId, status) => {
+  const _handleUpdateBatchStatus = async (batchId, status) => {
     try {
       await apiClient.put(`/batches/${batchId}`, { status });
       await loadCourseBatches(editingCourse._id);
@@ -1571,7 +1571,7 @@ const AdminCourses = () => {
                                 status: e.target.value,
                               });
                               loadAllBatches();
-                            } catch (err) {
+                            } catch {
                               showToast("Lỗi cập nhật trạng thái", "error");
                             }
                           }}
@@ -2008,7 +2008,7 @@ const AdminCourses = () => {
         onClose={() => setPriceChangeConfirm({ open: false, payload: null })}
         onConfirm={handleConfirmPriceChange}
         title="Xác nhận đổi học phí"
-        message="Bạn có chắc chắn muốn thay đổi học phí của khóa học này? Lưu ý: Mức giá mới sẽ áp dụng ngay lập tức cho các học viên chưa hoàn thành đóng phí đợt 1."
+        message="Bạn có chắc chắn muốn thay đổi học phí của khóa học này? Hệ thống sẽ tự động cập nhật kế hoạch đóng phí cho các học viên CHƯA nộp bất kỳ đợt nào và gửi email thông báo cho họ. Các học viên đã nộp tiền sẽ không bị ảnh hưởng."
         variant="warning"
       />
 

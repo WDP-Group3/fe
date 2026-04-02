@@ -114,7 +114,7 @@ const Overview = () => {
         </div>
       </div> */}
 
-      {false && (
+      {false ? null : (
         <>
           <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
             {/* Payment Section with Image */}

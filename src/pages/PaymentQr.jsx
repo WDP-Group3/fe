@@ -62,6 +62,14 @@ const PaymentQr = () => {
         console.log('[PaymentQr] Fetch tx:', txRes);
         if (txRes?.data) {
           const tx = txRes.data;
+
+          // Nếu transaction đã completed khi load trang → redirect luôn (user có thể vừa thanh toán xong)
+          if (tx.paymentStatus === 'completed' && !redirectRef.current) {
+            console.log('[PaymentQr] Transaction already completed on load → redirect');
+            handlePaidSuccess();
+            return;
+          }
+
           // Reconstruct QR URL từ transaction data
           const qrUrl = `https://qr.sepay.vn/img?acc=${encodeURIComponent(SEPAY_BANK_ACCOUNT)}&bank=${encodeURIComponent(SEPAY_BANK_CODE)}&amount=${encodeURIComponent(tx.amount || 0)}&des=${encodeURIComponent(tx.transferContent || '')}`;
 

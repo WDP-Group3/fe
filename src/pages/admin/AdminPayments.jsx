@@ -11,6 +11,18 @@ import { useToast } from '../../context/ToastContext';
 const fmt = (n) => formatCurrency(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 
+// Lấy đợt quá hạn đầu tiên (nếu có)
+const getFirstOverdueInstallment = (item) => {
+  const schedule = item.paymentSchedule || [];
+  const now = new Date();
+  for (const s of schedule) {
+    if (!s.paymented && s.dueDate && new Date(s.dueDate) < now) {
+      return s;
+    }
+  }
+  return null;
+};
+
 // Payment status helper — uses Number() coercion and a grace threshold to avoid
 // floating-point and type-mismatch inconsistencies between frontend and backend.
 const PAYMENT_GRACE = 1000; // VND; amounts below this are considered "paid"
@@ -22,7 +34,30 @@ const getPaymentStatus = (item) => {
   return 'unpaid';
 };
 
-// ── KPI Card ──────────────────────────────────────────────────────────────────
+// ── Inline notify button ───────────────────────────────────────────────────────
+const InlineNotifyBtn = ({ item, onNotify }) => {
+  const [sending, setSending] = useState(false);
+
+  const handleClick = async () => {
+    setSending(true);
+    try {
+      await onNotify(item);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={sending}
+      className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+      title="Gửi nhắc nhở"
+    >
+      {sending ? '...' : 'Nhắc'}
+    </button>
+  );
+};
 const KpiCard = ({ label, value, sub, color = 'text-slate-900', bgColor = '' }) => (
   <div className={`rounded-2xl border border-slate-100 bg-white p-5 shadow-sm ${bgColor}`}>
     <p className="text-sm font-medium text-slate-500">{label}</p>
@@ -184,10 +219,64 @@ const AdminPayments = () => {
       title: 'Còn lại',
       render: (_, row) => {
         const status = getPaymentStatus(row);
+        const overdueInstallment = getFirstOverdueInstallment(row);
         return (
-          <span className={status === 'paid' ? 'text-emerald-600 font-medium' : row.isOverdue ? 'text-red-600 font-bold' : 'text-amber-600 font-medium'}>
-            {fmt(row.remaining)}
-          </span>
+          <div>
+            <span className={status === 'paid' ? 'text-emerald-600 font-medium' : row.isOverdue ? 'text-red-600 font-bold' : 'text-amber-600 font-medium'}>
+              {fmt(row.remaining)}
+            </span>
+            {overdueInstallment && (
+              <div className="text-xs text-red-500 mt-0.5 font-medium">
+                ⚠️ {overdueInstallment.name || `Đợt ${(row.paymentSchedule || []).indexOf(overdueInstallment) + 1}`}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'dueDate',
+      title: 'Hạn kế tiếp',
+      render: (_, row) => {
+        if (row.remaining <= 0) return <span className="text-emerald-500">—</span>;
+        const schedule = row.paymentSchedule || [];
+        // Tìm đợt chưa đóng đầu tiên
+        const next = schedule.find(s => !s.paymented);
+        if (!next) return <span className="text-slate-400">—</span>;
+        const isOver = next.dueDate && new Date(next.dueDate) < new Date();
+        return (
+          <div>
+            <span className={isOver ? 'text-red-500 font-medium' : 'text-slate-700'}>
+              {next.dueDate ? fmtDate(next.dueDate) : '—'}
+            </span>
+            {isOver && <div className="text-xs text-red-400">Quá hạn</div>}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      title: 'Thao tác',
+      render: (_, row) => {
+        if (row.remaining <= 0) return <span className="text-slate-400">—</span>;
+        return (
+          <InlineNotifyBtn
+            item={row}
+            onNotify={async (item) => {
+              const overdue = getFirstOverdueInstallment(item);
+              const msg = overdue
+                ? `Hệ thống nhắc nhở: Đợt "${overdue.name}" đã quá hạn. Số tiền: ${fmt(overdue.amount)} VND. Vui lòng thanh toán sớm nhất có thể.`
+                : `Hệ thống nhắc nhở: Bạn có học phí còn lại ${fmt(item.remaining)} VND. Vui lòng thanh toán sớm nhất có thể.`;
+              await apiClient.post('/notifications', {
+                type: 'PAYMENT_REMINDER',
+                title: 'Nhắc đóng học phí',
+                message: msg,
+                userId: item.learnerId?._id || item.learnerId,
+                expirationDays: 7,
+              });
+              showToast(`Đã gửi nhắc nhở tới ${item.learnerName}`, 'success');
+            }}
+          />
         );
       },
     },
