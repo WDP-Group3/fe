@@ -4,7 +4,7 @@ import apiClient from '../services/apiClient';
 import { SectionHeader, StatCard } from '../components/ui';
 import { formatCurrency } from '../utils/formatters';
 
-const learnerDashboard = () => {
+const LearnerDashboard = () => {
   const { user } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState([]);
@@ -138,4 +138,4 @@ const learnerDashboard = () => {
   );
 };
 
-export default learnerDashboard;
+export default LearnerDashboard;

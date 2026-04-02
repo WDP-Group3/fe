@@ -25,6 +25,7 @@ export const SocketProvider = ({ children }) => {
       console.log('🔌 Socket disconnected');
     });
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(socketInstance);
 
     return () => {

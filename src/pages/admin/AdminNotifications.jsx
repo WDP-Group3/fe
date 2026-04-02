@@ -135,9 +135,6 @@ const AdminNotifications = () => {
           (error.response?.data?.message || "Lỗi hệ thống"),
       );
     }
-    showToast(
-      "Lưu thất bại: " + (error.response?.data?.message || "Lỗi hệ thống"),
-    );
   };
 
   const openDetail = (notif) => {
