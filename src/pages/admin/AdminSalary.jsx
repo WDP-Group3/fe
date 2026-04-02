@@ -5,6 +5,7 @@ import { useToast } from "../../context/ToastContext";
 import apiClient from "../../services/apiClient";
 import { formatCurrency } from "../../utils/formatters";
 import Pagination from "../../components/common/Pagination";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 
 const fmt = (n) => formatCurrency(n || 0);
 
@@ -24,6 +25,7 @@ const AdminSalary = () => {
   const [courses, setCourses] = useState([]);
   const [activeCourses, setActiveCourses] = useState([]);
   const [noConfig, setNoConfig] = useState(false);
+  const todayStr = new Date().toISOString().split("T")[0];
   const [stats, setStats] = useState({
     totalSalary: 0,
     totalHours: 0,
@@ -53,10 +55,20 @@ const AdminSalary = () => {
   const [addCommissionForm, setAddCommissionForm] = useState({
     courseId: "",
     commissionAmount: "",
-    effectiveFrom: "",
+    effectiveFrom: todayStr,
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
+
+  // Penalty state
+  const [showPenaltyModal, setShowPenaltyModal] = useState(false);
+  const [selectedPenaltyUser, setSelectedPenaltyUser] = useState(null);
+  const [userPenalties, setUserPenalties] = useState([]);
+  const [penaltyForm, setPenaltyForm] = useState({ amount: '', reason: '' });
+  const [loadingPenalties, setLoadingPenalties] = useState(false);
+  const [showAddPenalty, setShowAddPenalty] = useState(false);
+  const [penaltyFilters, setPenaltyFilters] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear() });
+  const [penaltyToDelete, setPenaltyToDelete] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -89,6 +101,72 @@ const AdminSalary = () => {
     note: "",
   });
 
+
+  const handleOpenPenalty = (row) => {
+    setSelectedPenaltyUser(row);
+    setShowPenaltyModal(true);
+    setShowAddPenalty(false);
+    setPenaltyForm({ amount: '', reason: '' });
+    setPenaltyFilters({ month: filters.month, year: filters.year });
+    fetchPenalties(row.userId || row._id, filters.month, filters.year);
+  };
+
+  const fetchPenalties = async (userId, month, year) => {
+    try {
+      setLoadingPenalties(true);
+      const res = await apiClient.get(`/salary/users/${userId}/penalties?month=${month}&year=${year}`);
+
+      if (res?.status === "success") {
+        setUserPenalties(res.data);
+      }
+    } catch (e) {
+      showToast("Lỗi khi tải danh sách nộp phạt", "error");
+    } finally {
+      setLoadingPenalties(false);
+    }
+  };
+  useEffect(() => {
+    // optional effect check
+  }, [userPenalties])
+  const handleCreatePenalty = async () => {
+    if (!penaltyForm.amount || !penaltyForm.reason) {
+      return showToast("Vui lòng nhập đủ số tiền và lý do", "error");
+    }
+    try {
+      const payload = {
+        amount: Number(penaltyForm.amount),
+        reason: penaltyForm.reason,
+        date: new Date(penaltyFilters.year, penaltyFilters.month - 1, 15).toISOString()
+      };
+      await apiClient.post(`/salary/users/${selectedPenaltyUser.userId || selectedPenaltyUser._id}/penalties`, payload);
+      showToast("Thêm nộp phạt thành công", "success");
+      fetchPenalties(selectedPenaltyUser.userId || selectedPenaltyUser._id, penaltyFilters.month, penaltyFilters.year);
+      setShowAddPenalty(false);
+      setPenaltyForm({ amount: '', reason: '' });
+      loadData(); // Reload table data
+    } catch (e) {
+      showToast(e.response?.data?.message || "Lỗi khi thêm nộp phạt", "error");
+    }
+  };
+
+  const handleDeletePenalty = (penaltyId) => {
+    setPenaltyToDelete(penaltyId);
+  };
+
+  const confirmDeletePenalty = async () => {
+    if (!penaltyToDelete) return;
+    try {
+      await apiClient.delete(`/salary/penalties/${penaltyToDelete}`);
+      showToast("Đã hủy nộp phạt", "success");
+      fetchPenalties(selectedPenaltyUser.userId || selectedPenaltyUser._id, penaltyFilters.month, penaltyFilters.year);
+      loadData();
+    } catch (e) {
+      showToast("Lỗi", "error");
+    } finally {
+      setPenaltyToDelete(null);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [filters.month, filters.year, filters.role, debouncedSearch, currentPage]);
@@ -107,9 +185,10 @@ const AdminSalary = () => {
         limit: 10,
       });
 
-      // Gọi song song: salary summary + config + courses + leave config
+      // Gọi song song: catch lỗi riêng của summary để không làm sập toàn bộ Promise.all
+      const summaryPromise = apiClient.get(`/salary/monthly-summary?${query.toString()}`).catch(err => ({ error: err }));
       const [summaryRes, configRes, coursesRes, leaveRes] = await Promise.all([
-        apiClient.get(`/salary/monthly-summary?${query.toString()}`),
+        summaryPromise,
         apiClient.get("/salary/config"),
         apiClient.get("/salary/courses"),
         apiClient.get(`/salary/leave-config?year=${filters.year}`),
@@ -124,6 +203,7 @@ const AdminSalary = () => {
         });
       }
       setConfig(configRes?.data || null);
+      console.log("[AdminSalary] configRes.data:", configRes?.data);
       setCourses(coursesRes?.data || []);
       if (leaveRes?.data) {
         setLeaveConfig(leaveRes.data);
@@ -132,6 +212,11 @@ const AdminSalary = () => {
           leaveDeductionPerDay: leaveRes.data.leaveDeductionPerDay ?? 0,
         });
       }
+
+      if (summaryRes?.error) {
+        throw summaryRes.error;
+      }
+
       // Extract active courses from the summary response for dynamic columns
       const coursesFromSummary = summaryRes?.data?.courses || [];
       console.log("[AdminSalary] coursesFromSummary:", coursesFromSummary);
@@ -167,7 +252,10 @@ const AdminSalary = () => {
     if (config) {
       setConfigForm({
         instructorHourlyRate: config.instructorHourlyRate || 80000,
-        courseCommissions: config.courseCommissions || [],
+        courseCommissions: (config.courseCommissions || []).map(c => ({
+          ...c,
+          courseId: c.courseId?._id || c.courseId
+        })),
         effectiveFrom: config.effectiveFrom
           ? config.effectiveFrom.split("T")[0]
           : "",
@@ -393,7 +481,7 @@ const AdminSalary = () => {
     }));
   };
 
-  const addCommission = (courseId, effectiveFrom = "") => {
+  const addCommission = (courseId, effectiveFrom) => {
     if (configForm.courseCommissions.find((c) => c.courseId === courseId))
       return;
     setConfigForm((prev) => ({
@@ -443,8 +531,6 @@ const AdminSalary = () => {
     );
     setShowAddCommissionModal(false);
   };
-
-  const todayStr = new Date().toISOString().split("T")[0];
 
   const columns = useMemo(() => {
     // Dynamic course-specific columns
@@ -522,6 +608,15 @@ const AdminSalary = () => {
         ),
       },
       {
+        key: "totalPenalty",
+        title: "Tổng phạt",
+        render: (_, row) => (
+          <span className="text-red-500 font-medium tracking-tight">
+            {row.totalPenalty ? "-" + fmt(row.totalPenalty) : "—"}
+          </span>
+        ),
+      },
+      {
         key: "totalSalary",
         title: "Tổng lương",
         render: (_, row) => (
@@ -534,24 +629,20 @@ const AdminSalary = () => {
         key: "actions",
         title: "Thao tác",
         render: (_, row) => (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleViewDetail(row)}
-              className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100"
-            >
-              Chi tiết
+          <div className="relative group flex justify-center">
+            <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-600 flex items-center justify-center outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
             </button>
-            <button
-              onClick={() => handleOpenOverride(row)}
-              className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
-            >
-              Chỉnh lương
-            </button>
+            <div className="absolute right-8 top-0 min-w-[140px] bg-white border border-slate-100 shadow-xl rounded-xl opacity-0 invisible group-hover:opacity-100 group-focus-within:opacity-100 group-hover:visible group-focus-within:visible transition-all z-[50] flex flex-col py-1 overflow-hidden">
+              <button onClick={() => handleViewDetail(row)} className="px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors w-full">Chi tiết</button>
+              <button onClick={() => handleOpenOverride(row)} className="px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-amber-50 hover:text-amber-700 transition-colors w-full border-t border-slate-50">Chỉnh lương</button>
+              <button onClick={() => handleOpenPenalty(row)} className="px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-red-50 hover:text-red-600 transition-colors w-full border-t border-slate-50">Nộp phạt</button>
+            </div>
           </div>
         ),
       },
     ];
-  }, [activeCourses, handleViewDetail, handleOpenOverride]);
+  }, [activeCourses, handleViewDetail, handleOpenOverride, handleOpenPenalty]);
 
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
@@ -1073,7 +1164,7 @@ const AdminSalary = () => {
                         />
                         <input
                           type="date"
-                          value={commission?.effectiveFrom || ""}
+                          value={commission?.effectiveFrom || todayStr}
                           min={todayStr}
                           onChange={(e) =>
                             updateCommission(
@@ -1189,7 +1280,7 @@ const AdminSalary = () => {
                       </label>
                       <input
                         type="date"
-                        value={addCommissionForm.effectiveFrom}
+                        value={addCommissionForm.effectiveFrom || todayStr}
                         min={todayStr}
                         onChange={(e) =>
                           setAddCommissionForm((f) => ({
@@ -1332,6 +1423,183 @@ const AdminSalary = () => {
       )}
 
       {/* Override Modal */}
+
+      <ConfirmDialog
+        isOpen={!!penaltyToDelete}
+        onClose={() => setPenaltyToDelete(null)}
+        onConfirm={confirmDeletePenalty}
+        title="Hủy bỏ nộp phạt"
+        message="Bạn có chắc chắn muốn hủy bỏ khoản nộp phạt này không?"
+        type="danger"
+        confirmText="Hủy khoản này"
+      />
+
+      {/* Penalty Modal */}
+      {showPenaltyModal && selectedPenaltyUser && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">
+                  Danh sách nộp phạt
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Nhân viên: {selectedPenaltyUser.fullName || selectedPenaltyUser.userName}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPenaltyModal(false)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {!showAddPenalty ? (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-semibold text-slate-700">Lịch sử nộp phạt</h4>
+                      <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                        <select
+                          className="text-sm bg-transparent outline-none font-medium text-slate-700 cursor-pointer"
+                          value={penaltyFilters.month}
+                          onChange={(e) => {
+                            const newMonth = Number(e.target.value);
+                            setPenaltyFilters(p => ({ ...p, month: newMonth }));
+                            fetchPenalties(selectedPenaltyUser.userId || selectedPenaltyUser._id, newMonth, penaltyFilters.year);
+                          }}
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                            <option key={m} value={m}>Tháng {m}</option>
+                          ))}
+                        </select>
+                        <span className="text-slate-300">/</span>
+                        <select
+                          className="text-sm bg-transparent outline-none font-medium text-slate-700 cursor-pointer"
+                          value={penaltyFilters.year}
+                          onChange={(e) => {
+                            const newYear = Number(e.target.value);
+                            setPenaltyFilters(p => ({ ...p, year: newYear }));
+                            fetchPenalties(selectedPenaltyUser.userId || selectedPenaltyUser._id, penaltyFilters.month, newYear);
+                          }}
+                        >
+                          {[2024, 2025, 2026, 2027].map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowAddPenalty(true)}
+                      className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      + Thêm nộp phạt
+                    </button>
+                  </div>
+
+                  {loadingPenalties ? (
+                    <div className="flex justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent"></div>
+                    </div>
+                  ) : userPenalties.length > 0 ? (
+                    <div className="rounded-xl border border-slate-200 overflow-hidden">
+                      <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 w-1/2">Lý do</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Số tiền</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Ngày tạo</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {userPenalties.map(p => (
+                            <tr key={p._id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3 text-sm text-slate-800">{p.reason}</td>
+                              <td className="px-4 py-3 text-sm text-red-600 font-medium text-right">{fmt(p.amount)}</td>
+                              <td className="px-4 py-3 text-sm text-slate-500">
+                                {new Date(p.createdAt).toLocaleDateString('vi-VN')}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-center">
+                                <button
+                                  onClick={() => handleDeletePenalty(p._id)}
+                                  className="text-slate-400 hover:text-red-500 font-medium text-xs px-2 py-1 rounded hover:bg-red-50"
+                                >
+                                  Hủy
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                      <p className="text-slate-500">Người này không có nộp phạt nào trong tháng.</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                  <h4 className="font-semibold text-slate-700 mb-4 text-lg">Tạo nộp phạt mới</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Số tiền phạt (VNĐ)</label>
+                      <input
+                        type="number"
+                        className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        placeholder="VD: 50000"
+                        value={penaltyForm.amount}
+                        onChange={e => setPenaltyForm(prev => ({ ...prev, amount: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Lý do nộp phạt</label>
+                      <textarea
+                        className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        placeholder="Nhập lý do nộp phạt..."
+                        rows="3"
+                        value={penaltyForm.reason}
+                        onChange={e => setPenaltyForm(prev => ({ ...prev, reason: e.target.value }))}
+                      ></textarea>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button
+                        onClick={() => setShowAddPenalty(false)}
+                        className="px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        onClick={handleCreatePenalty}
+                        className="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm"
+                      >
+                        Xác nhận
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer just for closing the dialog when on list view */}
+            {!showAddPenalty && (
+              <div className="border-t border-slate-100 p-6 shrink-0 flex justify-end">
+                <button
+                  onClick={() => setShowPenaltyModal(false)}
+                  className="rounded-xl px-6 py-2.5 text-sm font-medium border border-slate-200 text-slate-700 hover:bg-slate-50"
+                >
+                  Đóng
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
       {showOverrideModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6">
