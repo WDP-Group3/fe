@@ -910,12 +910,15 @@ const AdminCourses = () => {
                       </label>
                       <input
                         type="number"
-                        value={formData.requiredPracticeHours}
+                        min="0"
+                        value={formData.requiredPracticeHours || 0}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             requiredPracticeHours:
-                              parseInt(e.target.value) || 0,
+                              parseInt(e.target.value) < 0
+                                ? 0
+                                : parseInt(e.target.value),
                           })
                         }
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
@@ -953,11 +956,13 @@ const AdminCourses = () => {
                       </label>
                       <input
                         type="number"
-                        value={formData.estimatedDuration}
+                        min="1"
+                        value={formData.estimatedDuration || 1}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            estimatedDuration: e.target.value,
+                            estimatedDuration:
+                              e.target.value < 1 ? 1 : e.target.value,
                           })
                         }
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
@@ -1045,26 +1050,30 @@ const AdminCourses = () => {
                               />
                               <input
                                 type="number"
+                                min="0"
                                 placeholder="Số tiền"
-                                value={payment.amount}
+                                value={payment.amount || 0}
                                 onChange={(e) =>
                                   handlePaymentChange(
                                     index,
                                     "amount",
-                                    e.target.value,
+                                    e.target.value <0 ? 0 : e.target.value,
                                   )
                                 }
                                 className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                               />
                               <input
                                 type="number"
+                                min="0"
                                 placeholder="Cách đợt trước (ngày)"
                                 value={payment.afterPreviousPaidDays ?? 30}
                                 onChange={(e) =>
                                   handlePaymentChange(
                                     index,
                                     "afterPreviousPaidDays",
-                                    parseInt(e.target.value) || 0,
+                                    parseInt(e.target.value) < 0
+                                      ? 0
+                                      : parseInt(e.target.value),
                                   )
                                 }
                                 className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
