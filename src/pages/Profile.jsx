@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { canEditProfile, canViewProfile } from '../utils/permissions';
@@ -110,6 +110,15 @@ const Profile = () => {
   // Check permissions
   const canEdit = profileUser ? canEditProfile(currentUser, profileUser) : false;
   const canView = profileUser ? canViewProfile(currentUser, profileUser) : false;
+
+  const navigate = useNavigate();
+
+  // Redirect ADMIN users away from their own profile page
+  useEffect(() => {
+    if (currentUser?.role === 'ADMIN' && isOwnProfile) {
+      navigate('/admin', { replace: true });
+    }
+  }, [currentUser, isOwnProfile, navigate]);
 
   useEffect(() => {
     const loadlearnerDocument = async () => {

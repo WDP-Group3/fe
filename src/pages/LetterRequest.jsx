@@ -5,6 +5,8 @@ import SectionHeader from '../components/ui/SectionHeader';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
 import axios from '../services/axios';
+import FileUpload from '../components/ui/FileUpload';
+import config from '../config';
 
 const LetterRequest = () => {
     const { user } = useAuthContext();
@@ -21,6 +23,8 @@ const LetterRequest = () => {
     const [paymentBatch, setPaymentBatch] = useState('');
     const [batchCourse, setBatchCourse] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [evidenceImage, setEvidenceImage] = useState('');
+    const [imageUploading, setImageUploading] = useState(false);
     // Max date dựa trên dueDate + 30 ngày của đợt đã chọn
     const [latePayMaxDate, setLatePayMaxDate] = useState('');
 
@@ -115,6 +119,48 @@ const LetterRequest = () => {
         setBatchCourse('');
         setFeePayments([]);
         setLatePayMaxDate('');
+        setEvidenceImage('');
+    };
+
+    const handleImageUpload = async (file) => {
+        if (!file) return;
+
+        if (!config.cloudinary.cloudName || !config.cloudinary.uploadPreset) {
+            showToast(
+                "Cloudinary chưa được cấu hình. Vui lòng thêm VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET.",
+                "error"
+            );
+            return;
+        }
+
+        try {
+            setImageUploading(true);
+
+            const form = new FormData();
+            form.append("file", file);
+            form.append("upload_preset", config.cloudinary.uploadPreset);
+
+            const uploadUrl = `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/image/upload`;
+
+            const res = await fetch(uploadUrl, {
+                method: "POST",
+                body: form,
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.secure_url) {
+                throw new Error(data.error?.message || "Upload ảnh thất bại");
+            }
+
+            const imageUrl = data.secure_url;
+            setEvidenceImage(imageUrl);
+        } catch (err) {
+            console.error("Image upload error:", err);
+            showToast(err.message || "Upload ảnh thất bại", "error");
+        } finally {
+            setImageUploading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -142,6 +188,7 @@ const LetterRequest = () => {
             const payload = {
                 type,
                 reason,
+                evidenceImage,
                 status: user?.role === 'ADMIN' ? 'APPROVED' : 'PENDING',
             };
 
@@ -226,6 +273,16 @@ const LetterRequest = () => {
                 if (val === 'REJECTED') status = 'inactive';
                 return <StatusBadge status={status} text={val} />;
             }
+        },
+        {
+            key: 'evidenceImage',
+            title: 'Ảnh Bằng Chứng',
+            dataIndex: 'evidenceImage',
+            render: (val) => val ? (
+                <a href={val} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 underline text-xs">
+                    Xem ảnh
+                </a>
+            ) : '-'
         },
     ];
 
@@ -351,12 +408,48 @@ const LetterRequest = () => {
                                 </div>
                             )}
 
+                            {type !== 'LATE_PAYMENT' && (
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700">Ảnh Bằng Chứng (Tùy chọn)</label>
+                                    <div className="mt-1">
+                                        <FileUpload
+                                            accept=".jpg,.jpeg,.png"
+                                            multiple={false}
+                                            maxSize={5 * 1024 * 1024}
+                                            onChange={handleImageUpload}
+                                            disabled={imageUploading || submitting}
+                                        />
+                                        {imageUploading && (
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Đang upload ảnh...
+                                            </p>
+                                        )}
+                                        {evidenceImage && !imageUploading && (
+                                            <div className="mt-2">
+                                                <img
+                                                    src={evidenceImage}
+                                                    alt="Evidence"
+                                                    className="h-32 w-auto object-cover rounded-md border border-slate-200"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-700">
                                 <p className="font-semibold mb-1">💡 Lưu ý:</p>
                                 {user?.role === 'ADMIN' ? (
                                     <p>Yêu cầu của Admin sẽ được hệ thống tự động duyệt ngay lập tức.</p>
                                 ) : (
-                                    <p>Yêu cầu của bạn sẽ được Ban quản trị xem xét trong vòng 24-48h làm việc.</p>
+                                    <div className="space-y-1">
+                                        <p>Yêu cầu của bạn sẽ được Ban quản trị xem xét trong vòng 24-48h làm việc.</p>
+                                        <p><strong>Thông tin người hỗ trợ:</strong></p>
+                                        <ul className="list-disc pl-4 space-y-0.5 mt-1">
+                                            <li>Link Facebook: <a href="https://www.facebook.com/minhhoa.ngotran/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">https://www.facebook.com/minhhoa.ngotran/</a></li>
+                                            <li>SĐT/Zalo: <strong>09668881862</strong></li>
+                                        </ul>
+                                    </div>
                                 )}
                             </div>
                             <button
