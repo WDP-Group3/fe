@@ -1035,7 +1035,7 @@ const AdminCourses = () => {
                           className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-slate-200"
                         >
                           <div className="flex-1 space-y-2">
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className={`grid gap-2 ${index === 0 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                               <input
                                 placeholder="Tên đợt"
                                 value={payment.name}
