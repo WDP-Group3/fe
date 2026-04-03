@@ -485,7 +485,10 @@ const LetterRequest = () => {
                                     <p>Chưa có yêu cầu nào được gửi</p>
                                 </div>
                             ) : (
-                                <DataTable columns={columns} data={requests} />
+                                <DataTable 
+                                    columns={requests.some(r => r.type !== 'LATE_PAYMENT') ? columns : columns.filter(c => c.key !== 'evidenceImage')} 
+                                    data={requests} 
+                                />
                             )}
                         </div>
                     </div>

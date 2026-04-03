@@ -322,7 +322,7 @@ const LetterRequestManagement = () => {
                         ) : (
                             <>
                                 <DataTable 
-                                    columns={activeTab === 'learner' ? columns.filter(c => c.key !== 'details') : columns.filter(c => c.key !== 'evidenceImage')} 
+                                    columns={activeTab === 'learner' ? columns.filter(c => c.key !== 'details' && (learnerTypeFilter === 'LATE_PAYMENT' ? c.key !== 'evidenceImage' : true)) : columns.filter(c => c.key !== 'evidenceImage')} 
                                     data={activeTab === 'learner' ? requests : instructorRequests} 
                                 />
                                 {activeTab === 'learner' ? (
