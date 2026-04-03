@@ -192,6 +192,9 @@ const DocumentApproval = () => {
   const columns = [
     { key: 'learner', title: 'Học viên', dataIndex: 'learner' },
     { key: 'contact', title: 'Liên hệ', dataIndex: 'contact' },
+    // { key: 'batch', title: 'Khóa/Lớp', dataIndex: 'batch' },
+    // { key: 'method', title: 'Phụ trách', dataIndex: 'method' },
+    { key: 'consultant', title: 'Tư vấn viên', dataIndex: 'consultant' },
     { key: 'cccd', title: 'Số CCCD', dataIndex: 'cccd' },
     { key: 'files', title: 'Giấy tờ', dataIndex: 'files' },
     { key: 'status', title: 'Trạng thái', dataIndex: 'status' },
