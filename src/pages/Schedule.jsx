@@ -414,8 +414,32 @@ const Schedule = () => {
       return acc;
     }, {});
 
-  // [MỚI] Kiểm tra xem học viên đã được gán vào lớp nào chưa
-  const isAssignedToClass = enrolledCourses.length > 0 && enrolledCourses.some(c => c.batchLocation || c.startDate);
+  // [MỚI] Phân loại trạng thái lớp học:
+  // - hasAnyClassAssignment: đã được gán ít nhất 1 lớp (có batch/startDate)
+  // - hasStartedClass: có lớp đã đến ngày khai giảng (cho phép đăng ký lịch)
+  const hasAnyClassAssignment = enrolledCourses.length > 0 && enrolledCourses.some(c => c.batchLocation || c.startDate);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const hasStartedClass = enrolledCourses.some((c) => {
+    if (!c.startDate) return false;
+    const start = new Date(c.startDate);
+    start.setHours(0, 0, 0, 0);
+    return start <= todayStart;
+  });
+  const upcomingClasses = enrolledCourses
+    .filter((c) => c.startDate)
+    .map((c) => ({
+      courseName: c.name || c.code || 'N/A',
+      className: c.batchName || 'Chưa có tên lớp',
+      startDate: c.startDate
+    }))
+    .filter((c) => {
+      const d = new Date(c.startDate);
+      d.setHours(0, 0, 0, 0);
+      return d > todayStart;
+    })
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+  const isAssignedToClass = hasStartedClass;
 
   return (
     <div className="space-y-10">
@@ -434,7 +458,7 @@ const Schedule = () => {
       )}
 
       {/* [MỚI] Thông báo Trạng thái Lớp Học */}
-      {!isAssignedToClass ? (
+      {!hasAnyClassAssignment ? (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 mt-4">
           <div className="text-slate-500 text-xl">ℹ️</div>
           <div>
@@ -445,6 +469,26 @@ const Schedule = () => {
             </p>
           </div>
         </div>
+      ) : !hasStartedClass ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 mt-4">
+          <div className="text-amber-500 text-xl">⏳</div>
+          <div>
+            <p className="font-bold text-amber-800">Bạn đã vào lớp nhưng chưa đến ngày khai giảng</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Hiện tại lớp của bạn chưa khai giảng nên chưa thể mở lịch để đăng ký ca học. 
+              Vui lòng chờ đến ngày khai giảng để bắt đầu đăng ký.
+            </p>
+            {upcomingClasses.length > 0 && (
+              <div className="mt-2 space-y-1 text-sm text-amber-800">
+                {upcomingClasses.map((c, idx) => (
+                  <p key={idx}>
+                    • Lớp: <strong>{c.className}</strong> | Khóa: <strong>{c.courseName}</strong> | Khai giảng: <strong>{new Date(c.startDate).toLocaleDateString('vi-VN')}</strong>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3 mt-4">
           <div className="text-emerald-500 text-xl">✅</div>
@@ -453,9 +497,9 @@ const Schedule = () => {
             <div className="text-sm text-emerald-700 mt-1">
               <p>Bạn đã được xếp vào lớp học. Mời bạn chủ động theo dõi thời gian và chọn giáo viên để đăng ký lịch tập lái ngay bên dưới nhé!</p>
               <div className="mt-2 space-y-1">
-                {enrolledCourses.filter(c => c.batchLocation || c.startDate).map((c, i) => (
+                {enrolledCourses.filter(c => c.batchName || c.startDate).map((c, i) => (
                   <p key={i} className="font-medium text-emerald-800">
-                    • Khóa: {c.name || c.code} {c.startDate ? `(Khai giảng: ${new Date(c.startDate).toLocaleDateString('vi-VN')})` : ''}
+                    • Lớp: {c.batchName || 'Chưa có tên lớp'} | Khóa: {c.name || c.code} {c.startDate ? `(Khai giảng: ${new Date(c.startDate).toLocaleDateString('vi-VN')})` : ''}
                   </p>
                 ))}
               </div>
@@ -475,10 +519,11 @@ const Schedule = () => {
             {enrolledCourses.map((course) => {
               const progress = courseProgress[course._id] || {};
               const required = progress.required || 0;
-              const completed = progress.completed || 0;
               const absent = progress.absent || 0;
-              const remaining = progress.remaining ?? Math.max(0, required - completed);
-              const percentage = required > 0 ? Math.round((completed / required) * 100) : 0;
+              const consumed = progress.completed || 0; // Đã dùng giờ = Có mặt + Vắng
+              const attended = Math.max(0, consumed - absent);
+              const remaining = progress.remaining ?? Math.max(0, required - consumed);
+              const percentage = required > 0 ? Math.round((consumed / required) * 100) : 0;
               const isCompleted = required > 0 && remaining === 0;
 
               return (
@@ -501,7 +546,11 @@ const Schedule = () => {
                           Cần hoàn thành: <strong>{required} giờ</strong>
                         </p>
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-slate-600">Giờ đã học: <strong>{completed}</strong> {absent > 0 && <span className="text-red-500 font-medium">(Vắng: {absent} ca)</span>}</span>
+                          <span className="text-slate-600">
+                            Đã học: <strong>{attended}</strong>
+                            {absent > 0 && <span className="text-red-500 font-medium"> (Vắng: {absent} ca)</span>}
+                            <span className="text-slate-500"> | Đã dùng giờ: <strong>{consumed}</strong></span>
+                          </span>
                           <span className="text-slate-500">{percentage}%</span>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-2">
