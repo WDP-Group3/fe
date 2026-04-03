@@ -1,4 +1,36 @@
 import { useState, useEffect, useRef } from "react";
+
+// ─── Helper: timezone-safe getDaysDiff (frontend) ────────────────────────────
+const getDaysDiff = (dateA, dateB) => {
+  const toStartOfDayICT = (d) => {
+    const s = new Date(d).toLocaleString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+    return new Date(s.substring(0, 10) + 'T00:00:00.000Z');
+  };
+  const a = toStartOfDayICT(dateA);
+  const b = toStartOfDayICT(dateB);
+  return Math.round((a - b) / (1000 * 60 * 60 * 24));
+};
+
+const DAYS_COLOR_CLASS = {
+  safe:   'text-emerald-700',
+  warn:   'text-amber-700',
+  danger: 'text-red-600',
+  safeBg:   'bg-emerald-100 text-emerald-700',
+  warnBg:   'bg-amber-100 text-amber-700',
+  dangerBg: 'bg-red-100 text-red-700',
+};
+
+const getDaysLabel = (diffDays) => {
+  if (diffDays < 0) return `Quá hạn ${Math.abs(diffDays)} ngày`;
+  if (diffDays === 0) return 'Hết hạn hôm nay';
+  return `Còn ${diffDays} ngày`;
+};
+
+const getDaysColorClass = (diffDays) => {
+  if (diffDays >= 7) return { text: DAYS_COLOR_CLASS.safe,   bg: DAYS_COLOR_CLASS.safeBg };
+  if (diffDays >= 1) return { text: DAYS_COLOR_CLASS.warn,   bg: DAYS_COLOR_CLASS.warnBg };
+  return                { text: DAYS_COLOR_CLASS.danger, bg: DAYS_COLOR_CLASS.dangerBg };
+};
 import { useNavigate, useLocation } from "react-router-dom";
 import SectionHeader from "../components/ui/SectionHeader";
 import StatusBadge from "../components/ui/StatusBadge";
@@ -66,22 +98,34 @@ const Payments = () => {
   // Poll for role change after payment (USER → learner)
   const roleCheckRef = useRef(null);
   useEffect(() => {
-    if (user?.role === "USER") {
-      roleCheckRef.current = setInterval(async () => {
-        try {
-          const updatedUser = await getProfile();
-          if (updatedUser?.role === "learner") {
-            clearInterval(roleCheckRef.current);
-            loadData();
-          }
-        } catch {
-          // ignore
-        }
-      }, 3000);
-      return () => {
-        if (roleCheckRef.current) clearInterval(roleCheckRef.current);
-      };
+    if (user?.role !== "USER") {
+      // Role đã đổi → dọn interval
+      if (roleCheckRef.current) {
+        clearInterval(roleCheckRef.current);
+        roleCheckRef.current = null;
+      }
+      return;
     }
+
+    roleCheckRef.current = setInterval(async () => {
+      try {
+        const updatedUser = await getProfile();
+        if (updatedUser?.role === "learner") {
+          clearInterval(roleCheckRef.current);
+          roleCheckRef.current = null;
+          loadData();
+        }
+      } catch {
+        // ignore
+      }
+    }, 3000);
+
+    return () => {
+      if (roleCheckRef.current) {
+        clearInterval(roleCheckRef.current);
+        roleCheckRef.current = null;
+      }
+    };
   }, [user?.role]);
 
   // Socket listener: reload data khi thanh toán thành công (từ trang QR)
@@ -133,7 +177,7 @@ const Payments = () => {
       } catch {
         // ignore
       }
-    }, 8000);
+    }, 300000); // 5 phút (300000ms)
 
     return () => {
       if (pendingPollRef.current) {
@@ -774,11 +818,29 @@ const Payments = () => {
                                         Ghi chú: {scheduleItem.note}
                                       </p>
                                     )}
+                                    {!isPaid && scheduleItem?.dueDate && (
+                                      (() => {
+                                        const diffDays = getDaysDiff(scheduleItem.dueDate, new Date());
+                                        const { text, bg } = getDaysColorClass(diffDays);
+                                        return (
+                                          <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${bg}`}>
+                                            {getDaysLabel(diffDays)}
+                                          </span>
+                                        );
+                                      })()
+                                    )}
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2 text-right">
                                     <div>
                                       <p className="text-sm font-semibold text-slate-900">
-                                        {formatCurrency(installmentAmount)}
+                                        {isPaid
+                                          ? formatCurrency(installmentAmount)
+                                          : <span className="text-red-600">{formatCurrency(remainingForInstallment)}</span>}
+                                        {!isPaid && (
+                                          <span className="text-xs font-normal text-slate-400 ml-1">
+                                            / {formatCurrency(installmentAmount)}
+                                          </span>
+                                        )}
                                       </p>
                                       <p className="text-xs text-slate-500">
                                         Đã đóng:{" "}
@@ -924,11 +986,18 @@ const Payments = () => {
                     (item) => item.registrationId === selectedRegistrationForQr,
                   );
                   const schedule = selectedItem?.paymentSchedule || [];
-                  const scheduleItem = schedule[Number(index)];
-                  const amount = scheduleItem?.amount
-                    ? String(scheduleItem.amount)
-                    : "";
-                  setQrForm((prev) => ({ ...prev, amount }));
+                  const paidAmount = Number(selectedItem?.paidAmount || 0);
+
+                  // Tính số tiền còn nợ của đợt được chọn
+                  let acc = 0;
+                  for (let i = 0; i < Number(index); i++) {
+                    acc += Number(schedule[i]?.amount || 0);
+                  }
+                  const instAmt = Number(schedule[Number(index)]?.amount || 0);
+                  // remaining = max(0, instAmt - max(0, paidAmount - acc))
+                  const remaining = Math.max(instAmt - Math.max(paidAmount - acc, 0), 0);
+
+                  setQrForm((prev) => ({ ...prev, amount: remaining > 0 ? String(remaining) : "" }));
                 }}
                 disabled={!selectedRegistrationForQr}
               >
@@ -941,12 +1010,15 @@ const Payments = () => {
                   const paidAmount = Number(selectedItem?.paidAmount || 0);
 
                   let accumulated = 0;
-                  const unpaidItems = schedule.filter((scheduleItem) => {
-                    accumulated += Number(scheduleItem?.amount || 0);
-                    return paidAmount < accumulated;
+                  const installmentAmounts = schedule.map((item) => {
+                    const instAmt = Number(item?.amount || 0);
+                    const paidForInst = Math.min(Math.max(paidAmount - accumulated, 0), instAmt);
+                    const remaining = Math.max(instAmt - paidForInst, 0);
+                    accumulated += instAmt;
+                    return remaining;
                   });
 
-                  if (unpaidItems.length === 0) {
+                  if (installmentAmounts.every((amt) => amt === 0)) {
                     return (
                       <option value="" disabled>
                         Đã hoàn tất thanh toán
@@ -954,15 +1026,18 @@ const Payments = () => {
                     );
                   }
 
-                  return unpaidItems.map((scheduleItem) => {
-                    const idx = schedule.indexOf(scheduleItem);
+                  return schedule.map((scheduleItem, idx) => {
+                    const remaining = installmentAmounts[idx];
+                    if (remaining === 0) return null;
                     return (
                       <option
                         key={`${selectedRegistrationForQr}-${idx}`}
                         value={idx}
                       >
-                        {scheduleItem?.name || `Đợt ${idx + 1}`} -{" "}
-                        {formatCurrency(scheduleItem?.amount || 0)}
+                        {scheduleItem?.name || `Đợt ${idx + 1}`}{" "}
+                        {remaining < (Number(scheduleItem?.amount) || 0)
+                          ? `- Còn nợ ${formatCurrency(remaining)} / ${formatCurrency(Number(scheduleItem?.amount) || 0)}`
+                          : `- ${formatCurrency(remaining)}`}
                       </option>
                     );
                   });

@@ -79,18 +79,6 @@ const AdminSalary = () => {
     commissionOverrides: [],
   });
 
-  // Leave config
-  const [leaveConfig, setLeaveConfig] = useState({
-    paidLeaveDaysPerYear: 12,
-    leaveDeductionPerDay: 0,
-  });
-  const [showLeaveConfig, setShowLeaveConfig] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({
-    paidLeaveDaysPerYear: 12,
-    leaveDeductionPerDay: 0,
-  });
-  const [leaveUsage, setLeaveUsage] = useState(null);
-  const [showLeavePanel, setShowLeavePanel] = useState(false);
 
   // Config form
   const [configForm, setConfigForm] = useState({
@@ -187,11 +175,10 @@ const AdminSalary = () => {
 
       // Gọi song song: catch lỗi riêng của summary để không làm sập toàn bộ Promise.all
       const summaryPromise = apiClient.get(`/salary/monthly-summary?${query.toString()}`).catch(err => ({ error: err }));
-      const [summaryRes, configRes, coursesRes, leaveRes] = await Promise.all([
+      const [summaryRes, configRes, coursesRes] = await Promise.all([
         summaryPromise,
         apiClient.get("/salary/config"),
         apiClient.get("/salary/courses"),
-        apiClient.get(`/salary/leave-config?year=${filters.year}`),
       ]);
 
       const users = summaryRes?.data?.users || [];
@@ -205,13 +192,6 @@ const AdminSalary = () => {
       setConfig(configRes?.data || null);
       console.log("[AdminSalary] configRes.data:", configRes?.data);
       setCourses(coursesRes?.data || []);
-      if (leaveRes?.data) {
-        setLeaveConfig(leaveRes.data);
-        setLeaveForm({
-          paidLeaveDaysPerYear: leaveRes.data.paidLeaveDaysPerYear ?? 12,
-          leaveDeductionPerDay: leaveRes.data.leaveDeductionPerDay ?? 0,
-        });
-      }
 
       if (summaryRes?.error) {
         throw summaryRes.error;
@@ -379,24 +359,6 @@ const AdminSalary = () => {
       await loadData();
       setShowConfigModal(false);
       showToast("Đã lưu cấu hình", "success");
-    } catch (error) {
-      showToast(error.message || "Lưu thất bại", "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSaveLeaveConfig = async (e) => {
-    e.preventDefault();
-    try {
-      setSubmitting(true);
-      await apiClient.put("/salary/leave-config", {
-        ...leaveForm,
-        year: filters.year,
-      });
-      setShowLeaveConfig(false);
-      showToast("Đã lưu cấu hình nghỉ phép", "success");
-      await loadData();
     } catch (error) {
       showToast(error.message || "Lưu thất bại", "error");
     } finally {
@@ -768,234 +730,7 @@ const AdminSalary = () => {
             Xuất Excel
           </button>
 
-          <button
-            onClick={() => {
-              setLeaveForm({
-                paidLeaveDaysPerYear: leaveConfig?.paidLeaveDaysPerYear ?? 12,
-                leaveDeductionPerDay: leaveConfig?.leaveDeductionPerDay ?? 0,
-              });
-              setShowLeaveConfig(true);
-            }}
-            className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100"
-          >
-            Cấu hình nghỉ phép
-          </button>
         </div>
-      </div>
-
-      {/* Leave Config Modal */}
-      {showLeaveConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">
-              Cấu hình nghỉ phép {filters.year}
-            </h3>
-            <form onSubmit={handleSaveLeaveConfig} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Số ngày nghỉ phép có lương / năm
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={leaveForm.paidLeaveDaysPerYear}
-                  onChange={(e) =>
-                    setLeaveForm((f) => ({
-                      ...f,
-                      paidLeaveDaysPerYear: Number(e.target.value),
-                    }))
-                  }
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Số ngày nghỉ phép được phép trong năm mà không bị trừ lương.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Số tiền khấu trừ / ngày vượt quá
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={leaveForm.leaveDeductionPerDay}
-                  onChange={(e) =>
-                    setLeaveForm((f) => ({
-                      ...f,
-                      leaveDeductionPerDay: Number(e.target.value),
-                    }))
-                  }
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Khấu trừ cho mỗi ngày nghỉ vượt quá số ngày được phép (chỉ áp
-                  dụng cho giảng viên).
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLeaveConfig(false)}
-                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700"
-                >
-                  Huỷ
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {submitting ? "Đang lưu..." : "Lưu"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Leave Usage Panel */}
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 shadow-sm overflow-hidden">
-        <button
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-amber-100 transition-colors"
-          onClick={() => {
-            if (!leaveUsage) {
-              apiClient
-                .get(`/salary/leave-usage?year=${filters.year}`)
-                .then((res) => setLeaveUsage(res?.data?.data))
-                .catch((err) =>
-                  console.error("Error loading leave usage:", err),
-                );
-            }
-            setShowLeavePanel((prev) => !prev);
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-lg">Nghỉ phép</span>
-            <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">
-              {leaveConfig?.paidLeaveDaysPerYear ?? 12} ngày/năm
-            </span>
-          </div>
-          <span
-            className={`transition-transform ${showLeavePanel ? "rotate-180" : ""}`}
-          >
-            <svg
-              className="w-5 h-5 text-amber-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </span>
-        </button>
-
-        {showLeavePanel && (
-          <div className="px-5 pb-5">
-            {/* Summary row */}
-            {leaveUsage && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-slate-500">Tổng giáo viên</p>
-                  <p className="text-lg font-bold text-slate-800">
-                    {leaveUsage.summary?.totalInstructors ?? 0}
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-slate-500">Tổng ngày nghỉ</p>
-                  <p className="text-lg font-bold text-slate-800">
-                    {leaveUsage.summary?.totalLeaves ?? 0}
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-slate-500">Ngày vượt quá</p>
-                  <p className="text-lg font-bold text-amber-600">
-                    {leaveUsage.summary?.totalExtraDays ?? 0}
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-slate-500">Tổng khấu trừ</p>
-                  <p className="text-lg font-bold text-red-600">
-                    {fmt(leaveUsage.summary?.totalDeduction ?? 0)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Usage table */}
-            {leaveUsage?.instructors?.length > 0 ? (
-              <div className="bg-white rounded-xl overflow-hidden border border-slate-100">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                          Giáo viên
-                        </th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                          Ngày nghỉ
-                        </th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                          Miễn phí
-                        </th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                          Vượt quá
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                          Khấu trừ
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaveUsage.instructors.map((inst, idx) => (
-                        <tr
-                          key={inst.userId || idx}
-                          className="border-t border-slate-50 hover:bg-slate-50"
-                        >
-                          <td className="px-4 py-3 font-medium text-slate-800">
-                            {inst.fullName}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {inst.emergencyLeaveCount ?? 0}
-                          </td>
-                          <td className="px-4 py-3 text-center text-slate-500">
-                            {inst.paidLeaveDays ?? 12}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {inst.extraLeaveDays > 0 ? (
-                              <span className="text-amber-600 font-semibold">
-                                {inst.extraLeaveDays}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">0</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {inst.leaveDeduction > 0 ? (
-                              <span className="text-red-600 font-semibold">
-                                {fmt(inst.leaveDeduction)}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <p className="text-center text-sm text-slate-500 py-6 bg-white rounded-xl border border-slate-100">
-                Không có dữ liệu nghỉ phép cho năm này
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Table */}
