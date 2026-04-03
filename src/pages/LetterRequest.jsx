@@ -91,7 +91,7 @@ const LetterRequest = () => {
         if (fp?.dueDate) {
             const due = new Date(fp.dueDate);
             due.setDate(due.getDate() + 30);
-            setLatePayMaxDate(due.toISOString().split('T')[0]);
+            setLatePayMaxDate(due.toLocaleDateString('en-CA'));
         } else {
             setLatePayMaxDate('');
         }

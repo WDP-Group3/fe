@@ -18,14 +18,17 @@ const Schedule = () => {
   const { user } = useAuthContext();
   const { showToast } = useToast();
   
+  const searchParams = new URLSearchParams(window.location.search);
   const [locations, setLocations] = useState([]);
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState(searchParams.get('location') || '');
+  const [selectedCourse, setSelectedCourse] = useState(searchParams.get('course') || '');
   
   const [instructors, setInstructors] = useState([]);
-  const [selectedInstructor, setSelectedInstructor] = useState('');
+  const [selectedInstructor, setSelectedInstructor] = useState(searchParams.get('instructor') || '');
   
   const [instructorSchedules, setInstructorSchedules] = useState([]);
+  const isSelectedLocationMount = React.useRef(true);
+  const isSelectedCourseMount = React.useRef(true);
   const [currentMonday, setCurrentMonday] = useState(getMonday(new Date()));
   const [loading, setLoading] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -90,6 +93,19 @@ const Schedule = () => {
       // 3. Tải lại MySessions nếu đó là thay đổi liên quan đến lịch riêng của học viên 
       //    (Ví dụ giáo viên hủy gấp schedule của chính học viên này)
       loadMySessions();
+      
+      // [MỚI] Tải lại nếu là sự kiện nghỉ lễ
+      if (payload.status && payload.status.startsWith('HOLIDAY_')) {
+        console.log('📅 Admin cập nhật lịch nghỉ (Realtime):', payload);
+        if (selectedInstructor) fetchInstructorSchedule();
+        loadMySessions();
+        return;
+      }
+
+      // 4. Nếu có điểm danh (COMPLETED hoặc ABSENT), tải lại tiến độ học tập (Giờ đã học, còn lại)
+      if (payload.status === 'COMPLETED' || payload.status === 'ABSENT' || payload.status === 'CANCELLED') {
+        fetchEnrolledCourses();
+      }
     };
 
     socket.on('schedule-updated', handleScheduleUpdate);
@@ -100,6 +116,10 @@ const Schedule = () => {
   }, [socket, selectedInstructor, currentMonday]);
 
   useEffect(() => {
+    if (isSelectedLocationMount.current) {
+      isSelectedLocationMount.current = false;
+      return;
+    }
     if (selectedLocation) {
       setSelectedCourse('');
       setSelectedInstructor('');
@@ -109,6 +129,14 @@ const Schedule = () => {
   }, [selectedLocation]);
 
   useEffect(() => {
+    if (isSelectedCourseMount.current) {
+      isSelectedCourseMount.current = false;
+      // Vẫn cần load danh sách giảng viên nếu url có đầy đủ
+      if (selectedLocation && selectedCourse) {
+        fetchInstructorsByLocation(selectedLocation, selectedCourse);
+      }
+      return;
+    }
     if (selectedLocation && selectedCourse) {
       fetchInstructorsByLocation(selectedLocation, selectedCourse);
       setSelectedInstructor('');
@@ -119,6 +147,17 @@ const Schedule = () => {
       setInstructorSchedules([]);
     }
   }, [selectedLocation, selectedCourse]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (selectedLocation) params.set('location', selectedLocation);
+    else params.delete('location');
+    if (selectedCourse) params.set('course', selectedCourse);
+    else params.delete('course');
+    if (selectedInstructor) params.set('instructor', selectedInstructor);
+    else params.delete('instructor');
+    window.history.replaceState(null, '', '?' + params.toString());
+  }, [selectedLocation, selectedCourse, selectedInstructor]);
 
   useEffect(() => {
     if (selectedInstructor) fetchInstructorSchedule();
@@ -157,10 +196,13 @@ const Schedule = () => {
   const fetchInstructorSchedule = async () => {
     setLoading(true);
     try {
-      const sunday = new Date(currentMonday);
-      sunday.setDate(currentMonday.getDate() + 6);
-      const startDateISO = new Date(currentMonday.setHours(0,0,0,0)).toISOString();
-      const endDateISO = new Date(sunday.setHours(23,59,59,999)).toISOString();
+      const monday = new Date(currentMonday);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      const startDateISO = monday.toISOString();
+      const endDateISO = sunday.toISOString();
       const res = await apiClient.get(`/schedule?instructorId=${selectedInstructor}&startDate=${startDateISO}&endDate=${endDateISO}`);
       if (res.status === 'success') {
         setInstructorSchedules((res.data || []).map(i => ({ ...i, timeSlot: Number(i.timeSlot) })));
@@ -274,8 +316,10 @@ const Schedule = () => {
     } catch (e) {
       showToast(e.message, 'error');
       // [FIX] Tự động tải lại lịch để cập nhật màu ô trống thành màu xám (đã có người đặt)
-      fetchInstructorSchedule();
       setConfirmBookingModal({ isOpen: false, data: null, type: 'PRACTICE' });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     }
   };
 
@@ -334,7 +378,9 @@ const Schedule = () => {
   const handleFeedback = async () => {
     try {
       await apiClient.patch(`/bookings/${feedbackModal.bookingId}/feedback`, {
-        rating: feedbackModal.rating, learnerFeedback: feedbackModal.comment
+        rating: feedbackModal.rating, 
+        learnerFeedback: feedbackModal.comment,
+        feedbackType: feedbackModal.type
       });
       showToast('Cảm ơn bạn đã đánh giá!', 'success');
       setFeedbackModal({ ...feedbackModal, isOpen: false });
@@ -430,6 +476,7 @@ const Schedule = () => {
               const progress = courseProgress[course._id] || {};
               const required = progress.required || 0;
               const completed = progress.completed || 0;
+              const absent = progress.absent || 0;
               const remaining = progress.remaining ?? Math.max(0, required - completed);
               const percentage = required > 0 ? Math.round((completed / required) * 100) : 0;
               const isCompleted = required > 0 && remaining === 0;
@@ -454,7 +501,7 @@ const Schedule = () => {
                           Cần hoàn thành: <strong>{required} giờ</strong>
                         </p>
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-slate-600">Đã điểm danh: <strong>{completed} giờ</strong></span>
+                          <span className="text-slate-600">Giờ đã học: <strong>{completed}</strong> {absent > 0 && <span className="text-red-500 font-medium">(Vắng: {absent} ca)</span>}</span>
                           <span className="text-slate-500">{percentage}%</span>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-2">
@@ -534,9 +581,17 @@ const Schedule = () => {
                 <span className="flex items-center gap-1"><div className="w-3 h-3 bg-purple-600"></div> Nghỉ lễ</span>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() - 7))))}>Tuần trước</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const next = new Date(currentMonday);
+                  next.setDate(next.getDate() - 7);
+                  setCurrentMonday(getMonday(next));
+                }}>Tuần trước</Button>
                 <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date()))}>Hiện tại</Button>
-                <Button size="sm" variant="outline" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() + 7))))}>Tuần sau</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const next = new Date(currentMonday);
+                  next.setDate(next.getDate() + 7);
+                  setCurrentMonday(getMonday(next));
+                }}>Tuần sau</Button>
               </div>
             </div>
             {loading ? <Loading /> : <WeekScheduler startDate={currentMonday} scheduleData={instructorSchedules} userRole="learner" onSlotClick={handleSlotClick} />}
@@ -605,7 +660,21 @@ const Schedule = () => {
                             {item.status === 'COMPLETED' ? 'Hoàn thành' : (item.status === 'ABSENT' ? 'Vắng' : (item.status === 'CANCELLED' ? 'Đã hủy' : 'Chờ học'))}
                           </div>
                           {item.status === 'BOOKED' && <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => handleCancel(item._id, item.date, item.timeSlot)}>Hủy</Button>}
-                          {item.status === 'COMPLETED' && !item.rating && <Button size="sm" className="bg-yellow-500 text-white border-none" onClick={() => setFeedbackModal({ isOpen: true, bookingId: item._id, rating: 5, comment: '' })}>Đánh giá</Button>}
+                          {item.status === 'COMPLETED' && (
+                              <Button 
+                                size="sm" 
+                                className="bg-yellow-500 text-white border-none" 
+                                onClick={() => setFeedbackModal({ 
+                                  isOpen: true, 
+                                  bookingId: item._id, 
+                                  rating: item.rating || 5, 
+                                  comment: item.learnerFeedback || '', 
+                                  type: item.feedbackType || 'NORMAL' 
+                                })}
+                              >
+                                {item.rating ? 'Sửa đánh giá' : 'Đánh giá'}
+                              </Button>
+                          )}
                           {item.rating && <span className="text-yellow-500 font-bold">⭐ {item.rating}</span>}
                         </div>
                       </div>
@@ -681,10 +750,21 @@ const Schedule = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={feedbackModal.isOpen} onClose={() => setFeedbackModal({ ...feedbackModal, isOpen: false })} title="Đánh giá chất lượng dạy">
+      <Modal isOpen={feedbackModal.isOpen} onClose={() => setFeedbackModal({ ...feedbackModal, isOpen: false })} title="Đánh giá chất lượng đào tạo">
         <div className="space-y-4 p-4">
           <div className="flex gap-2 text-3xl justify-center">
             {[1,2,3,4,5].map(s => <button key={s} onClick={() => setFeedbackModal({...feedbackModal, rating: s})} className={feedbackModal.rating >= s ? 'text-yellow-400' : 'text-slate-200'}>★</button>)}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Loại phản hồi:</label>
+            <select 
+              className="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              value={feedbackModal.type || 'NORMAL'}
+              onChange={e => setFeedbackModal({...feedbackModal, type: e.target.value})}
+            >
+               <option value="NORMAL">Bình thường</option>
+               <option value="COMPLAINT">Khiếu nại</option>
+            </select>
           </div>
           <textarea className="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" rows="3" placeholder="Nhận xét của bạn..." value={feedbackModal.comment} onChange={e => setFeedbackModal({...feedbackModal, comment: e.target.value})} />
           <Button className="w-full" onClick={handleFeedback}>Gửi đánh giá</Button>
