@@ -194,7 +194,7 @@ const Login = () => {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => {
-                message.error('Đăng nhập Google thất bại');
+                showToast('Đăng nhập Google thất bại', 'error');
               }}
             />
 

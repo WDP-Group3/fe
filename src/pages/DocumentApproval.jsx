@@ -26,7 +26,7 @@ const DocumentApproval = () => {
     type: 'default',
     confirmText: 'Xác nhận',
     cancelText: 'Hủy',
-    onConfirm: async () => {},
+    onConfirm: async () => { },
   });
 
   const [notifyDialog, setNotifyDialog] = useState({
@@ -76,30 +76,6 @@ const DocumentApproval = () => {
           await loadDocs();
         } catch (err) {
           showToast(err?.message || 'Cập nhật trạng thái thất bại', 'error');
-          throw err;
-        }
-      },
-    });
-  };
-
-  const handleSoftDelete = (doc) => {
-    const learnerName = doc?.learnerId?.fullName || doc?.registrationId?.learnerId?.fullName || 'Học viên';
-    const cccd = doc?.cccdNumber ? ` (CCCD: ${doc.cccdNumber})` : '';
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xóa ảo hồ sơ',
-      message: `Xóa ảo hồ sơ của "${learnerName}"${cccd}? Hồ sơ sẽ không hiển thị ở danh sách duyệt nữa.`,
-      type: 'warning',
-      confirmText: 'Xóa ảo',
-      cancelText: 'Hủy',
-      onConfirm: async () => {
-        try {
-          await apiClient.patch(`/documents/${doc._id}/soft-delete`);
-          showToast('Đã xóa ảo hồ sơ', 'success');
-          await loadDocs();
-        } catch (err) {
-          showToast(err?.message || 'Xóa ảo hồ sơ thất bại', 'error');
           throw err;
         }
       },
@@ -202,11 +178,6 @@ const DocumentApproval = () => {
             {d.status !== 'APPROVED' ? (
               <Button size="sm" variant="danger" onClick={() => handleUpdateStatus(d, 'REJECTED')} disabled={d.status === 'REJECTED'}>
                 Từ chối
-              </Button>
-            ) : null}
-            {d.status !== 'APPROVED' ? (
-              <Button size="sm" variant="outline" onClick={() => handleSoftDelete(d)}>
-                Xóa ảo
               </Button>
             ) : null}
             <Button size="sm" variant="ghost" onClick={() => handleSendNotification(d)}>

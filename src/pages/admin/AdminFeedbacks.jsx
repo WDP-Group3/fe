@@ -10,6 +10,11 @@ const AdminFeedbacks = () => {
     const [loading, setLoading] = useState(true);
     const [filterInstructor, setFilterInstructor] = useState('');
     const [filterMinRating, setFilterMinRating] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterEndDate, setFilterEndDate] = useState('');
+    const [instructors, setInstructors] = useState([]);
     
     // Statistics
     const [statistics, setStatistics] = useState(null);
@@ -23,7 +28,22 @@ const AdminFeedbacks = () => {
 
     useEffect(() => {
         loadFeedbacks();
-    }, [filterInstructor, filterMinRating, currentPage]);
+    }, [filterInstructor, filterMinRating, filterStatus, filterType, filterStartDate, filterEndDate, currentPage]);
+
+    useEffect(() => {
+        loadInstructors();
+    }, []);
+
+    const loadInstructors = async () => {
+        try {
+            const response = await apiClient.get('/users?role=INSTRUCTOR&limit=500');
+            if (response.status === 'success') {
+                setInstructors(response.data || []);
+            }
+        } catch (err) {
+            console.error('Error loading instructors:', err);
+        }
+    };
 
     const loadFeedbacks = async () => {
         try {
@@ -31,6 +51,10 @@ const AdminFeedbacks = () => {
             let query = '';
             if (filterInstructor) query += `instructorId=${filterInstructor}&`;
             if (filterMinRating) query += `minRating=${filterMinRating}&`;
+            if (filterStatus) query += `feedbackStatus=${filterStatus}&`;
+            if (filterType) query += `feedbackType=${filterType}&`;
+            if (filterStartDate) query += `startDate=${filterStartDate}&`;
+            if (filterEndDate) query += `endDate=${filterEndDate}&`;
             query += `page=${currentPage}&limit=10`;
             query = '?' + query;
             
@@ -49,9 +73,37 @@ const AdminFeedbacks = () => {
         }
     };
 
-    const handleViewDetail = (feedback) => {
-        setSelectedFeedback(feedback);
+    const handleViewDetail = async (feedback) => {
+        // Optimistic update locally
+        const updatedFeedback = { ...feedback };
+        if (!updatedFeedback.feedbackStatus || updatedFeedback.feedbackStatus === 'UNREAD') {
+            updatedFeedback.feedbackStatus = 'READ';
+        }
+        
+        setSelectedFeedback(updatedFeedback);
         setShowDetailModal(true);
+
+        if (!feedback.feedbackStatus || feedback.feedbackStatus === 'UNREAD') {
+            try {
+                await apiClient.patch(`/bookings/feedbacks/${feedback._id}/status`, { feedbackStatus: 'READ' });
+                // We don't block the UI while waiting for the background reload
+                loadFeedbacks();
+            } catch (e) {
+                console.error('Error auto-updating status:', e);
+            }
+        }
+    };
+
+    const toggleStatus = async (id, currentStatus) => {
+        try {
+            const newStatus = (!currentStatus || currentStatus === 'UNREAD') ? 'READ' : 'UNREAD';
+            const res = await apiClient.patch(`/bookings/feedbacks/${id}/status`, { feedbackStatus: newStatus });
+            if (res.status === 'success') {
+                loadFeedbacks(); // Reload current view
+            }
+        } catch (e) {
+            console.error('Toggle status error:', e);
+        }
     };
 
     const getRatingStars = (rating) => {
@@ -117,13 +169,16 @@ const AdminFeedbacks = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Lọc theo giáo viên
                         </label>
-                        <input
-                            type="text"
-                            placeholder="Nhập ID giáo viên..."
+                        <select
                             value={filterInstructor}
                             onChange={(e) => setFilterInstructor(e.target.value)}
                             className="border rounded px-3 py-2 text-sm w-64"
-                        />
+                        >
+                            <option value="">Tất cả giáo viên</option>
+                            {instructors.map((ins) => (
+                                <option key={ins._id} value={ins._id}>{ins.fullName}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -141,11 +196,69 @@ const AdminFeedbacks = () => {
                         </select>
                     </div>
                     <div className="flex items-end">
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="border rounded px-3 py-2 text-sm"
+                        >
+                            <option value="">Trạng thái đọc: Tất cả</option>
+                            <option value="UNREAD">Chưa đọc</option>
+                            <option value="READ">Đã đọc</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end">
+                        <select
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                            className="border rounded px-3 py-2 text-sm"
+                        >
+                            <option value="">Loại: Tất cả</option>
+                            <option value="NORMAL">Bình thường</option>
+                            <option value="COMPLAINT">Khiếu nại</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Từ ngày
+                        </label>
+                        <input
+                            type="date"
+                            value={filterStartDate}
+                            onChange={(e) => setFilterStartDate(e.target.value)}
+                            className="border rounded px-3 py-2 text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Đến ngày
+                        </label>
+                        <input
+                            type="date"
+                            value={filterEndDate}
+                            onChange={(e) => setFilterEndDate(e.target.value)}
+                            className="border rounded px-3 py-2 text-sm"
+                        />
+                    </div>
+                    <div className="flex items-end gap-2">
                         <button
                             onClick={loadFeedbacks}
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
                         >
                             Tải lại
+                        </button>
+                        <button
+                            onClick={() => {
+                                setFilterInstructor('');
+                                setFilterMinRating('');
+                                setFilterStatus('');
+                                setFilterType('');
+                                setFilterStartDate('');
+                                setFilterEndDate('');
+                                setCurrentPage(1);
+                            }}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded text-sm"
+                        >
+                            Xóa lọc
                         </button>
                     </div>
                 </div>
@@ -191,6 +304,8 @@ const AdminFeedbacks = () => {
                                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Học viên</th>
                                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Giáo viên</th>
                                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Ngày học</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Loại</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Trạng thái</th>
                                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Đánh giá</th>
                                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Ngày đánh giá</th>
                                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600">Thao tác</th>
@@ -198,7 +313,7 @@ const AdminFeedbacks = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                                 {feedbacks.map((feedback, index) => (
-                                    <tr key={feedback._id} className="border-t hover:bg-gray-50">
+                                    <tr key={feedback._id} className={feedback.feedbackType === 'COMPLAINT' ? "border-t hover:bg-red-100 bg-red-50" : "border-t hover:bg-gray-50 bg-white"}>
                                         <td className="px-4 py-3 text-sm">
                                             {(currentPage - 1) * 10 + index + 1}
                                         </td>
@@ -214,6 +329,17 @@ const AdminFeedbacks = () => {
                                             <div className="text-xs text-gray-500">
                                                 {SLOT_LABELS[String(feedback.timeSlot)] || `Ca ${feedback.timeSlot}`}
                                             </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm font-bold">
+                                            {feedback.feedbackType === 'COMPLAINT' ? <span className="text-red-600">Khiếu nại</span> : <span className="text-slate-500">Bình thường</span>}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            <button 
+                                                onClick={() => toggleStatus(feedback._id, feedback.feedbackStatus)}
+                                                className={`px-3 py-1 rounded-full text-xs font-bold ${(!feedback.feedbackStatus || feedback.feedbackStatus === 'UNREAD') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}
+                                            >
+                                                {(!feedback.feedbackStatus || feedback.feedbackStatus === 'UNREAD') ? 'Chưa đọc' : 'Đã đọc'}
+                                            </button>
                                         </td>
                                         <td className="px-4 py-3 text-sm">
                                             <span className={`font-bold ${
@@ -319,6 +445,10 @@ const AdminFeedbacks = () => {
                                 </span>
                             </div>
                             <div>
+                                <span className="text-gray-600 block mb-1">Loại phản hồi:</span>
+                                <div className="font-bold mb-2">
+                                    {selectedFeedback.feedbackType === 'COMPLAINT' ? <span className="text-red-600">Khiếu nại</span> : <span className="text-slate-600">Bình thường</span>}
+                                </div>
                                 <span className="text-gray-600 block mb-1">Phản hồi:</span>
                                 <div className="bg-gray-50 p-3 rounded border text-sm">
                                     {selectedFeedback.learnerFeedback || 'Không có phản hồi'}

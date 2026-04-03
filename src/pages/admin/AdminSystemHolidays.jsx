@@ -23,6 +23,15 @@ const AdminSystemHolidays = () => {
   const [editingId, setEditingId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
+  const toInputDate = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   useEffect(() => {
     fetchHolidays();
   }, [currentPage]);
@@ -115,8 +124,8 @@ const AdminSystemHolidays = () => {
   const handleEdit = (holiday) => {
     setFormData({
       title: holiday.title,
-      startDate: holiday.startDate.split('T')[0],
-      endDate: holiday.endDate.split('T')[0],
+      startDate: toInputDate(holiday.startDate),
+      endDate: toInputDate(holiday.endDate),
       description: holiday.description || '',
       location: holiday.location || ''
     });
@@ -268,7 +277,7 @@ const AdminSystemHolidays = () => {
                   <input
                     type="date"
                     required
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toLocaleDateString('en-CA')}
                     className="w-full border rounded-lg px-3 py-2"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -279,7 +288,7 @@ const AdminSystemHolidays = () => {
                   <input
                     type="date"
                     required
-                    min={formData.startDate || new Date().toISOString().split('T')[0]}
+                    min={formData.startDate || new Date().toLocaleDateString('en-CA')}
                     className="w-full border rounded-lg px-3 py-2"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}

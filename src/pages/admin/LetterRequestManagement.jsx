@@ -30,6 +30,8 @@ const LetterRequestManagement = () => {
     const socket = useSocket();
     const [reloadTrigger, setReloadTrigger] = useState(0);
 
+    const [learnerTypeFilter, setLearnerTypeFilter] = useState('ALL');
+
     // Lắng nghe socket để realtime cập nhật danh sách đơn (Sạch sẽ, không dính cache closure)
     useEffect(() => {
         if (!socket) return;
@@ -52,12 +54,13 @@ const LetterRequestManagement = () => {
         } else {
             loadInstructorRequests();
         }
-    }, [currentPage, currentInstructorPage, activeTab, reloadTrigger]);
+    }, [currentPage, currentInstructorPage, activeTab, reloadTrigger, learnerTypeFilter]);
 
     const loadRequests = async () => {
         try {
             setLoading(true);
-            const response = await apiClient.get(`/requests?page=${currentPage}&limit=10&type=LATE_PAYMENT`);
+            const types = learnerTypeFilter === 'ALL' ? 'LATE_PAYMENT,SUPPORT,OTHER,OFFLINE_PAYMENT' : learnerTypeFilter;
+            const response = await apiClient.get(`/requests?page=${currentPage}&limit=10&type=${types}`);
             if (response.status === 'success') {
                 setRequests(response.data);
                 if (response.pagination) {
@@ -193,6 +196,17 @@ const LetterRequestManagement = () => {
             }
         },
         {
+            key: 'evidenceImage',
+            title: 'Ảnh Bằng Chứng',
+            dataIndex: 'evidenceImage',
+            render: (val) => val ? (
+                <a href={val} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 underline text-xs font-semibold block text-center">
+                    <img src={val} alt="Evidence" className="h-10 w-10 object-cover rounded mx-auto mb-1 border border-slate-200" />
+                    Xem ảnh
+                </a>
+            ) : '-'
+        },
+        {
             key: 'createdAt',
             title: 'Ngày gửi',
             dataIndex: 'createdAt',
@@ -278,6 +292,24 @@ const LetterRequestManagement = () => {
                         </nav>
                     </div>
 
+                    {activeTab === 'learner' && (
+                        <div className="mb-4 flex items-center justify-end">
+                            <label className="text-sm font-medium text-slate-700 mr-3">Lọc theo loại đơn:</label>
+                            <select
+                                className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                                value={learnerTypeFilter}
+                                onChange={(e) => {
+                                    setLearnerTypeFilter(e.target.value);
+                                    setCurrentPage(1); // Reset page on filter change
+                                }}
+                            >
+                                <option value="ALL">Tất cả</option>
+                                <option value="LATE_PAYMENT">Xin nộp muộn</option>
+                                <option value="SUPPORT">Hỗ trợ</option>
+                            </select>
+                        </div>
+                    )}
+
                     <div className="mt-6">
                         {loading ? (
                             <div className="flex justify-center py-8">
@@ -289,7 +321,10 @@ const LetterRequestManagement = () => {
                             </div>
                         ) : (
                             <>
-                                <DataTable columns={columns} data={activeTab === 'learner' ? requests : instructorRequests} />
+                                <DataTable 
+                                    columns={activeTab === 'learner' ? columns.filter(c => c.key !== 'details' && (learnerTypeFilter === 'LATE_PAYMENT' ? c.key !== 'evidenceImage' : true)) : columns.filter(c => c.key !== 'evidenceImage')} 
+                                    data={activeTab === 'learner' ? requests : instructorRequests} 
+                                />
                                 {activeTab === 'learner' ? (
                                     pagination.totalPages > 1 && (
                                         <div className="mt-4 px-4 py-3 border-t border-slate-100">
