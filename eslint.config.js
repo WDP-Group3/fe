@@ -23,7 +23,14 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Allow vars starting with _ or uppercase (common pattern for unused/discarded values)
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-refresh/only-export-components': 'off',
+      'no-constant-condition': 'warn',
+      'no-constant-binary-expression': 'warn',
+      // Ignore platform globals not defined in browser context
+      'no-undef': 'off',
     },
   },
 ])

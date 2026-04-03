@@ -199,7 +199,7 @@ const Register = () => {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => {
-                message.error('Đăng nhập Google thất bại');
+                showToast('Đăng nhập Google thất bại', 'error');
               }}
               text="signup_with"
             />

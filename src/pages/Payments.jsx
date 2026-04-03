@@ -7,11 +7,13 @@ import apiClient from "../services/apiClient";
 import { formatCurrency } from "../utils/formatters";
 import { useAuthContext } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { useSocket } from "../context/SocketContext";
 
 const Payments = () => {
   const { user, getProfile } = useAuthContext();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const socket = useSocket();
   const location = useLocation();
   const [payments, setPayments] = useState([]);
   const [tuitionInfo, setTuitionInfo] = useState(null);
@@ -70,7 +72,7 @@ const Payments = () => {
           const updatedUser = await getProfile();
           if (updatedUser?.role === "learner") {
             clearInterval(roleCheckRef.current);
-            window.location.reload();
+            loadData();
           }
         } catch {
           // ignore
@@ -81,6 +83,20 @@ const Payments = () => {
       };
     }
   }, [user?.role]);
+
+  // Socket listener: reload data khi thanh toán thành công (từ trang QR)
+  useEffect(() => {
+    if (!socket || !user?.id) return;
+
+    const handlePaymentSuccess = (data) => {
+      console.log('[Payments] Socket payment-success:', data);
+      showToast('Thanh toán thành công!', 'success');
+      loadData();
+    };
+
+    socket.on('payment-success', handlePaymentSuccess);
+    return () => socket.off('payment-success', handlePaymentSuccess);
+  }, [socket, user?.id]);
 
   useEffect(() => {
     const incomingRegistration = location.state?.registration;
@@ -750,7 +766,7 @@ const Payments = () => {
                                     </p>
                                     <p className="text-xs text-slate-500">
                                       {idx === 0 && item.registrationDate
-                                        ? `Ngày đăng ký: ${new Date(item.registrationDate).toLocaleDateString("vi-VN")}`
+                                        ? `Ngày đăng ký: ${new Date(item.registrationDate).toLocaleDateString("vi-VN")}${scheduleItem?.dueDate ? ` | Hạn: ${new Date(scheduleItem.dueDate).toLocaleDateString("vi-VN")}` : ''}`
                                         : `Hạn nộp: ${scheduleItem?.dueDate ? new Date(scheduleItem.dueDate).toLocaleDateString("vi-VN") : "Chưa có"}`}
                                     </p>
                                     {scheduleItem?.note && (

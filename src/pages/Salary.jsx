@@ -16,7 +16,7 @@ const KpiCard = ({ label, value, sub, color = 'text-slate-900' }) => (
 );
 
 const Salary = () => {
-  const { user } = useAuthContext();
+  useAuthContext(); // access auth context to trigger re-renders on login/logout
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [salaryData, setSalaryData] = useState(null);
@@ -111,7 +111,7 @@ const Salary = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
+    } catch {
       showToast('Xuất file thất bại', 'error');
     }
   }, [filters, showToast]);
