@@ -204,18 +204,19 @@ const AdminLearningLocations = () => {
     }
 
     // [MỚI] Kiểm tra trùng lặp trên cùng 1 form
-    const uniqueInstructors = new Set();
+      const uniqueInstructorCoursePairs = new Set();
     let hasDuplicateInForm = false;
     for (const row of instructorPayload) {
-      if (uniqueInstructors.has(row.instructorId)) {
+      const pairKey = `${String(row.instructorId)}::${String(row.courseId)}`;
+      if (uniqueInstructorCoursePairs.has(pairKey)) {
         hasDuplicateInForm = true;
         break;
       }
-      uniqueInstructors.add(row.instructorId);
+      uniqueInstructorCoursePairs.add(pairKey);
     }
 
     if (hasDuplicateInForm) {
-      showToast('Không thể phân công cùng một giáo viên nhiều lần tại cùng một sân', 'error');
+      showToast('Không thể phân công trùng cùng giáo viên + cùng khóa tại cùng một sân', 'error');
       return;
     }
 
@@ -422,7 +423,7 @@ const AdminLearningLocations = () => {
               </Button>
             </div>
             <p className="mb-3 text-xs text-slate-500">
-              Chọn thầy và khóa (hạng) thầy đảm nhận tại địa điểm này. Mỗi thầy chỉ 1 khu vực + 1 khóa.
+              Chọn thầy và khóa (hạng) thầy đảm nhận tại địa điểm này. Mỗi thầy chỉ 1 khu vực, có thể gán nhiều khóa.
             </p>
             <div className="space-y-3">
               {instructorRows.map((row, idx) => {

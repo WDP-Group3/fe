@@ -121,10 +121,13 @@ const InstructorSchedule = () => {
   const fetchSchedule = async () => {
     setLoading(true);
     try {
-      const sunday = new Date(currentMonday);
-      sunday.setDate(currentMonday.getDate() + 6);
-      const startDateISO = new Date(currentMonday.setHours(0, 0, 0, 0)).toISOString();
-      const endDateISO = new Date(sunday.setHours(23, 59, 59, 999)).toISOString();
+      const monday = new Date(currentMonday);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      const startDateISO = monday.toISOString();
+      const endDateISO = sunday.toISOString();
       const res = await apiClient.get(`/schedule/instructor?startDate=${startDateISO}&endDate=${endDateISO}`);
       if (res.status === 'success') {
         setSchedules((res.data || []).map(item => ({ ...item, timeSlot: Number(item.timeSlot) })));
@@ -355,9 +358,17 @@ const InstructorSchedule = () => {
         <div className="flex justify-between items-center mb-6">
           <SectionHeader title="Quản Lý Lịch Dạy" description="Click ô xanh để xem thông tin & điểm danh, ô trống báo bận" />
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() - 7))))}>Tuần trước</Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              const next = new Date(currentMonday);
+              next.setDate(next.getDate() - 7);
+              setCurrentMonday(getMonday(next));
+            }}>Tuần trước</Button>
             <Button variant="outline" size="sm" onClick={() => setCurrentMonday(getMonday(new Date()))}>Hiện tại</Button>
-            <Button variant="outline" size="sm" onClick={() => setCurrentMonday(getMonday(new Date(currentMonday.setDate(currentMonday.getDate() + 7))))}>Tuần sau</Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              const next = new Date(currentMonday);
+              next.setDate(next.getDate() + 7);
+              setCurrentMonday(getMonday(next));
+            }}>Tuần sau</Button>
           </div>
         </div>
         
@@ -461,6 +472,23 @@ const InstructorSchedule = () => {
                     </p>
                 </div>
               </div>
+
+              {learnerDetailModal.data.learnerStats && (
+                  <div className="grid grid-cols-3 gap-2">
+                     <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
+                        <p className="text-xs text-indigo-500 font-bold uppercase">Tiến trình</p>
+                        <p className="font-bold text-indigo-700">Bài {learnerDetailModal.data.learnerStats.sequenceNumber}</p>
+                     </div>
+                     <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+                        <p className="text-xs text-emerald-500 font-bold uppercase">Đã dạy</p>
+                        <p className="font-bold text-emerald-700">{learnerDetailModal.data.learnerStats.completedCount} ca</p>
+                     </div>
+                     <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-center">
+                        <p className="text-xs text-red-500 font-bold uppercase">H/V Vắng</p>
+                        <p className="font-bold text-red-700">{learnerDetailModal.data.learnerStats.absentCount} ca</p>
+                     </div>
+                  </div>
+              )}
 
               <div className="pt-4 border-t flex gap-3">
                  <Button className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 border-red-200" variant="outline" onClick={() => processAttendance('ABSENT')}>

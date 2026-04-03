@@ -112,6 +112,14 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                         <span className="text-white font-extrabold text-[10px] uppercase tracking-tighter">Bận</span>
                       </div>
                     );
+                  } else if (userRole === 'learner' && !data.isMyBooking) {
+                    // Ẩn chi tiết lịch đối với học viên khác
+                    cellClass += " bg-slate-100 cursor-not-allowed border-none";
+                    content = (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <span className="text-slate-400 font-extrabold text-[10px] uppercase tracking-tighter">Đã đặt</span>
+                      </div>
+                    );
                   } else if (data.status === 'COMPLETED') {
                     // Điểm danh có mặt - XANH LÁ ĐẬM (thành công)
                     cellClass += " bg-emerald-500 cursor-pointer";
@@ -139,7 +147,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                       </div>
                     );
                   } else {
-                    // Trạng thái chờ (BOOKED)
+                    // Trạng thái chờ (BOOKED) của mình hoặc giáo viên
                     const typeColors = {
                       'THEORY': { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-200', labelBg: 'bg-violet-200' },
                       'MOCK_TEST': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200', labelBg: 'bg-amber-200' },
@@ -147,27 +155,18 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                     };
                     const colors = typeColors[data.type] || typeColors.PRACTICE;
                     
-                    if (userRole === 'learner' && !data.isMyBooking) {
-                      cellClass += " bg-slate-100 cursor-not-allowed border-none";
-                      content = (
-                        <div className="flex flex-col items-center justify-center h-full">
-                          <span className="text-slate-400 font-extrabold text-[10px] uppercase tracking-tighter">Đã đặt</span>
-                        </div>
-                      );
-                    } else {
-                      cellClass += ` ${colors.bg} cursor-pointer border ${colors.border}`;
-                      content = (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${colors.labelBg} ${colors.text}`}>{data.type || 'PRACTICE'}</span>
-                          <span className={`font-bold text-[12px] truncate w-full ${colors.text}`}>{userRole === 'INSTRUCTOR' ? (data.learnerId?.fullName || "Học viên") : "Của bạn"}</span>
-                          {userRole === 'INSTRUCTOR' && (
-                            <span className="text-[10px] font-bold text-amber-600">
-                              Chờ dạy
-                            </span>
-                          )}
-                        </div>
-                      );
-                    }
+                    cellClass += ` ${colors.bg} cursor-pointer border ${colors.border}`;
+                    content = (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${colors.labelBg} ${colors.text}`}>{data.type || 'PRACTICE'}</span>
+                        <span className={`font-bold text-[12px] truncate w-full ${colors.text}`}>{userRole === 'INSTRUCTOR' ? (data.learnerId?.fullName || "Học viên") : "Của bạn"}</span>
+                        {userRole === 'INSTRUCTOR' && (
+                          <span className="text-[10px] font-bold text-amber-600">
+                            Chờ dạy
+                          </span>
+                        )}
+                      </div>
+                    );
                   }
                 } else if (isPast) {
                   // Ca quá hạn - XÁM NHẠT
