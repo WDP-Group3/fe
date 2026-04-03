@@ -287,7 +287,7 @@ const InstructorSchedule = () => {
   return (
     <div className="space-y-10">
       {/* [MỚI] Thông tin nghỉ phép khẩn cấp (Tạm Ẩn theo yêu cầu) */}
-      {false ? null : (
+      {false && (
       <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 overflow-hidden min-w-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 min-w-0 flex-1">
