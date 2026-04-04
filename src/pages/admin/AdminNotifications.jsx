@@ -28,7 +28,7 @@ const AdminNotifications = () => {
     type: "THEORY",
     title: "",
     message: "",
-    expirationDays: 30,
+    expirationDays: 7,
   });
 
 // Confirmation dialog states
@@ -73,7 +73,7 @@ const handleCreateClick = () => {
     type: "THEORY",
     title: "",
     message: "",
-    expirationDays: 30,
+    expirationDays: 7,
   });
   setShowCreateModal(true);
 };
@@ -83,7 +83,7 @@ const handleEditClick = (e, notif) => {
   // Calculate current remaining days as a starting point for re-expiration
   const remainingDays = notif.expireAt 
     ? Math.max(1, Math.ceil((new Date(notif.expireAt) - new Date()) / (24 * 60 * 60 * 1000)))
-    : 30;
+    : 7;
 
   setFormData({
     id: notif._id,
@@ -364,11 +364,11 @@ return (
               </label>
               <input
                 type="number"
-                min="1"
+                min="2"
                 required
                 value={formData.expirationDays}
                 onChange={(e) =>
-                  setFormData({ ...formData, expirationDays: e.target.value < 1 ? 1 : e.target.value })
+                  setFormData({ ...formData, expirationDays: e.target.value < 2 ? 2 : e.target.value })
                 }
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
               />
