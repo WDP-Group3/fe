@@ -219,7 +219,7 @@ const Salary = () => {
               label="Tổng lương"
               value={fmt(summary.totalSalary)}
               sub={`${summary.filterMonth}/${summary.filterYear}`}
-              color="text-emerald-600"
+              color={summary.totalSalary < 0 ? 'text-red-500' : 'text-emerald-600'}
             />
             {summary.isInstructor && (
               <>
@@ -389,7 +389,7 @@ const Salary = () => {
               </div>
               <div className="mt-2 flex justify-between border-t border-slate-200 pt-2">
                 <span className="font-semibold text-slate-900">Tổng lương:</span>
-                <span className="font-bold text-indigo-600">{fmt(summary.totalSalary)}</span>
+                <span className={`font-bold ${summary.totalSalary < 0 ? 'text-red-500' : 'text-indigo-600'}`}>{fmt(summary.totalSalary)}</span>
               </div>
             </div>
 
