@@ -332,12 +332,22 @@ const AdminSalary = () => {
       showToast("Vui lòng chọn ngày hiệu lực", "error");
       return;
     }
+    if (new Date(configForm.effectiveFrom) < new Date(todayStr)) {
+      showToast("Ngày hiệu lực không được là ngày trong quá khứ", "error");
+      return;
+    }
     if (
       !configForm.instructorHourlyRate ||
       configForm.instructorHourlyRate <= 0
     ) {
       showToast("Vui lòng nhập lương/giờ hợp lệ", "error");
       return;
+    }
+    for (const cc of configForm.courseCommissions) {
+      if (cc.effectiveFrom && new Date(cc.effectiveFrom) < new Date(todayStr)) {
+        showToast("Ngày hiệu lực hoa hồng không được là ngày trong quá khứ", "error");
+        return;
+      }
     }
     try {
       setSubmitting(true);
@@ -582,7 +592,7 @@ const AdminSalary = () => {
         key: "totalSalary",
         title: "Tổng lương",
         render: (_, row) => (
-          <span className="font-bold text-emerald-600">
+          <span className={`font-bold ${(row.totalSalary || 0) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
             {fmt(row.totalSalary || 0)}
           </span>
         ),
@@ -629,7 +639,7 @@ const AdminSalary = () => {
           label="Tổng lương"
           value={fmt(stats.totalSalary)}
           sub="Tháng này"
-          color="text-emerald-600"
+          color={(stats.totalSalary || 0) < 0 ? 'text-red-500' : 'text-emerald-600'}
         />
         <KpiCard
           label="Tổng giờ dạy"
@@ -900,7 +910,6 @@ const AdminSalary = () => {
                         <input
                           type="date"
                           value={commission?.effectiveFrom || todayStr}
-                          min={todayStr}
                           onChange={(e) =>
                             updateCommission(
                               commission.courseId,
@@ -1086,11 +1095,19 @@ const AdminSalary = () => {
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Tổng lương</p>
-                    <p className="text-lg font-bold text-emerald-600">
+                    <p className={`text-lg font-bold ${(detailData.totalSalary || 0) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                       {fmt(detailData.totalSalary || 0)}
                     </p>
                   </div>
                 </div>
+
+                {/* Warning: lương âm */}
+                {(detailData.totalSalary || 0) < 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                    <span className="text-red-500 text-lg">⚠️</span>
+                    Lương bị âm do tổng tiền phạt ({fmt(detailData.totalPenalty || 0)}) vượt thu nhập trong tháng. Khoản chênh lệch sẽ được trừ vào tháng tiếp theo.
+                  </div>
+                )}
 
                 {/* Teaching Details */}
                 {detailData.teachingDetails?.length > 0 && (
