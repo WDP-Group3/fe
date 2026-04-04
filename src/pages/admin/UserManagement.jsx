@@ -24,6 +24,7 @@ const UserManagement = () => {
     limit: 10,
   });
   const [formData, setFormData] = useState({
+    userId: "",
     email: "",
     role: "INSTRUCTOR",
     password: "",
@@ -35,7 +36,7 @@ const UserManagement = () => {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
     type: "default",
   });
 
@@ -117,7 +118,7 @@ const UserManagement = () => {
         password: formData.password || "11111111@",
       });
       setShowCreateModal(false);
-      setFormData({ email: "", role: "INSTRUCTOR", password: "" });
+      setFormData({ userId: "", email: "", role: "INSTRUCTOR", password: "" });
       loadUsers();
       loadStats();
       showToast(
@@ -134,6 +135,7 @@ const UserManagement = () => {
     try {
       if (!currentUser) return;
       const updateData = {};
+      if (formData.userId) updateData.userId = formData.userId;
       if (formData.email) updateData.email = formData.email;
       if (formData.password) updateData.password = formData.password;
       if (formData.role) updateData.role = formData.role;
@@ -155,7 +157,7 @@ const UserManagement = () => {
 
       setShowEditModal(false);
       setCurrentUser(null);
-      setFormData({ email: "", role: "INSTRUCTOR", password: "" });
+      setFormData({ userId: "", email: "", role: "INSTRUCTOR", password: "" });
       setEnrolledCoursesData([]);
       setEnrolledCourseCodes([]);
       setLockedCourseCodes([]);
@@ -211,6 +213,7 @@ const UserManagement = () => {
     setCurrentUser(user);
     setFormData({
       email: user.email,
+      userId: user.id,
       role: user.role,
       password: "",
       name: user.name,
@@ -339,15 +342,14 @@ const UserManagement = () => {
       render: (_, record) => (
         <span
           className={`px-2 py-1 rounded-full text-xs font-semibold 
-                    ${
-                      record.role === "ADMIN"
-                        ? "bg-red-100 text-red-700"
-                        : record.role === "INSTRUCTOR"
-                          ? "bg-blue-100 text-blue-700"
-                          : record.role === "CONSULTANT"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-green-100 text-green-700"
-                    }`}
+                    ${record.role === "ADMIN"
+              ? "bg-red-100 text-red-700"
+              : record.role === "INSTRUCTOR"
+                ? "bg-blue-100 text-blue-700"
+                : record.role === "CONSULTANT"
+                  ? "bg-purple-100 text-purple-700"
+                  : "bg-green-100 text-green-700"
+            }`}
         >
           {record.role === "ADMIN"
             ? "Quản trị viên"
@@ -447,6 +449,7 @@ const UserManagement = () => {
             <button
               onClick={() => {
                 setFormData({
+                  userId: "",
                   email: "",
                   role: "INSTRUCTOR",
                   password: "11111111@",
@@ -705,13 +708,12 @@ const UserManagement = () => {
                               return (
                                 <label
                                   key={course.code}
-                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
-                                    isDisabled
-                                      ? "cursor-not-allowed border-slate-200 bg-slate-100/50 grayscale-[0.5]"
-                                      : isSelected
-                                        ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400"
-                                        : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
-                                  }`}
+                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${isDisabled
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-100/50 grayscale-[0.5]"
+                                    : isSelected
+                                      ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400"
+                                      : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
+                                    }`}
                                 >
                                   <div className="relative flex h-5 w-5 items-center justify-center">
                                     <input
@@ -812,13 +814,12 @@ const UserManagement = () => {
                               return (
                                 <label
                                   key={course.code}
-                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
-                                    isDisabled
-                                      ? "cursor-not-allowed border-slate-200 bg-slate-100/50 grayscale-[0.5]"
-                                      : isSelected
-                                        ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400"
-                                        : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
-                                  }`}
+                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${isDisabled
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-100/50 grayscale-[0.5]"
+                                    : isSelected
+                                      ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400"
+                                      : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
+                                    }`}
                                 >
                                   <div className="relative flex h-5 w-5 items-center justify-center">
                                     <input

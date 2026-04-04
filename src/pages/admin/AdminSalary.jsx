@@ -574,7 +574,7 @@ const AdminSalary = () => {
         title: "Tổng phạt",
         render: (_, row) => (
           <span className="text-red-500 font-medium tracking-tight">
-            {row.totalPenalty ? "-" + fmt(row.totalPenalty) : "—"}
+            {row.totalPenalty ? fmt(row.totalPenalty) : "—"}
           </span>
         ),
       },
