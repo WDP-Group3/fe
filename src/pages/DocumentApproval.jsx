@@ -35,6 +35,12 @@ const DocumentApproval = () => {
     message: '',
   });
 
+  const [rejectDialog, setRejectDialog] = useState({
+    isOpen: false,
+    doc: null,
+    reason: '',
+  });
+
   const loadDocs = async () => {
     try {
       setLoading(true);
@@ -62,17 +68,23 @@ const DocumentApproval = () => {
     const cccd = doc?.cccdNumber ? ` (CCCD: ${doc.cccdNumber})` : '';
     const isApprove = nextStatus === 'APPROVED';
 
+    if (!isApprove) {
+      // Từ chối → mở dialog nhập lý do
+      setRejectDialog({ isOpen: true, doc, reason: '' });
+      return;
+    }
+
     setConfirmDialog({
       isOpen: true,
-      title: isApprove ? 'Duyệt hồ sơ' : 'Từ chối hồ sơ',
-      message: `${isApprove ? 'Duyệt' : 'Từ chối'} hồ sơ của "${learnerName}"${cccd}?`,
-      type: isApprove ? 'default' : 'danger',
-      confirmText: isApprove ? 'Duyệt' : 'Từ chối',
+      title: 'Duyệt hồ sơ',
+      message: `Duyệt hồ sơ của "${learnerName}"${cccd}?`,
+      type: 'default',
+      confirmText: 'Duyệt',
       cancelText: 'Hủy',
       onConfirm: async () => {
         try {
           await apiClient.patch(`/documents/${doc._id}/status`, { status: nextStatus });
-          showToast(isApprove ? 'Đã duyệt hồ sơ' : 'Đã từ chối hồ sơ', 'success');
+          showToast('Đã duyệt hồ sơ', 'success');
           await loadDocs();
         } catch (err) {
           showToast(err?.message || 'Cập nhật trạng thái thất bại', 'error');
@@ -88,6 +100,27 @@ const DocumentApproval = () => {
       doc,
       message: '',
     });
+  };
+
+  const submitRejection = async () => {
+    if (!rejectDialog?.doc) return;
+    const reason = rejectDialog.reason.trim();
+    if (!reason) {
+      showToast('Vui lòng nhập lý do từ chối', 'error');
+      return;
+    }
+
+    try {
+      await apiClient.patch(`/documents/${rejectDialog.doc._id}/status`, {
+        status: 'REJECTED',
+        rejectionReason: reason,
+      });
+      showToast('Đã từ chối hồ sơ', 'success');
+      setRejectDialog({ isOpen: false, doc: null, reason: '' });
+      await loadDocs();
+    } catch (err) {
+      showToast(err?.message || 'Cập nhật trạng thái thất bại', 'error');
+    }
   };
 
   const submitNotification = async () => {
@@ -145,6 +178,9 @@ const DocumentApproval = () => {
           : (d.consultantEmail ? d.consultantEmail : '—'),
         cccd: d.cccdNumber || '—',
         status: <StatusBadge status={statusInfo.badge} label={statusInfo.label} />,
+        rejectionReason: d.status === 'REJECTED' && d.rejectionReason ? (
+          <span className="text-xs text-red-600">{d.rejectionReason}</span>
+        ) : null,
         files: (
           <div className="flex flex-wrap gap-2">
             {d.cccdImageFront && (
@@ -198,6 +234,7 @@ const DocumentApproval = () => {
     { key: 'cccd', title: 'Số CCCD', dataIndex: 'cccd' },
     { key: 'files', title: 'Giấy tờ', dataIndex: 'files' },
     { key: 'status', title: 'Trạng thái', dataIndex: 'status' },
+    { key: 'rejectionReason', title: 'Lý do từ chối', dataIndex: 'rejectionReason' },
     { key: 'action', title: '', dataIndex: 'action' },
   ];
 
@@ -266,6 +303,31 @@ const DocumentApproval = () => {
         }
         type="default"
         confirmText="Gửi thông báo"
+        cancelText="Hủy"
+      />
+
+      <ConfirmDialog
+        isOpen={rejectDialog.isOpen}
+        onClose={() => setRejectDialog({ isOpen: false, doc: null, reason: '' })}
+        onConfirm={submitRejection}
+        title="Từ chối hồ sơ"
+        message={
+          <div className="space-y-2 text-sm">
+            <p className="text-slate-600">
+              Vui lòng nhập lý do từ chối. Học viên sẽ nhận được thông báo và có thể bổ sung hồ sơ.
+            </p>
+            <textarea
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Ví dụ: Ảnh CCCD bị mờ, vui lòng chụp lại rõ thông tin..."
+              value={rejectDialog.reason}
+              onChange={(e) => setRejectDialog((prev) => ({ ...prev, reason: e.target.value }))}
+              autoFocus
+            />
+          </div>
+        }
+        type="danger"
+        confirmText="Từ chối"
         cancelText="Hủy"
       />
     </div>
