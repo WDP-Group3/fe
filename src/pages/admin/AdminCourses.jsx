@@ -346,18 +346,18 @@ const AdminCourses = () => {
           payload.description !== editingCourse.description ||
           payload.image !== editingCourse.image ||
           payload.estimatedDuration !==
-            (editingCourse.estimatedDuration || "") ||
+          (editingCourse.estimatedDuration || "") ||
           payload.requiredPracticeHours !==
-            (editingCourse.requiredPracticeHours || 0) ||
+          (editingCourse.requiredPracticeHours || 0) ||
           JSON.stringify(payload.feePayments) !==
-            JSON.stringify(
-              (editingCourse.feePayments || []).map((p) => ({
-                name: p.name,
-                amount: Number(p.amount),
-                note: p.note,
-                afterPreviousPaidDays: Number(p.afterPreviousPaidDays) || 0,
-              })),
-            )
+          JSON.stringify(
+            (editingCourse.feePayments || []).map((p) => ({
+              name: p.name,
+              amount: Number(p.amount),
+              note: p.note,
+              afterPreviousPaidDays: Number(p.afterPreviousPaidDays) || 0,
+            })),
+          )
         );
       };
 
@@ -401,11 +401,11 @@ const AdminCourses = () => {
       note: course.note || "",
       feePayments: course.feePayments
         ? course.feePayments.map((p) => ({
-            name: p.name || "",
-            amount: p.amount || 0,
-            note: p.note || "",
-            afterPreviousPaidDays: p.afterPreviousPaidDays ?? 30,
-          }))
+          name: p.name || "",
+          amount: p.amount || 0,
+          note: p.note || "",
+          afterPreviousPaidDays: p.afterPreviousPaidDays ?? 30,
+        }))
         : [],
       requiredPracticeHours: course.requiredPracticeHours || 0,
     });
@@ -779,21 +779,19 @@ const AdminCourses = () => {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab("courses")}
-            className={`${
-              activeTab === "courses"
+            className={`${activeTab === "courses"
                 ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
+              } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
           >
             Quản lý khoá học
           </button>
           <button
             onClick={() => setActiveTab("batches")}
-            className={`${
-              activeTab === "batches"
+            className={`${activeTab === "batches"
                 ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
+              } border-b-2 px-1 py-4 text-sm font-medium transition-colors`}
           >
             Quản lý lớp học
           </button>
@@ -1057,7 +1055,7 @@ const AdminCourses = () => {
                                   handlePaymentChange(
                                     index,
                                     "amount",
-                                    e.target.value <0 ? 0 : e.target.value,
+                                    e.target.value < 0 ? 0 : e.target.value,
                                   )
                                 }
                                 className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
@@ -1151,11 +1149,10 @@ const AdminCourses = () => {
                           onClick={() =>
                             setCourseStatusConfirm({ open: true, course })
                           }
-                          className={`p-1.5 ${
-                            course.status === "Active"
+                          className={`p-1.5 ${course.status === "Active"
                               ? "text-slate-600 hover:bg-slate-50"
                               : "text-amber-600 hover:bg-amber-50"
-                          } rounded-full`}
+                            } rounded-full`}
                           title={course.status === "Active" ? "Ẩn" : "Hiện"}
                         >
                           {course.status === "Active" ? (
@@ -1222,30 +1219,6 @@ const AdminCourses = () => {
                               strokeLinejoin="round"
                               strokeWidth="2"
                               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            ></path>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setCourseDeleteConfirm({
-                              open: true,
-                              id: course._id,
-                            })
-                          }
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-full"
-                          title="Xóa"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                             ></path>
                           </svg>
                         </button>
@@ -1366,13 +1339,13 @@ const AdminCourses = () => {
                 filters.status ||
                 filters.location ||
                 filters.search) && (
-                <button
-                  onClick={clearFilters}
-                  className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
-                >
-                  Xóa bộ lọc
-                </button>
-              )}
+                  <button
+                    onClick={clearFilters}
+                    className="ml-auto text-xs text-indigo-600 hover:text-indigo-800"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
@@ -1562,11 +1535,10 @@ const AdminCourses = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            batch.learnerCount >= (batch.maxlearners || 30)
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${batch.learnerCount >= (batch.maxlearners || 30)
                               ? "bg-red-100 text-red-800"
                               : "bg-green-100 text-green-800"
-                          }`}
+                            }`}
                         >
                           {batch.learnerCount || 0} / {batch.maxlearners || 30}
                         </span>
@@ -1584,11 +1556,10 @@ const AdminCourses = () => {
                               showToast("Lỗi cập nhật trạng thái", "error");
                             }
                           }}
-                          className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${
-                            batch.status === "OPEN"
+                          className={`text-xs rounded-full px-2 py-1 border-0 cursor-pointer ${batch.status === "OPEN"
                               ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
-                          }`}
+                            }`}
                         >
                           <option value="OPEN">Mở</option>
                           <option value="CLOSED">Đóng</option>
@@ -1809,8 +1780,8 @@ const AdminCourses = () => {
                     // Ưu tiên lấy googleMapUrl, nếu không có thì lấy address, nếu không có nữa thì để trống
                     location: selectedLocation
                       ? selectedLocation.googleMapUrl ||
-                        selectedLocation.address ||
-                        ""
+                      selectedLocation.address ||
+                      ""
                       : prev.location,
                   }));
                 }}
@@ -2006,9 +1977,8 @@ const AdminCourses = () => {
         onClose={() => setAutoEnrollModalParams({ isOpen: false, batch: null })}
         onConfirm={confirmAutoEnroll}
         title="Xếp lớp tự động"
-        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${
-          autoEnrollModalParams.batch?.name || "này"
-        }?`}
+        message={`Bạn có chắc chắn muốn hệ thống tự động tìm kiếm và thêm học viên chờ hợp lệ vào lớp ${autoEnrollModalParams.batch?.name || "này"
+          }?`}
         variant="primary"
       />
 
