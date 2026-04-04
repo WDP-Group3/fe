@@ -38,7 +38,7 @@ const AdminBatchDetailsModal = ({ isOpen, onClose, batch, onLearnerRemoved }) =>
       loadParticipants();
       if (onLearnerRemoved) onLearnerRemoved();
     } catch (err) {
-      showToast(err.response?.data?.message || "Lỗi khi xoá học viên khỏi lớp", "error");
+      showToast(err.response?.data?.message || "Không thể thay đổi khi lớp đã được khai giảng", "error");
     }
   };
 
@@ -57,6 +57,8 @@ const AdminBatchDetailsModal = ({ isOpen, onClose, batch, onLearnerRemoved }) =>
   };
 
   if (!isOpen || !batch) return null;
+
+  const isStarted = new Date(batch.startDate).setHours(0,0,0,0) <= new Date().setHours(0,0,0,0);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết lớp học" size="xl">
@@ -141,12 +143,18 @@ const AdminBatchDetailsModal = ({ isOpen, onClose, batch, onLearnerRemoved }) =>
                           {checkDocumentStatus(p.learnerDocument)}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setRemoveConfirm({ open: true, registrationId: p._id, learnerName: p.learnerId?.fullName })}
-                            className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
-                          >
-                            Xóa khỏi lớp
-                          </button>
+                          {isStarted ? (
+                            <span className="text-slate-400 text-sm italic cursor-not-allowed" title="Không thể xóa khi lớp đã khai giảng">
+                              Đã khóa
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setRemoveConfirm({ open: true, registrationId: p._id, learnerName: p.learnerId?.fullName })}
+                              className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
+                            >
+                              Xóa khỏi lớp
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))

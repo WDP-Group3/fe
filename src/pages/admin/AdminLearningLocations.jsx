@@ -76,7 +76,7 @@ const AdminLearningLocations = () => {
 
   const loadCourses = async () => {
     try {
-      const res = await apiClient.get('/courses');
+      const res = await apiClient.get('/courses?limit=1000');
       if (res.status === 'success') setCourses(res.data || []);
     } catch (err) {
       console.error(err);
@@ -203,20 +203,20 @@ const AdminLearningLocations = () => {
       return;
     }
 
-    // [MỚI] Kiểm tra trùng lặp trên cùng 1 form
-      const uniqueInstructorCoursePairs = new Set();
+    // [MỚI] Kiểm tra trùng lặp trên cùng 1 form (1 thầy chỉ 1 khóa)
+    const uniqueInstructors = new Set();
     let hasDuplicateInForm = false;
     for (const row of instructorPayload) {
-      const pairKey = `${String(row.instructorId)}::${String(row.courseId)}`;
-      if (uniqueInstructorCoursePairs.has(pairKey)) {
+      const instructorKey = String(row.instructorId);
+      if (uniqueInstructors.has(instructorKey)) {
         hasDuplicateInForm = true;
         break;
       }
-      uniqueInstructorCoursePairs.add(pairKey);
+      uniqueInstructors.add(instructorKey);
     }
 
     if (hasDuplicateInForm) {
-      showToast('Không thể phân công trùng cùng giáo viên + cùng khóa tại cùng một sân', 'error');
+      showToast('Mỗi giáo viên chỉ được phép dạy 1 khóa (không thể gán 1 thầy 2 khóa khác nhau)', 'error');
       return;
     }
 
@@ -422,8 +422,8 @@ const AdminLearningLocations = () => {
                 + Thêm thầy
               </Button>
             </div>
-            <p className="mb-3 text-xs text-slate-500">
-              Chọn thầy và khóa (hạng) thầy đảm nhận tại địa điểm này. Mỗi thầy chỉ 1 khu vực, có thể gán nhiều khóa.
+            <p className="text-sm text-slate-500">
+              Chọn thầy và khóa (hạng) thầy đảm nhận tại địa điểm này. Mỗi thầy chỉ 1 khu vực và chỉ được gán đúng 1 khóa học.
             </p>
             <div className="space-y-3">
               {instructorRows.map((row, idx) => {

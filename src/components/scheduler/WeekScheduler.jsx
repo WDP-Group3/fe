@@ -97,7 +97,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                 } else if (data) {
                   if (data.category === 'HOLIDAY') {
                     // Ngày nghỉ lễ - TÍM đậm
-                    cellClass += " bg-purple-600 cursor-not-allowed";
+                    cellClass += " bg-purple-600 border-purple-700 cursor-not-allowed";
                     content = (
                       <div className="flex flex-col items-center justify-center h-full px-1">
                         <span className="text-white font-extrabold text-[9px] uppercase tracking-tight">Nghỉ lễ</span>
@@ -105,8 +105,8 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                       </div>
                     );
                   } else if (data.category === 'BUSY') {
-                    // Giáo viên báo bận - XÁM ĐẬM (thầy bận)
-                    cellClass += " bg-slate-500 cursor-not-allowed";
+                    // Giáo viên báo bận
+                    cellClass += " bg-slate-500 border-slate-600 cursor-not-allowed";
                     content = (
                       <div className="flex flex-col items-center justify-center h-full">
                         <span className="text-white font-extrabold text-[10px] uppercase tracking-tighter">Bận</span>
@@ -122,7 +122,7 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                     );
                   } else if (data.status === 'COMPLETED') {
                     // Điểm danh có mặt - XANH LÁ ĐẬM (thành công)
-                    cellClass += " bg-emerald-500 cursor-pointer";
+                    cellClass += " bg-emerald-500 border-emerald-600 cursor-pointer";
                     content = (
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-white/20 text-white">Hoàn thành</span>
@@ -130,8 +130,8 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                       </div>
                     );
                   } else if (data.status === 'ABSENT') {
-                    // Điểm danh vắng - ĐỎ ĐẬM (thất bại)
-                    cellClass += " bg-red-500 cursor-pointer";
+                    // Điểm danh vắng
+                    cellClass += " bg-red-500 border-red-600 cursor-pointer";
                     content = (
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-white/20 text-white">Vắng</span>
@@ -139,8 +139,8 @@ const WeekScheduler = ({ startDate, scheduleData = [], onSlotClick, userRole = '
                       </div>
                     );
                   } else if (data.status === 'CANCELLED') {
-                    // Đã hủy - XÁM NHẠT
-                    cellClass += " bg-slate-300 cursor-not-allowed";
+                    // Đã hủy
+                    cellClass += " bg-slate-300 border-slate-400 cursor-not-allowed";
                     content = (
                       <div className="flex flex-col items-center justify-center h-full">
                         <span className="text-white font-extrabold text-[10px] uppercase tracking-tighter">Đã hủy</span>
